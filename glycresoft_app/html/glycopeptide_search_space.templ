@@ -1,0 +1,221 @@
+<div class='row'>
+    <h2>Glycopeptide Search Space Building</h2>
+</div>
+<div class='row'>
+    <form  id='glycopeptide-hypothesis-form' action="glycopeptide_search_space" method="post" class="col s12" accept-charset="utf-8" enctype="multipart/form-data">
+        <div class="row">
+            <div class="input-field col s8">
+                <label for="hypothesis_name">Hypothesis Name</label>
+                <br>
+                <input id='hypothesis_name' name="hypothesis_name" type="text" class="validate">
+            </div>
+        </div>
+        <div class='row'>
+            <div class='col s8'>
+                <div class="file-field input-field">
+                    <h6>Protein List</h6>
+                    <div class="btn">
+                        <span>Select File...</span>
+                        <input name='protein-list-file' id='protein-list-file' type="file"/>
+                    </div>
+                    <input class="file-path validate" type="text" style="width: 60%;padding-left:5px;"/>
+                    <input type='hidden' name='proteomics-file-type' id="proteomics-file-type" />
+                </div>
+            </div>
+            <small class='col s4' id='protein-list-file-help'>
+            A list of protein sequences to digest and glycosylate <em>in-silico</em>, provided in Fasta format or mzIdentML. 
+            </small>
+        </div>
+        <div id='mzid-protein-list-container'>
+            
+        </div>
+        <div class='row'>
+            <div class='col s8'>
+                <div class="file-field input-field">
+                    <h6>Glycosylation Site List</h6>                    
+                    <div class="btn">
+                        <span>Select File...</span>
+                        <input name='glycosylation-site-list-file' type="file" />
+                    </div>
+                    <input class="file-path validate" type="text" style="width: 60%;padding-left:5px;"/>
+                </div>
+            </div>
+            <small class='col s4' id='sitelist-file-help'>
+            List of positions (counting starting at 1) for all glycosylation sites for each protein in Fasta format. Omit to use automatic <em>N</em>-glycan sequon pattern matching.
+            </small>
+        </div>
+
+        <div class='row'>
+            <div class='col s4' id='constant-modifications-container'>
+                <h6>Constant Modifications</h6>
+            {% with select_name='constant_modifications' %}
+                {% include 'components/modification_selection.templ' %}        
+            {% endwith %}
+            </div>
+            <div class='col s4' id='variable-modifications-container'>
+                <h6>Variable Modifications</h6>
+            {% with select_name='variable_modifications' %}
+                {% include 'components/modification_selection.templ' %}     
+            {% endwith %}
+                <br>
+                <span class='message'></span>
+            </div>
+            <div class='col s4' id='enzyme-container'>
+                <h6>Enzymatic Digest</h6>
+            {% with select_name='enzyme' %}
+                {% include 'components/peptidase_selection.templ' %}        
+            {% endwith %}
+            <label for='missed_cleavages'>Missed Cleavages Allowed</label>
+            <input class='validate' type='number' min="0" id='missed_cleavages' name='missed_cleavages' value="2"/>
+            <span class='message'></span>
+            </div>
+        </div>
+        <div class='row' style='margin-bottom:0px;'>
+            <div class='col s8'>
+                <h6>Glycan Definitions</h6>
+            </div>
+            <small class='col s4' id='sitelist-file-help'>
+                List of glycan structures/compositions to attach to each protein.
+            </small>                
+        </div>
+        <div class='row' style='margin-bottom:0px;'>
+            <div class='col s6'>
+                <div class="file-field input-field">
+                    <h6>
+                        Text File of Glycan Structures or Compositions
+                    </h6>
+                    <div class="btn">
+                        <span>Select File...</span>
+                        <input name='glycan-definition-file' id='glycan-definition-file' type="file" />
+                    </div>
+                    <input class="file-path validate" type="text" style="width: 67%;padding-left:5px;"/>
+                    <br>
+                </div>
+            </div>
+            <div class='col s1'>
+                <br><br>Or
+            </div>
+            <div class='col s4'>
+                <div class='input-field'>
+                    <h6>
+                        Select a Glycan Hypothesis or Sample Match
+                    </h6>
+                    <select id="glycan-database-source" name="glycan-database-source" class='browser-default'>
+                        <option selected="true"></option>
+                        <optgroup label="Glycan Hypotheses">
+                        {% for hypothesis in Manager.ms1_glycan_hypotheses() %}
+                            <option value="Hypothesis,{{hypothesis.id}}">{{hypothesis.name}}</option>
+                        {% endfor %}
+                        </optgroup>
+                        <optgroup label="Glycan Hypothesis Sample Matches">
+                        {% for hsm in Manager.ms1_glycan_hypothesis_sample_matches() %}
+                            <option value="HypothesisSampleMatch,{{hsm.id}}">{{hsm.name}}</option>
+                        {% endfor %}
+                        </optgroup>
+                    </select>
+                </div>
+                <div id='glycan-import-score-filter-container' class='input-field'>
+                    <input type='number' name='glycan-import-score-filter' 
+                           id='glycan-import-score-filter' min='0' max='1' value='0.3'
+                           step='0.05'/>
+                    <label for='glycan-import-score-filter'>
+                        Minimum Glycomics Score Threshold
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class='row'>
+            <div class='col s3 tooltipped' data-position='top' data-tooltip="Be careful if using a large number glycans, as this can make the hypothesis intractably large.">
+                <div>
+                    <label for='max_glycosylation_sites' >Maximum Number of Glycosylations per Peptide</label>
+                    <input class='validate' type='number' min="0" id='max_glycosylation_sites' name='max_glycosylation_sites' value="1"/>
+                </div>
+            </div>
+        </div>
+
+        <button class='btn wave-effect'>
+            Generate
+        </button>
+    </form>
+</div>
+<script>
+(function(){
+$("#protein-list-file").on("change", function(event){
+    if(this.files[0] === undefined){
+        return
+    }
+    file = this.files[0]
+    identifyProteomicsFormat(file, function(format){
+        $("#proteomics-file-type").val(format)
+        updateFormatOptions(format, file)
+    })
+})
+
+$('.tooltipped').tooltip({delay: 50});
+
+mzIdentMLHandle = undefined;
+
+function updateFormatOptions(format, file){
+    console.log(format)
+    if(format === "fasta"){
+        var handle = $("#variable-modifications-container")
+        handle.find("select").removeAttr("disabled").css("cursor", "default")
+        handle.find("h6").removeClass("grey-text")
+        handle.find("span.message").text("")
+
+        handle = $("#enzyme-container")
+        handle.find("select").removeAttr("disabled").css("cursor", "default")
+        handle.find("input").removeAttr("disabled").css("cursor", "default")
+        handle.find("h6").removeClass("grey-text")
+        handle.find("span.message").text("")
+        $("#mzid-protein-list-container").hide()
+        mzIdentMLHandle = undefined
+    }
+    else {
+        var handle = $("#variable-modifications-container")
+        handle.find("select").attr("disabled", true).css("cursor", "not-allowed")
+        handle.find("h6").addClass("grey-text")
+        handle.find("span.message").text("Informed Hypotheses do not need variable modification rules")
+
+        handle = $("#enzyme-container")
+        handle.find("select").attr("disabled", true).css("cursor", "not-allowed")
+        handle.find("input").attr("disabled", true).css("cursor", "not-allowed")
+        handle.find("h6").addClass("grey-text")
+        handle.find("span.message").text("Informed Hypotheses do not need proteolytic enzyme rules")
+        $("#mzid-protein-list-container").show()
+        mzIdentMLHandle = new MzIdentMLProteinSelector(file, "#mzid-protein-list-container")
+    }
+}
+
+function selectModificationOption(select, value){
+    for(var i=0; i<select.options.length; i++){
+        if(select.options[i].value === value){
+            return select.options[i]
+        }
+    }
+}
+
+selectModificationOption(
+    $("#constant-modifications-container").find("select")[0],
+    "Carbamidomethyl (C)").selected = true
+
+ajaxForm($("form#glycopeptide-hypothesis-form"), function(){
+    var currentAction = GlycReSoft.getShowingLayer()
+    GlycReSoft.setShowingLayer("home-layer")
+    currentAction.dispose()
+}, function(err){
+    console.log(arguments)
+}, function(form){
+    var formData = new FormData(form)
+    if(mzIdentMLHandle !== undefined){
+        var proteinChoices = mzIdentMLHandle.getChosenProteins()
+        if(proteinChoices.length === 0){
+            proteinChoices = mzIdentMLHandle.getAllProteins()
+        }
+        formData.append("protein_names", proteinChoices)
+    }
+    return formData
+})
+materialFileInput()
+})()
+</script>

@@ -1,0 +1,70 @@
+<div class='row'>
+    <h2>Glycan Search Space Building</h2>
+</div>
+<div class='row'>
+    <form id='glycan-hypothesis-form' action="glycan_search_space" method="post" class="col s12" accept-charset="utf-8">
+        <div class="row">
+            <div class="input-field col s6">
+                <label for="hypothesis_name">Hypothesis Name</label>
+                <br>
+                <input id='hypothesis_name' name="hypothesis_name" type="text" class="validate">
+            </div>
+            <div class="input-field col s3">
+                <label for="reduction_type">Reduction Type</label>
+                <br>
+                <select id='reduction_type' class='browser-default' name="reduction_type">
+                    <option value='native' selected>Native</option>
+                    <option value='reduced'>Reduced</option>
+                    <option value='deuteroreduced'>Deuteroreduced</option>
+                </select>
+                <input type='text' id='custom_reduction_type' name='custom_reduction_type'
+                 placeholder="Custom Reduction (Formula)" />
+            </div>
+            <div class="input-field col s3">
+                <label for="derivatization_type">Derivatization Type</label>
+                <br>
+                <select id='derivatization_type' class='browser-default' name="derivatization_type">
+                    <option value='native' selected>Native</option>
+                    <option value='permethylated'>Permethylated</option>
+                </select>
+                <input type='text' id='custom_derivatization_type' name='custom_derivatization_type'
+                 placeholder="Custom Substituent (Name or Formula)" />
+            </div>
+        </div>
+        <div class='row'>
+            <div class='col s3'>
+                <h6>Use a Pre-Generated Curated Database:</h6>
+                <p>
+                    <input class="with-gap" name="glycomedb-human-n-glycan" type="checkbox" id="glycomedb-human-n-glycan"/>    
+                    <label for='glycomedb-human-n-glycan'>Human N-linked glycan</label>
+
+                    <input class="with-gap" name="glycomedb-human-o-glycan" type="checkbox" id="glycomedb-human-o-glycan"/>    
+                    <label for='glycomedb-human-o-glycan'>Human O-linked glycan</label>
+
+                    <input class="with-gap" name="glycomedb-mammlian-n-glycan" type="checkbox" id="glycomedb-mammlian-n-glycan"/>    
+                    <label for='glycomedb-mammlian-n-glycan'>Mammalian N-linked glycan</label>
+
+                    <input class="with-gap" name="glycomedb-mammlian-o-glycan" type="checkbox" id="glycomedb-mammlian-o-glycan"/>    
+                    <label for='glycomedb-mammlian-o-glycan'>Mammalian O-linked glycan</label>
+                </p>
+            </div>
+            <div class='col s9'>
+                <h6>Create a Combinatorial Search Space:</h6>
+                {% include  "components/glycan_composition_generator.templ" %}
+            </div>
+        </div>
+        <button class='btn wave-effect'>
+            Generate
+        </button>
+    </form>
+</div>
+<script>
+ajaxForm($("form#glycan-hypothesis-form"), function(){
+    var currentAction = GlycReSoft.getShowingLayer()
+    GlycReSoft.setShowingLayer("home-layer")
+    currentAction.dispose()
+}, function(err){
+    console.log(arguments)
+})
+materialFileInput()
+</script>  
