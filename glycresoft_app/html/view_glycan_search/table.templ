@@ -1,0 +1,57 @@
+<table class="glycan-chromatogram-table bordered display-table">
+    <thead>
+        <tr>
+            <th>Mass</th>
+            <th class='medium-wide'>Glycan Composition</th>
+            <th>Score</th>
+            <th>Total Abundance</th>
+            <th>Adducts</th>
+            <th>Charge States</th>
+            <th>Start Time</th>
+            <th>Apex Time</th>
+            <th>End Time</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for chrom in paginator.items %}
+        <tr class='glycan-match-row' data-target="{{chrom.id}}">
+            <td>{{"%0.5f" % chrom.neutral_mass}}</td>
+            <td class='medium-wide'>{{chrom.composition | glycan_composition_string}}</td>
+            <td>{{"%0.5f" % chrom.score}}</td>
+            <td>{{"%0.3e" % chrom.total_signal}}</td>
+            <td>
+            {{chrom.adducts|join(', ', "name")}}
+            </td>
+            <td>
+                {{chrom.charge_states|join(',')}}
+            </td>
+            <td>
+                {{"%0.4f" % chrom.start_time}}
+            </td>
+            <td>
+                {{"%0.4f" % chrom.apex_time}}
+            </td>
+            <td>
+                {{"%0.4f" % chrom.end_time}}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<ul class='pagination'>
+    <li class={{"disabled" if paginator.page == 1 else ""}}>
+        <a class='previous-page'><i class="material-icons">chevron_left</i></a>
+    </li>
+    {% for page in paginator.iter_pages() %}
+        {% if page is not none %}
+            <li class='{{"waves-effect" if page != paginator.page else "active teal"}}'>
+                <a data-index="{{page}}">{{page}}</a>
+            </li>
+        {% else %}
+            <li> ... </li>
+        {% endif %}
+    {% endfor %}
+    <li class={{"disabled" if paginator.page == paginator.pages else ""}}>
+        <a class='next-page '><i class="material-icons">chevron_right</i></a>
+    </li>
+</ul>

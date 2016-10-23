@@ -1,0 +1,38 @@
+<table class='bordered protein-match-table'>
+    <thead class='protein-match-header'>
+        <tr>
+        <th>
+            Protein Name
+        </th>
+        <th>
+            Glycopeptides Matched
+        </th>
+        <th>
+            Glycosylation Site Count
+        </th>
+        <th>
+            Glycopeptides Searched
+        </th>
+        <th></th>
+        </tr>
+    </thead>
+    <tbody class='protein-match-table-body' style='max-height:150px;'>
+    {% for protein_row in protein_table %}    
+        <tr class='protein-match-row' data-target="{{protein_row.protein.id}}">
+            <td>
+                <small>{{protein_row.protein.name}}</small>
+            </td>
+            <td>
+                {{protein_row.match_count}}
+            </td>
+            <td>
+                {{protein_row.protein.glycosylation_sites|length}}
+            </td>
+            <td>
+                {{protein_row.theoretical_count}}
+            </td>
+            <td></td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>

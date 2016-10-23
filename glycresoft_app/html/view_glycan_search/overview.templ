@@ -1,0 +1,37 @@
+<div class='row'>
+    <div class='col s8'>
+        <h5>{{analysis.name}}</h5>
+    </div>
+    <div class='col s4'>
+        {{analysis.id}}
+    </div>
+</div>
+<div class='row'>
+    <div class='col s4'>
+        <b>Mass Accuracy:</b> {{analysis.parameters.mass_error_tolerance * (10 ** 6)}} PPM<br>
+        <b>Grouping Tolerance:</b> {{analysis.parameters.grouping_error_tolerance * (10 ** 6)}} PPM<br>
+        <b>Network Parameter:</b> {{analysis.parameters.network_sharing}}<br>
+        <b>Adducts:</b> {{analysis.parameters.adducts|join(", ")}}<br>
+    </div>
+    <div class='col s4'>
+        <b>Target Database:</b>
+        <a>{{analysis.hypothesis.name}}</a><br>
+        <b>Sample Searched:</b>
+        <a>{{analysis.sample_run.name}}</a>
+    </div>
+</div>
+<div id='glycan-lcms-container'>
+
+</div>
+<div id="glycan-detail-modal" class="modal modal-fixed-footer wide">
+    <div class="modal-content">
+    </div>
+    <div class="modal-footer">
+        <a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat">Dismiss</a>
+    </div>
+</div>
+<script>
+    var analysisId = {{analysis.id}}
+    var controller = new GlycanCompositionLCMSSearchController(analysisId);
+    controller.updateView()
+</script>
