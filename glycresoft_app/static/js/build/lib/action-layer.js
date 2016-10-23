@@ -207,7 +207,7 @@ ActionLayer = (function() {
         materialRefresh();
         console.log("This layer can be closed? " + _this.options.closeable);
         if (_this.options.closeable) {
-          return _this.container.prepend("<div>\n    <a class='dismiss-layer mdi-content-clear' onclick='GlycReSoft.removeCurrentLayer()'></a>\n</div>");
+          return _this.container.prepend("<div>\n    <a class='dismiss-layer mdi mdi-close' onclick='GlycReSoft.removeCurrentLayer()'></a>\n</div>");
         }
       };
     })(this);

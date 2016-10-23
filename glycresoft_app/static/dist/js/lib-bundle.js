@@ -207,7 +207,7 @@ ActionLayer = (function() {
         materialRefresh();
         console.log("This layer can be closed? " + _this.options.closeable);
         if (_this.options.closeable) {
-          return _this.container.prepend("<div>\n    <a class='dismiss-layer mdi-content-clear' onclick='GlycReSoft.removeCurrentLayer()'></a>\n</div>");
+          return _this.container.prepend("<div>\n    <a class='dismiss-layer mdi mdi-close' onclick='GlycReSoft.removeCurrentLayer()'></a>\n</div>");
         }
       };
     })(this);
@@ -274,10 +274,22 @@ var ajaxForm, setupAjaxForm;
 ajaxForm = function(formHandle, success, error, transform) {
   console.log("Ajaxifying ", formHandle);
   return $(formHandle).on('submit', function(event) {
-    var ajaxParams, data, encoding, handle, method, url;
-    console.log(formHandle, "submitting...");
+    var ajaxParams, data, encoding, handle, locked, method, url, wrappedSuccess;
     event.preventDefault();
+    console.log(formHandle, "submitting...");
     handle = $(this);
+    locked = handle.data("locked");
+    if (locked === true) {
+      console.log("Form Locked");
+      return false;
+    } else if (locked === void 0 || locked === null) {
+      locked = true;
+      handle.data("locked", locked);
+    } else if (locked === false) {
+      locked = true;
+      handle.data("locked", locked);
+    }
+    console.log("Is form locked", handle.data("locked"));
     if (transform == null) {
       transform = function(form) {
         return new FormData(form);
@@ -287,13 +299,18 @@ ajaxForm = function(formHandle, success, error, transform) {
     method = handle.attr('method');
     data = transform(this);
     encoding = handle.attr('enctype') || 'application/x-www-form-urlencoded; charset=UTF-8';
+    wrappedSuccess = function(a, b, c) {
+      handle.data("locked", false);
+      console.log("Unlocking Form", handle.data("locked"));
+      return success(a, b, c);
+    };
     ajaxParams = {
       'url': url,
       'method': method,
       'data': data,
       'processData': false,
       'contentType': false,
-      'success': success,
+      'success': wrappedSuccess,
       'error': error
     };
     return $.ajax(ajaxParams);
@@ -486,51 +503,6 @@ $(function() {
 })();
 
 //# sourceMappingURL=formatstring.js.map
-
-var GlycanComposition;
-
-GlycanComposition = (function() {
-  function GlycanComposition(string) {
-    this.__order = [];
-    this.map = {};
-    this.parse(string);
-  }
-
-  GlycanComposition.prototype.parse = function(string) {
-    var i, len, name, number, part, parts, ref, results;
-    parts = string.slice(1, -1).split("; ");
-    results = [];
-    for (i = 0, len = parts.length; i < len; i++) {
-      part = parts[i];
-      ref = part.split(":"), name = ref[0], number = ref[1];
-      this.__order.push(name);
-      results.push(this.map[name] = parseInt(number));
-    }
-    return results;
-  };
-
-  GlycanComposition.prototype.format = function(colorSource) {
-    var color, name, number, parts, ref, template;
-    parts = [];
-    ref = this.map;
-    for (name in ref) {
-      number = ref[name];
-      console.log(name, number);
-      if (name === '__order') {
-        continue;
-      }
-      color = colorSource.get(name);
-      template = "<span class='monosaccharide-name' style='background-color:" + color + "; padding: 2px;border-radius:2px;'>" + name + " " + number + "</span>";
-      parts.push(template);
-    }
-    return parts.join(' ');
-  };
-
-  return GlycanComposition;
-
-})();
-
-//# sourceMappingURL=glycan-composition-parser.js.map
 
 var GlycanComposition;
 
@@ -833,6 +805,95 @@ materialCheckbox = function(selector) {
 
 //# sourceMappingURL=material-shim.js.map
 
+var PaginationBase,
+  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+
+PaginationBase = (function() {
+  PaginationBase.prototype.rowSelector = "";
+
+  PaginationBase.prototype.pageUrl = "";
+
+  PaginationBase.prototype.tableSelector = "";
+
+  PaginationBase.prototype.tableContainerSelector = "";
+
+  function PaginationBase(currentPage) {
+    this.currentPage = currentPage;
+    this.setupPageControls = bind(this.setupPageControls, this);
+    console.log(this, "initialized");
+  }
+
+  PaginationBase.prototype.setupTable = function(page) {
+    if (page == null) {
+      page = 1;
+    }
+    return this.updateTablePageHandler(page);
+  };
+
+  PaginationBase.prototype.setupPageControls = function(page) {
+    var self;
+    if (page == null) {
+      page = 1;
+    }
+    self = this;
+    this.handle.find('.glycan-match-row').click(function(event) {
+      return self.rowClickHandler(this);
+    });
+    this.handle.find(':not(.disabled) .next-page').click(function() {
+      return self.updateTablePageHandler(page + 1);
+    });
+    this.handle.find(':not(.disabled) .previous-page').click(function() {
+      return self.updateTablePageHandler(page - 1);
+    });
+    return this.handle.find('.pagination li :not(.active)').click(function() {
+      var nextPage;
+      nextPage = $(this).attr("data-index");
+      if (nextPage != null) {
+        nextPage = parseInt(nextPage);
+        return self.updateTablePageHandler(nextPage);
+      }
+    });
+  };
+
+  PaginationBase.prototype.getPageUrl = function(page) {
+    if (page == null) {
+      page = 1;
+    }
+    return this.pageUrl.format({
+      "page": page
+    });
+  };
+
+  PaginationBase.prototype.getTableContainer = function() {
+    return this.handle.find(this.tableContainerSelector);
+  };
+
+  PaginationBase.prototype.getTable = function() {
+    return this.handle.find(this.tableSelector);
+  };
+
+  PaginationBase.prototype.updateTablePageHandler = function(page) {
+    var url;
+    if (page == null) {
+      page = 1;
+    }
+    url = this.getPageUrl(page);
+    console.log(url);
+    return GlycReSoft.ajaxWithContext(url).success((function(_this) {
+      return function(doc) {
+        _this.currentPage = page;
+        _this.handle.find(_this.tableContainerSelector).html(doc);
+        return _this.setupPageControls(page);
+      };
+    })(this));
+  };
+
+  return PaginationBase;
+
+})();
+
+//# sourceMappingURL=pagination.js.map
+
 var PeptideSequence, PeptideSequencePosition, _formatModification;
 
 _formatModification = function(modification, colorSource, long) {
@@ -1068,6 +1129,75 @@ PeptideSequence = (function() {
 })();
 
 //# sourceMappingURL=peptide-sequence.js.map
+
+var TabViewBase;
+
+TabViewBase = (function() {
+  TabViewBase.prototype.tabSelector = "";
+
+  TabViewBase.prototype.tabList = [];
+
+  TabViewBase.prototype.defaultTab = "";
+
+  TabViewBase.prototype.updateUrl = "";
+
+  TabViewBase.prototype.indicatorColor = 'indigo';
+
+  TabViewBase.prototype.containerSelector = "";
+
+  function TabViewBase(updateHandlers) {
+    this.updateHandlers = updateHandlers;
+    this.activeTab = this.getLastActiveTab();
+  }
+
+  TabViewBase.prototype.getLastActiveTab = function() {
+    if (GlycReSoft.context['view-active-tab'] != null) {
+      return GlycReSoft.context['view-active-tab'];
+    } else {
+      return this.defaultTab;
+    }
+  };
+
+  TabViewBase.prototype.getUpdateUrl = function() {
+    return this.updateUrl;
+  };
+
+  TabViewBase.prototype.setupTabs = function() {
+    var tabs;
+    tabs = $(this.tabSelector);
+    tabs.tabs();
+    tabs.tabs('select_tab', this.getLastActiveTab());
+    tabs.find('.indicator').addClass(this.indicatorColor);
+    return tabs.find('.tab a').click(function() {
+      return GlycReSoft.context['view-active-tab'] = $(this).attr('href').slice(1);
+    });
+  };
+
+  TabViewBase.prototype.updateView = function() {
+    return GlycReSoft.ajaxWithContext(this.getUpdateUrl()).success((function(_this) {
+      return function(doc) {
+        var handle, i, len, ref, results, updateHandler;
+        handle = $(_this.containerSelector);
+        handle.html(doc);
+        _this.setupTabs();
+        ref = _this.updateHandlers;
+        results = [];
+        for (i = 0, len = ref.length; i < len; i++) {
+          updateHandler = ref[i];
+          results.push(updateHandler());
+        }
+        return results;
+      };
+    })(this)).error(function(err) {
+      return console.log(err);
+    });
+  };
+
+  return TabViewBase;
+
+})();
+
+//# sourceMappingURL=tab-view.js.map
 
 var TinyNotification, tinyNotify;
 

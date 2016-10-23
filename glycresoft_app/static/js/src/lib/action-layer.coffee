@@ -143,7 +143,7 @@ class ActionLayer
             if @options.closeable
                 @container.prepend("""
         <div>
-            <a class='dismiss-layer mdi-content-clear' onclick='GlycReSoft.removeCurrentLayer()'></a>
+            <a class='dismiss-layer mdi mdi-close' onclick='GlycReSoft.removeCurrentLayer()'></a>
         </div>""")
         if @method == "get"
             $.get(@contentURL).success callback

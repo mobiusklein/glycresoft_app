@@ -54,3 +54,13 @@ def api_hypotheses():
         d[hypothesis.uuid] = dump
 
     return jsonify(**d)
+
+
+@api.route("/api/analyses")
+def api_analyses():
+    d = {}
+    for analysis in g.manager.analyses():
+        dump = analysis.to_json()
+        print(analysis.uuid)
+        d[analysis.uuid] = dump
+    return jsonify(**d)

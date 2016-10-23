@@ -6,6 +6,9 @@ from multiprocessing import Process, Pipe
 from threading import Event, Thread, RLock
 from Queue import Queue, Empty as QueueEmptyException
 
+from glycan_profiling.task import TaskBase
+
+TaskBase.display_fields = True
 
 logger = logging.getLogger("task_process")
 logger.setLevel("ERROR")

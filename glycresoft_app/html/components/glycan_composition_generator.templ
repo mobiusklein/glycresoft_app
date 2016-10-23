@@ -13,12 +13,14 @@
 </div>
 <script>
     monosaccharideInputWidgetGrid = new MonosaccharideInputWidgetGrid(".monosaccharide-composition-range-grid")
-    monosaccharideInputWidgetGrid.addRow("Hex", 3, 9, "C6O6H12", true)
-    monosaccharideInputWidgetGrid.addRow("HexNAc", 2, 6, "C8O6H15N", false)
-    monosaccharideInputWidgetGrid.addRow("dHex", 0, 4, "C6O5H12", false)
+    monosaccharideInputWidgetGrid.addRow("Hex", 3, 12, "C6O6H12", true)
+    monosaccharideInputWidgetGrid.addRow("HexNAc", 2, 10, "C8O6H15N")
+    monosaccharideInputWidgetGrid.addRow("Fuc", 0, 4, "C6O5H12")
+    monosaccharideInputWidgetGrid.addRow("NeuAc", 0, 4, "C11H17N1O8")
 
     monosaccharideInputWidgetGrid.addEmptyRowOnEdit(false)
 
     constraintInputGrid = new ConstraintInputGrid(".monosaccharide-composition-constraints", monosaccharideInputWidgetGrid)
-    constraintInputGrid.addEmptyRowOnEdit(true)
+    constraintInputGrid.addRow("HexNAc", ">", "Fuc", true)
+    constraintInputGrid.addEmptyRowOnEdit(false)
 </script>

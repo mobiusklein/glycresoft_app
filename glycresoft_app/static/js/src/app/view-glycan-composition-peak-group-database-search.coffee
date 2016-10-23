@@ -1,8 +1,84 @@
-doZoom = (selector) ->
-        svg = d3.select(selector)
-        zoom = ()->
-            svg.attr("transform", "translate(#{d3.event.translate})scale(#{d3.event.scale})")
-        d3.select(selector).call(d3.behavior.zoom().scaleExtent([1, 8]).on("zoom", zoom))
+class GlycanCompositionLCMSSearchPaginator extends PaginationBase
+    pageUrl: "/view_glycan_lcms_analysis/{analysisId}/page/{page}"
+    tableSelector: ".glycan-chromatogram-table"
+    tableContainerSelector: "#chromatograms-table"
+    rowSelector: '.glycan-match-row'
+
+    constructor: (@analysisId, @handle, @controller) ->
+        super(1) 
+
+    getPageUrl: (page=1) ->
+        @pageUrl.format {"page": page, "analysisId": @analysisId}
+
+    rowClickHandler: (row) =>
+        @controller.showGlycanCompositionDetailsModal row
+
+
+class GlycanCompositionLCMSSearchTabView extends TabViewBase
+    tabSelector: 'ul.tabs'
+    tabList: ["chromatograms-plot", "chromatograms-table", "summary-abundance-plot"]
+    defaultTab: "chromatograms-plot"
+    updateUrl: '/view_glycan_lcms_analysis/{analysisId}/content'
+    containerSelector: '#glycan-lcms-container'
+
+    constructor: (@analysisId, @handle, @parent, updateHandlers) ->
+        parent = @parent
+        super(updateHandlers)
+
+    getUpdateUrl: ->
+        @updateUrl.format({'analysisId': @analysisId})
+
+
+class GlycanCompositionLCMSSearchController
+    containerSelector: '#glycan-lcms-container'
+    glycanTableSelector: ".glycan-chromatogram-table"
+    detailModalSelector: '#glycan-detail-modal'
+    detailUrl: "/view_glycan_lcms_analysis/{analysisId}/details_for/{chromatogramId}"
+
+    constructor: (@analysisId) ->
+        @handle = $ @containerSelector
+        @currentPage = 1
+        @glycanTable = $ @glycanTableSelector
+        @glycanDetailsModal = $ @detailModalSelector
+        @paginator = new GlycanCompositionLCMSSearchPaginator(@analysisId, @handle, @)
+
+        updateHandlers = [
+            =>
+                console.log("Running update handler 1")
+                @paginator.setupTable()
+            =>
+                console.log("Running update handler 2")
+                handle = $ @tabView.containerSelector
+                $.get("/view_glycan_lcms_analysis/#{@analysisId}/chromatograms_chart").success (payload) ->
+                    console.log("Chromatograms Retrieved")
+                    handle.find("#chromatograms-plot").html(payload)
+                $.get("/view_glycan_lcms_analysis/#{@analysisId}/abundance_bar_chart").success (payload) ->
+                    console.log("Bar Chart Retrieved")
+                    handle.find("#summary-abundance-plot").html(payload)
+        ]
+
+        @tabView = new GlycanCompositionLCMSSearchTabView(@analysisId, @handle, @, updateHandlers)
+
+    updateView: ->
+        console.log("updateView")
+        @tabView.updateView()
+
+    showGlycanCompositionDetailsModal: (row) ->
+        handle = $ row
+        id = handle.attr('data-target')
+        modal = @getModal()
+        url = @detailUrl.format {analysisId: @analysisId, chromatogramId: id}
+        $.get(url).success (doc) ->
+            modal.find('.modal-content').html doc
+            $(".lean-overlay").remove()
+            modal.openModal()
+
+    getModal: ->
+        $ @detailModalSelector
+
+    unload: ->
+        GlycReSoft.removeCurrentLayer()
+
 
 viewGlycanCompositionPeakGroupingDatabaseSearchResults = ->
     glycanDetailsModal = undefined
@@ -12,24 +88,6 @@ viewGlycanCompositionPeakGroupingDatabaseSearchResults = ->
     setup = ->
         updateView()
         $("#save-csv-file").click downloadCSV
-
-    setupGlycanCompositionTablePageHandlers = (page=1) ->
-        $('.glycan-match-row').click(showGlycanCompositionDetailsModal)
-        $(':not(.disabled) .next-page').click(-> updateGlycanCompositionTablePage(page + 1))
-        $(':not(.disabled) .previous-page').click(-> updateGlycanCompositionTablePage(page - 1))
-        $('.pagination li :not(.active)').click ->
-            nextPage = $(@).attr("data-index")
-            if nextPage?
-                nextPage = parseInt nextPage
-                updateGlycanCompositionTablePage nextPage
-
-    updateGlycanCompositionTablePage = (page=1) ->
-        url = "/view_database_search_results/glycan_composition_match_table/#{page}"
-        console.log(url)
-        GlycReSoft.ajaxWithContext(url).success (doc) ->
-            currentPage = page
-            glycanTable.html doc
-            setupGlycanCompositionTablePageHandlers page
 
     updateView = ->
         handle = $(this)

@@ -4,7 +4,7 @@ from os import path
 
 from glycan_profiling.serialize import (
     DatabaseBoundOperation, SampleRun, GlycanHypothesis,
-    GlycopeptideHypothesis)
+    GlycopeptideHypothesis, Analysis)
 
 from glycresoft_app.task.task_process import TaskManager
 from glycresoft_app.vendor import sqlitedict
@@ -16,7 +16,7 @@ class ApplicationManager(object):
     def __init__(self, database_conection, base_path=None):
         if base_path is None:
             base_path = os.getcwd()
-        self.base_path = base_path
+        self.base_path = os.path.abspath(base_path)
         self.database_conection = DatabaseBoundOperation(database_conection)
 
         self.sample_dir = path.join(base_path, 'sample_dir')
@@ -45,6 +45,9 @@ class ApplicationManager(object):
     @property
     def tasks(self):
         return self.task_manager.tasks
+
+    def stoploop(self):
+        return self.task_manager.stoploop()
 
     @property
     def session(self):
@@ -104,3 +107,6 @@ class ApplicationManager(object):
 
     def glycopeptide_hypotheses(self):
         return self.session.query(GlycopeptideHypothesis)
+
+    def analyses(self):
+        return self.session.query(Analysis)

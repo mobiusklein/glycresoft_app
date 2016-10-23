@@ -113,7 +113,7 @@ class ConstraintInputGrid
     constructor: (container, monosaccharideGrid)->
         @counter = 0
         @container = $(container)
-        @constraints = {}
+        @constraints = []
         @monosaccharideGrid = monosaccharideGrid
 
     addEmptyRowOnEdit: (addHeader=false) ->
@@ -130,6 +130,19 @@ class ConstraintInputGrid
         row.find("input").change callback
         row.find("input").change => @update()
 
+    addRow: (lhs, op, rhs, addHeader=false) ->
+        row = $(@template)
+        if !addHeader
+            row.find("label").remove()
+        @counter += 1
+        row.find("input[name='left_hand_side']").val(lhs)
+        row.find("select[name='operator']").val(op)
+        row.find("input[name='right_hand_side']").val(rhs)
+        @container.append(row)
+        row.find("input").change => @update()
+        console.log(row)
+        @update()
+
     update: ->
         constraints = []
         for row in @container.find(".monosaccharide-constraints-row")
@@ -137,34 +150,36 @@ class ConstraintInputGrid
             console.log(row)
             entry = {
                 lhs: row.find("input[name='left_hand_side']").val()
-                operator: row.find("input[name='operator']").val()
+                operator: row.find("select[name='operator']").val()
                 rhs: row.find("input[name='right_hand_side']").val()
             }
             if entry.lhs == "" or entry.rhs == ""
                 continue
-            getMonosaccharide = (name) -> /^(\d+)(.+)/.exec(name)[2]
-            if not (getMonosaccharide(entry.lhs) of @monosaccharideGrid.monosaccharides)
-                row.addClass "warning"
-                notify = new TinyNotification(0, 0, "#{entry.lhs} is not defined.", row)
-                row.data("tinyNotification", notify)
-                console.log(notify)
+            # getMonosaccharide = (name) ->
+            #     console.log("getMonosaccharide", name)
+            #     /^(\d+)(.+)/.exec(name)[2]
+            # if not (getMonosaccharide(entry.lhs) of @monosaccharideGrid.monosaccharides)
+            #     row.addClass "warning"
+            #     notify = new TinyNotification(0, 0, "#{entry.lhs} is not defined.", row)
+            #     row.data("tinyNotification", notify)
+            #     console.log(notify)
 
-            else if not (getMonosaccharide(entry.rhs) of @monosaccharideGrid.monosaccharides)
-                row.addClass("warning")
-                # In case we fall through from a previous error state in the lhs
-                if row.data("tinyNotification")?
-                    notif = row.data("tinyNotification")
-                    notif.dismiss()
-                    row.data("tinyNotification", undefined)
-                notify = new TinyNotification(0, 0, "#{entry.rhs} is not defined.", row)
-                row.data("tinyNotification", notify)
-                console.log(notify)
-            else
-                row.removeClass("warning")
-                if row.data("tinyNotification")?
-                    notif = row.data("tinyNotification")
-                    notif.dismiss()
-                    row.data("tinyNotification", undefined)
+            # else if not (getMonosaccharide(entry.rhs) of @monosaccharideGrid.monosaccharides)
+            #     row.addClass("warning")
+            #     # In case we fall through from a previous error state in the lhs
+            #     if row.data("tinyNotification")?
+            #         notif = row.data("tinyNotification")
+            #         notif.dismiss()
+            #         row.data("tinyNotification", undefined)
+            #     notify = new TinyNotification(0, 0, "#{entry.rhs} is not defined.", row)
+            #     row.data("tinyNotification", notify)
+            #     console.log(notify)
+            # else
+            #     row.removeClass("warning")
+            #     if row.data("tinyNotification")?
+            #         notif = row.data("tinyNotification")
+            #         notif.dismiss()
+            #         row.data("tinyNotification", undefined)
             constraints.push(entry)
         console.log(constraints)
         @constraints = constraints

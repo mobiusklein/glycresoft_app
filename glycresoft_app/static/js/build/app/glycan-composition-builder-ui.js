@@ -105,7 +105,7 @@ ConstraintInputGrid = (function() {
   function ConstraintInputGrid(container, monosaccharideGrid) {
     this.counter = 0;
     this.container = $(container);
-    this.constraints = {};
+    this.constraints = [];
     this.monosaccharideGrid = monosaccharideGrid;
   }
 
@@ -135,8 +135,31 @@ ConstraintInputGrid = (function() {
     })(this));
   };
 
+  ConstraintInputGrid.prototype.addRow = function(lhs, op, rhs, addHeader) {
+    var row;
+    if (addHeader == null) {
+      addHeader = false;
+    }
+    row = $(this.template);
+    if (!addHeader) {
+      row.find("label").remove();
+    }
+    this.counter += 1;
+    row.find("input[name='left_hand_side']").val(lhs);
+    row.find("select[name='operator']").val(op);
+    row.find("input[name='right_hand_side']").val(rhs);
+    this.container.append(row);
+    row.find("input").change((function(_this) {
+      return function() {
+        return _this.update();
+      };
+    })(this));
+    console.log(row);
+    return this.update();
+  };
+
   ConstraintInputGrid.prototype.update = function() {
-    var constraints, entry, getMonosaccharide, i, len, notif, notify, ref, row;
+    var constraints, entry, i, len, ref, row;
     constraints = [];
     ref = this.container.find(".monosaccharide-constraints-row");
     for (i = 0, len = ref.length; i < len; i++) {
@@ -145,37 +168,11 @@ ConstraintInputGrid = (function() {
       console.log(row);
       entry = {
         lhs: row.find("input[name='left_hand_side']").val(),
-        operator: row.find("input[name='operator']").val(),
+        operator: row.find("select[name='operator']").val(),
         rhs: row.find("input[name='right_hand_side']").val()
       };
       if (entry.lhs === "" || entry.rhs === "") {
         continue;
-      }
-      getMonosaccharide = function(name) {
-        return /^(\d+)(.+)/.exec(name)[2];
-      };
-      if (!(getMonosaccharide(entry.lhs) in this.monosaccharideGrid.monosaccharides)) {
-        row.addClass("warning");
-        notify = new TinyNotification(0, 0, entry.lhs + " is not defined.", row);
-        row.data("tinyNotification", notify);
-        console.log(notify);
-      } else if (!(getMonosaccharide(entry.rhs) in this.monosaccharideGrid.monosaccharides)) {
-        row.addClass("warning");
-        if (row.data("tinyNotification") != null) {
-          notif = row.data("tinyNotification");
-          notif.dismiss();
-          row.data("tinyNotification", void 0);
-        }
-        notify = new TinyNotification(0, 0, entry.rhs + " is not defined.", row);
-        row.data("tinyNotification", notify);
-        console.log(notify);
-      } else {
-        row.removeClass("warning");
-        if (row.data("tinyNotification") != null) {
-          notif = row.data("tinyNotification");
-          notif.dismiss();
-          row.data("tinyNotification", void 0);
-        }
       }
       constraints.push(entry);
     }

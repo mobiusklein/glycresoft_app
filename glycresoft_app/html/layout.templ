@@ -5,8 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title></title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='dist/css/bundle.css') }}">    
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">    
     <script src="{{ url_for('static',filename='dist/js/jquery.js') }}"></script>
     <script>
     /*
@@ -31,10 +30,6 @@
 
 $(function() {
     $(".side-nav").css('top', $('.nav-wrapper').innerHeight()).css("z-index", 3)
-    $("#add-sample").click(function(event){
-        event.preventDefault()
-        setupAjaxForm("/add_sample", "#dialog-modal")
-    })
     $("#preferences-link").click(function(event){
         event.preventDefault()
         setupAjaxForm("/preferences", "#dialog-modal")
@@ -54,20 +49,21 @@ $(function() {
     $(".toggle-sidebar").click(function(event){
         var handle = $(this)
         if(handle.attr('data-state') == 'open'){
-            handle.removeClass("mdi-navigation-chevron-left")
-            handle.addClass("mdi-navigation-chevron-right")
+            handle.removeClass("mdi-chevron-right")
+            handle.addClass("mdi-chevron-left")
             $("#sidebar-content").hide()
             $("#left-sidebar").css("width", "40px")
             handle.attr('data-state', 'closed')
         } else {
-            handle.removeClass("mdi-navigation-chevron-right")
-            handle.addClass("mdi-navigation-chevron-left")
+            handle.removeClass("mdi-chevron-left")
+            handle.addClass("mdi-chevron-right")
             
             $("#left-sidebar").css("width", (contentCenter * .75) + 'px')
             $("#sidebar-content").show()
             handle.attr('data-state', 'open')
         }
     })
+    $(window).resize()
 });
 
 
@@ -77,7 +73,7 @@ $(function() {
 <body>
     {% include "header.templ" %}
     <div id='left-sidebar' class="side-nav fixed">
-    <a class='toggle-sidebar mdi-navigation-chevron-left right' data-state='open'></a>
+    <a class='toggle-sidebar mdi mdi-chevron-right right' data-state='open' style='padding-top:10px;font-size:1.3em;'></a>
     <div id='sidebar-content'>    
         <div class='task-list-container'>
             <h6>Tasks</h6>

@@ -1,5 +1,6 @@
 from glycan_profiling.serialize import (
-    SampleRun, GlycanHypothesis, GlycopeptideHypothesis)
+    SampleRun, GlycanHypothesis, GlycopeptideHypothesis,
+    Analysis)
 
 
 def handle_sample_run(sample):
@@ -39,3 +40,17 @@ def handle_glycopeptide_hypothesis(hypothesis):
 
 
 GlycopeptideHypothesis.to_json = handle_glycopeptide_hypothesis
+
+
+def handle_analysis(analysis):
+    return {
+        "id": analysis.id,
+        "name": analysis.name,
+        "uuid": analysis.uuid,
+        "analysis_type": analysis.analysis_type,
+        # "status": analysis.status
+        "hypothesis_id": analysis.hypothesis.id
+    }
+
+
+Analysis.to_json = handle_analysis

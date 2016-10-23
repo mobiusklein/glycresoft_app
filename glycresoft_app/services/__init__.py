@@ -4,3 +4,6 @@ from . import preferences
 from . import server_sent_events
 from . import task_management
 from . import view_hypothesis
+from . import sample_handling
+from . import search_glycan_composition
+from . import view_analysis

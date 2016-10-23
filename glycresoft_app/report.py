@@ -1,10 +1,4 @@
 import matplotlib
-
-try:
-    matplotlib.use("agg")
-except:
-    pass
-
 import os
 import operator
 import time

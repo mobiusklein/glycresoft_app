@@ -16,10 +16,12 @@ def build_combinatorial_hypothesis(rule_file, database_connection, reduction, de
         validate_reduction(None, reduction)
     except Abort:
         channel.send(Message("Could not validate reduction %s" % reduction), 'error')
+        return
     try:
         validate_derivatization(None, derivatization)
     except Abort:
         channel.send(Message("Could not validate derivatization %s" % derivatization, 'error'))
+        return
     try:
         builder = CombinatorialGlycanHypothesisSerializer(
             rule_file, database_connection,

@@ -1,22 +1,39 @@
 ajaxForm = (formHandle, success, error, transform) ->
     console.log "Ajaxifying ", formHandle
     $(formHandle).on 'submit', (event) ->
-        console.log formHandle, "submitting..."
         event.preventDefault()
+        console.log formHandle, "submitting..."
         handle = $(this)
+        locked = handle.data("locked")
+        if locked == true
+            console.log "Form Locked"
+            return false
+        else if locked == undefined or locked == null
+            locked = true
+            handle.data("locked", locked)
+        else if locked == false
+            locked = true
+            handle.data("locked", locked)
+        console.log("Is form locked", handle.data("locked"))
         if !transform?
             transform = (form) -> new FormData(form)
         url = handle.attr('action')
         method = handle.attr('method')
         data = transform(this)
         encoding = handle.attr('enctype') or 'application/x-www-form-urlencoded; charset=UTF-8'
+
+        wrappedSuccess = (a, b, c) ->
+            handle.data("locked", false)
+            console.log("Unlocking Form", handle.data("locked"))
+            success(a, b, c)            
+
         ajaxParams = 
             'url': url
             'method': method
             'data': data
             'processData': false
             'contentType': false
-            'success': success
+            'success': wrappedSuccess
             'error': error
         $.ajax ajaxParams
 

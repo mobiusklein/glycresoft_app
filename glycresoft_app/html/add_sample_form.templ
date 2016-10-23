@@ -1,11 +1,130 @@
 <h2>Add Sample To Workspace</h2>
 <div class='row'>
     <form id='add-sample-form' action="/add_sample" class="col s12" method="post" accept-charset="utf-8" enctype="multipart/form-data">
-        {% include "components/add_sample.templ" %}
-        <button class='btn'>Submit</button>
+        <div class="row">
+            <div class='col s5'>
+                <div class="file-field input-field">
+                    <span class="btn">
+                        <span>Select mzML File</span>
+                        <input name='observed-ions-file' type="file"/>
+                    </span>
+                    <input class="file-path validate" type="text" placeholder="Please provide a file in mzML format" />
+                </div>
+            </div>
+            <div class="input-field col s4">
+                <label for="sample-name">Sample Name</label>
+                <input id='sample-name' name="sample-name" type="text" class="validate"
+                       placeholder="Provide a name to identify this sample">
+            </div>
+        </div>
+        <div class='row'>
+            <div class='col s2'>
+                <div class='input-field'>
+                    <label for='maximum-charge-state'>Maximum Charge State (Set Negative for Negative Mode)</label>
+                    <input type="number" id="maximum-charge-state" name="maximum-charge-state"
+                           value="12" step='1' placeholder="Maximum Charge State"
+                           class='numeric-entry'>
+                </div>
+            </div>
+            <div class='col s2'>
+                <div class='input-field'>
+                    <label for='start-time'>Start Processing Time</label>
+                    <input type="number" id="start-time" name="start-time"
+                           min='0' value="0.0" step='1' placeholder="Start Processing Time"
+                           class='numeric-entry'>
+                </div>
+            </div>
+            <div class='col s2'>
+                <div class='input-field'>
+                    <label for='end-time'>End Processing Time</label>
+                    <input type="number" id="end-time" name="end-time"
+                           min='0' value="90" step='1' placeholder="End Processing Time"
+                           class='numeric-entry'>
+                </div>
+            </div>
+            <div class='col s2'>
+                <div class='input-field'>
+                    <label for='missed-peaks'>Missed Peaks Permitted</label>
+                    <input type="number" id="missed-peaks" name="missed-peaks"
+                           min='0' value="1" step='1' placeholder="Missed Peaks Permitted"
+                           class='numeric-entry'>
+                </div>
+            </div>
+            <div class='col s2'>
+                <div class="help-text">
+                    
+                </div>
+            </div>
+        </div>
+        <div class='row'>
+            <div class='col s6'>
+                <div>
+                    <h4>MS<sup>1</sup> Parameters</h4>
+                    <div class="col s3">
+                        <div class='input-field'>
+                            <label for='ms1-minimum-isotopic-score'>Minimum Isotopic Score</label>
+                            <input type="number" id="ms1-minimum-isotopic-score" name="ms1-minimum-isotopic-score"
+                                   min='0' value="15" step='1' placeholder="Minimum Isotopic Score"
+                                           class='numeric-entry'>
+                        </div>
+                    </div>
+                    <div class="col s3 tooltipped" data-position='top' data-tooltip='A formula or name for the averagine used for MS1 scans'>
+                        <div class='input-field'>
+                            <label for='ms1-averagine'>Averagine</label>
+                            <input type="text" id="ms1-averagine" name="ms1-averagine"
+                                   placeholder="Averagine Formula or Name"
+                                   value='glycan'
+                                   style='font-size: 1.3em;text-align: center;'>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class='col s6'>
+                <div>
+                    <h4>MS<sup>n</sup> Parameters</h4>
+                    <div class="col s3">
+                        <div class='input-field'>
+                            <label for='msn-minimum-isotopic-score'>Minimum Isotopic Score</label>
+                            <input type="number" id="msn-minimum-isotopic-score" name="msn-minimum-isotopic-score"
+                                   min='0' value="5" step='1' placeholder="Minimum Isotopic Score"
+                                           class='numeric-entry'>
+                        </div>
+                    </div>
+                    <div class="col s3 tooltipped" data-position='top' data-tooltip='A formula or name for the averagine used for MSn scans'>
+                        <div class='input-field'>
+                            <label for='msn-averagine'>Averagine</label>
+                            <input type="text" id="msn-averagine" name="msn-averagine"
+                                   placeholder="Averagine Formula or Name"
+                                   value='glycan'
+                                   style='font-size: 1.3em;text-align: center;'>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class='btn' id='submit-btn'>
+            Submit
+        </button>
     </form>
     <script>
-ajaxForm($("form#add-sample-form"))
+materialRefresh()
 materialFileInput()
+$('.tooltipped').tooltip({delay: 50});
+$('#add-sample-form input[name="observed-ions-file"]').change(function(){
+    console.log(this.files[0].name)
+    var sampleNameInput = $("#add-sample-form input[name='sample-name']")
+    var sampleName = sampleNameInput.val()
+    if(sampleName === ""){
+        sampleName = this.files[0].name.split(".").slice(0, -1).join(".")
+        sampleNameInput.val(sampleName)
+    }
+})
+ajaxForm($("form#add-sample-form"), function(){
+    var currentAction = GlycReSoft.getShowingLayer()
+    GlycReSoft.setShowingLayer("home-layer")
+    currentAction.dispose()
+}, function(err){
+    console.log(arguments)
+})
     </script>    
 </div>

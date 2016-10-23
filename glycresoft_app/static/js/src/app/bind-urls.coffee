@@ -6,6 +6,9 @@ ActionBook =
     addSample:
         contentURL: '/add_sample'
         name: 'add-sample'
+    glycanCompositionSearch:
+        contentURL: '/search_glycan_composition/run_search'
+        name: 'search-glycan-composition'
     peakGroupingMatchSamples:
         contentURL: '/peak_grouping_match_samples'
         name: "peak-grouping-match-samples"
@@ -18,9 +21,9 @@ ActionBook =
     naiveGlycanSearchSpace:
         contentURL: "/glycan_search_space"
         name: "glycan-search-space"
-    viewDatabaseSearchResults:
-        contentURLTemplate: "/view_database_search_results/{hypothesis_sample_match_id}"
-        name: "view-database-search-results"
+    viewAnalysis:
+        contentURLTemplate: "/view_analysis/{analysis_id}"
+        name: "view-analysis"
         method: "post"
     viewHypothesis:
         contentURLTemplate: "/view_hypothesis/{uuid}"
@@ -32,7 +35,7 @@ makeParameterizedAPIGet = (url) -> (params, callback) -> $.get(url.format(params
 DataSource =
     hypotheses: makeAPIGet "/api/hypotheses"
     samples: makeAPIGet "/api/samples"
-    hypothesisSampleMatches: makeAPIGet "/api/hypothesis_sample_matches"
+    analyses: makeAPIGet "/api/analyses"
     tasks: makeAPIGet "/api/tasks"
     glycopeptideMatches: makeAPIGet "/api/glycopeptide_matches"
 
@@ -40,6 +43,6 @@ makePartialGet = (url, method) -> (parameters, callback) -> $[method](url.format
 
 PartialSource =
     glycopeptideCompositionDetailsModal: makePartialGet(
-        '/view_database_search_results/view_glycopeptide_composition_details/{id}', "get")
+        '/view_analysis/view_glycopeptide_composition_details/{id}', "get")
     glycanCompositionDetailsModal: makePartialGet(
-        '/view_database_search_results/view_glycan_composition_details/{id}', "get")
+        '/view_analysis/view_glycan_composition_details/{id}', "get")

@@ -3,11 +3,11 @@ Application::renderSampleListAt = (container)->
     template = 
     for sample in _.sortBy(_.values(@samples), (o) -> o.id)
         row = $("
-    <div data-name=#{sample.name} class='list-item clearfix'>
+    <div data-name=#{sample.name} class='list-item clearfix' data-uuid='#{sample.uuid}'>
         <span class='handle'>#{sample.name.replace('_', ' ')}</span>
         <small class='right' style='display:inherit'>
             #{sample.sample_type}
-            <a class='remove-sample mdi-content-clear'></a>
+            <a class='remove-sample mdi mdi-close'></a>
         </small>
     </div>
     ")

@@ -23,7 +23,6 @@ class PaginationBase(object):
         self.total = total
         #: the items for the current page
         self.items = items
-        print(self)
 
     def __repr__(self):
         return "{self.__class__.__name__}({self.page}, {self.per_page})".format(self=self)
@@ -87,6 +86,49 @@ class PaginationBase(object):
                     yield None
                 yield num
                 last = num
+
+
+class SequencePagination(PaginationBase):
+
+    @classmethod
+    def paginate(cls, sequence, page=None, per_page=None, error_out=True, total=None):
+        if has_request_context():
+            if page is None:
+                try:
+                    page = int(request.args.get('page', 1))
+                except (TypeError, ValueError):
+                    if error_out:
+                        abort(404)
+
+                    page = 1
+
+            if per_page is None:
+                try:
+                    per_page = int(request.args.get('per_page', 20))
+                except (TypeError, ValueError):
+                    if error_out:
+                        abort(404)
+
+                    per_page = 20
+        else:
+            if page is None:
+                page = 1
+
+            if per_page is None:
+                per_page = 20
+
+        if error_out and page < 1:
+            abort(404)
+
+        start = (page - 1) * per_page
+        items = sequence[slice(start, start + per_page)]
+        if not items and page != 1 and error_out:
+            abort(404)
+
+        if total is None:
+            total = len(sequence)
+
+        return cls(sequence, page, per_page, total, items)
 
 
 class QueryPagination(PaginationBase):

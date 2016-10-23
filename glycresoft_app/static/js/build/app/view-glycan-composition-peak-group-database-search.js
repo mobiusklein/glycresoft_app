@@ -1,55 +1,160 @@
-var doZoom, viewGlycanCompositionPeakGroupingDatabaseSearchResults;
+var GlycanCompositionLCMSSearchController, GlycanCompositionLCMSSearchPaginator, GlycanCompositionLCMSSearchTabView, viewGlycanCompositionPeakGroupingDatabaseSearchResults,
+  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  hasProp = {}.hasOwnProperty;
 
-doZoom = function(selector) {
-  var svg, zoom;
-  svg = d3.select(selector);
-  zoom = function() {
-    return svg.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+GlycanCompositionLCMSSearchPaginator = (function(superClass) {
+  extend(GlycanCompositionLCMSSearchPaginator, superClass);
+
+  GlycanCompositionLCMSSearchPaginator.prototype.pageUrl = "/view_glycan_lcms_analysis/{analysisId}/page/{page}";
+
+  GlycanCompositionLCMSSearchPaginator.prototype.tableSelector = ".glycan-chromatogram-table";
+
+  GlycanCompositionLCMSSearchPaginator.prototype.tableContainerSelector = "#chromatograms-table";
+
+  GlycanCompositionLCMSSearchPaginator.prototype.rowSelector = '.glycan-match-row';
+
+  function GlycanCompositionLCMSSearchPaginator(analysisId, handle1, controller) {
+    this.analysisId = analysisId;
+    this.handle = handle1;
+    this.controller = controller;
+    this.rowClickHandler = bind(this.rowClickHandler, this);
+    GlycanCompositionLCMSSearchPaginator.__super__.constructor.call(this, 1);
+  }
+
+  GlycanCompositionLCMSSearchPaginator.prototype.getPageUrl = function(page) {
+    if (page == null) {
+      page = 1;
+    }
+    return this.pageUrl.format({
+      "page": page,
+      "analysisId": this.analysisId
+    });
   };
-  return d3.select(selector).call(d3.behavior.zoom().scaleExtent([1, 8]).on("zoom", zoom));
-};
+
+  GlycanCompositionLCMSSearchPaginator.prototype.rowClickHandler = function(row) {
+    return this.controller.showGlycanCompositionDetailsModal(row);
+  };
+
+  return GlycanCompositionLCMSSearchPaginator;
+
+})(PaginationBase);
+
+GlycanCompositionLCMSSearchTabView = (function(superClass) {
+  extend(GlycanCompositionLCMSSearchTabView, superClass);
+
+  GlycanCompositionLCMSSearchTabView.prototype.tabSelector = 'ul.tabs';
+
+  GlycanCompositionLCMSSearchTabView.prototype.tabList = ["chromatograms-plot", "chromatograms-table", "summary-abundance-plot"];
+
+  GlycanCompositionLCMSSearchTabView.prototype.defaultTab = "chromatograms-plot";
+
+  GlycanCompositionLCMSSearchTabView.prototype.updateUrl = '/view_glycan_lcms_analysis/{analysisId}/content';
+
+  GlycanCompositionLCMSSearchTabView.prototype.containerSelector = '#glycan-lcms-container';
+
+  function GlycanCompositionLCMSSearchTabView(analysisId, handle1, parent1, updateHandlers) {
+    var parent;
+    this.analysisId = analysisId;
+    this.handle = handle1;
+    this.parent = parent1;
+    parent = this.parent;
+    GlycanCompositionLCMSSearchTabView.__super__.constructor.call(this, updateHandlers);
+  }
+
+  GlycanCompositionLCMSSearchTabView.prototype.getUpdateUrl = function() {
+    return this.updateUrl.format({
+      'analysisId': this.analysisId
+    });
+  };
+
+  return GlycanCompositionLCMSSearchTabView;
+
+})(TabViewBase);
+
+GlycanCompositionLCMSSearchController = (function() {
+  GlycanCompositionLCMSSearchController.prototype.containerSelector = '#glycan-lcms-container';
+
+  GlycanCompositionLCMSSearchController.prototype.glycanTableSelector = ".glycan-chromatogram-table";
+
+  GlycanCompositionLCMSSearchController.prototype.detailModalSelector = '#glycan-detail-modal';
+
+  GlycanCompositionLCMSSearchController.prototype.detailUrl = "/view_glycan_lcms_analysis/{analysisId}/details_for/{chromatogramId}";
+
+  function GlycanCompositionLCMSSearchController(analysisId) {
+    var updateHandlers;
+    this.analysisId = analysisId;
+    this.handle = $(this.containerSelector);
+    this.currentPage = 1;
+    this.glycanTable = $(this.glycanTableSelector);
+    this.glycanDetailsModal = $(this.detailModalSelector);
+    this.paginator = new GlycanCompositionLCMSSearchPaginator(this.analysisId, this.handle, this);
+    updateHandlers = [
+      (function(_this) {
+        return function() {
+          console.log("Running update handler 1");
+          return _this.paginator.setupTable();
+        };
+      })(this), (function(_this) {
+        return function() {
+          var handle;
+          console.log("Running update handler 2");
+          handle = $(_this.tabView.containerSelector);
+          $.get("/view_glycan_lcms_analysis/" + _this.analysisId + "/chromatograms_chart").success(function(payload) {
+            console.log("Chromatograms Retrieved");
+            return handle.find("#chromatograms-plot").html(payload);
+          });
+          return $.get("/view_glycan_lcms_analysis/" + _this.analysisId + "/abundance_bar_chart").success(function(payload) {
+            console.log("Bar Chart Retrieved");
+            return handle.find("#summary-abundance-plot").html(payload);
+          });
+        };
+      })(this)
+    ];
+    this.tabView = new GlycanCompositionLCMSSearchTabView(this.analysisId, this.handle, this, updateHandlers);
+  }
+
+  GlycanCompositionLCMSSearchController.prototype.updateView = function() {
+    console.log("updateView");
+    return this.tabView.updateView();
+  };
+
+  GlycanCompositionLCMSSearchController.prototype.showGlycanCompositionDetailsModal = function(row) {
+    var handle, id, modal, url;
+    handle = $(row);
+    id = handle.attr('data-target');
+    modal = this.getModal();
+    url = this.detailUrl.format({
+      analysisId: this.analysisId,
+      chromatogramId: id
+    });
+    return $.get(url).success(function(doc) {
+      modal.find('.modal-content').html(doc);
+      $(".lean-overlay").remove();
+      return modal.openModal();
+    });
+  };
+
+  GlycanCompositionLCMSSearchController.prototype.getModal = function() {
+    return $(this.detailModalSelector);
+  };
+
+  GlycanCompositionLCMSSearchController.prototype.unload = function() {
+    return GlycReSoft.removeCurrentLayer();
+  };
+
+  return GlycanCompositionLCMSSearchController;
+
+})();
 
 viewGlycanCompositionPeakGroupingDatabaseSearchResults = function() {
-  var currentPage, downloadCSV, glycanDetailsModal, glycanTable, setup, setupGlycanCompositionTablePageHandlers, showGlycanCompositionDetailsModal, unload, updateGlycanCompositionTablePage, updateView;
+  var currentPage, downloadCSV, glycanDetailsModal, glycanTable, setup, showGlycanCompositionDetailsModal, unload, updateView;
   glycanDetailsModal = void 0;
   glycanTable = void 0;
   currentPage = 1;
   setup = function() {
     updateView();
     return $("#save-csv-file").click(downloadCSV);
-  };
-  setupGlycanCompositionTablePageHandlers = function(page) {
-    if (page == null) {
-      page = 1;
-    }
-    $('.glycan-match-row').click(showGlycanCompositionDetailsModal);
-    $(':not(.disabled) .next-page').click(function() {
-      return updateGlycanCompositionTablePage(page + 1);
-    });
-    $(':not(.disabled) .previous-page').click(function() {
-      return updateGlycanCompositionTablePage(page - 1);
-    });
-    return $('.pagination li :not(.active)').click(function() {
-      var nextPage;
-      nextPage = $(this).attr("data-index");
-      if (nextPage != null) {
-        nextPage = parseInt(nextPage);
-        return updateGlycanCompositionTablePage(nextPage);
-      }
-    });
-  };
-  updateGlycanCompositionTablePage = function(page) {
-    var url;
-    if (page == null) {
-      page = 1;
-    }
-    url = "/view_database_search_results/glycan_composition_match_table/" + page;
-    console.log(url);
-    return GlycReSoft.ajaxWithContext(url).success(function(doc) {
-      currentPage = page;
-      glycanTable.html(doc);
-      return setupGlycanCompositionTablePageHandlers(page);
-    });
   };
   updateView = function() {
     var handle;

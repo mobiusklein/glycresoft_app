@@ -10,7 +10,7 @@ Application::renderHypothesisListAt = (container)->
         <span class='handle'>#{hypothesis.id}. #{hypothesis.name.replace('_', ' ')}</span>
         <small class='right' style='display:inherit'>
             #{if hypothesis.hypothesis_type? then hypothesis.hypothesis_type else '-' }
-            <a class='remove-hypothesis mdi-content-clear'></a>
+            <a class='remove-hypothesis mdi mdi-close'></a>
         </small>
     </div>
     ")

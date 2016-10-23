@@ -1,75 +1,3 @@
-var ActionBook, DataSource, PartialSource, makeAPIGet, makeParameterizedAPIGet, makePartialGet;
-
-ActionBook = {
-  home: {
-    container: '#home-layer',
-    name: 'home-layer',
-    closeable: false
-  },
-  addSample: {
-    contentURL: '/add_sample',
-    name: 'add-sample'
-  },
-  peakGroupingMatchSamples: {
-    contentURL: '/peak_grouping_match_samples',
-    name: "peak-grouping-match-samples"
-  },
-  tandemMatchSamples: {
-    contentURL: '/tandem_match_samples',
-    name: 'tandem-match-samples'
-  },
-  naiveGlycopeptideSearchSpace: {
-    contentURL: "/glycopeptide_search_space",
-    name: "glycopeptide-search-space"
-  },
-  naiveGlycanSearchSpace: {
-    contentURL: "/glycan_search_space",
-    name: "glycan-search-space"
-  },
-  viewDatabaseSearchResults: {
-    contentURLTemplate: "/view_database_search_results/{hypothesis_sample_match_id}",
-    name: "view-database-search-results",
-    method: "post"
-  },
-  viewHypothesis: {
-    contentURLTemplate: "/view_hypothesis/{uuid}",
-    method: "post"
-  }
-};
-
-makeAPIGet = function(url) {
-  return function(callback) {
-    return $.get(url).success(callback);
-  };
-};
-
-makeParameterizedAPIGet = function(url) {
-  return function(params, callback) {
-    return $.get(url.format(params)).success(callback);
-  };
-};
-
-DataSource = {
-  hypotheses: makeAPIGet("/api/hypotheses"),
-  samples: makeAPIGet("/api/samples"),
-  hypothesisSampleMatches: makeAPIGet("/api/hypothesis_sample_matches"),
-  tasks: makeAPIGet("/api/tasks"),
-  glycopeptideMatches: makeAPIGet("/api/glycopeptide_matches")
-};
-
-makePartialGet = function(url, method) {
-  return function(parameters, callback) {
-    return $[method](url.format(parameters)).success(callback);
-  };
-};
-
-PartialSource = {
-  glycopeptideCompositionDetailsModal: makePartialGet('/view_database_search_results/view_glycopeptide_composition_details/{id}', "get"),
-  glycanCompositionDetailsModal: makePartialGet('/view_database_search_results/view_glycan_composition_details/{id}', "get")
-};
-
-//# sourceMappingURL=bind-urls.js.map
-
 var Application, renderTask,
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
@@ -141,9 +69,9 @@ Application = (function(superClass) {
         self.updateTaskList();
       };
     })(this));
-    this.handleMessage('new-sample', (function(_this) {
+    this.handleMessage('new-sample-run', (function(_this) {
       return function(data) {
-        _this.samples[data.id] = data;
+        _this.samples[data.name] = data;
         return _this.emit("render-samples");
       };
     })(this));
@@ -153,10 +81,10 @@ Application = (function(superClass) {
         return _this.emit("render-hypotheses");
       };
     })(this));
-    this.handleMessage('new-hypothesis-sample-match', (function(_this) {
+    this.handleMessage('new-analysis', (function(_this) {
       return function(data) {
-        _this.hypothesisSampleMatches[data.id] = data;
-        return _this.emit("render-hypothesis-sample-matches");
+        _this.analyses[data.id] = data;
+        return _this.emit("render-analyses");
       };
     })(this));
     this.on("layer-change", (function(_this) {
@@ -255,6 +183,14 @@ Application = (function(superClass) {
           $(".lean-overlay").remove();
           return setupAjaxForm("/ms1_or_ms2_choice?ms1_choice=peakGroupingMatchSamples&ms2_choice=tandemMatchSamples", "#message-modal");
         });
+        $("#search-glycan-composition").click(function(event) {
+          self.addLayer(ActionBook.glycanCompositionSearch);
+          return self.setShowingLayer(self.lastAdded);
+        });
+        $("#add-sample").click(function(event) {
+          self.addLayer(ActionBook.addSample);
+          return self.setShowingLayer(self.lastAdded);
+        });
         $("#build-glycan-search-space").click(function(event) {
           self.addLayer(ActionBook.naiveGlycanSearchSpace);
           return self.setShowingLayer(self.lastAdded);
@@ -308,11 +244,11 @@ Application = (function(superClass) {
         return _this.emit("render-samples");
       };
     })(this));
-    DataSource.hypothesisSampleMatches((function(_this) {
+    DataSource.analyses((function(_this) {
       return function(d) {
-        console.log('hypothesisSampleMatches', d);
-        _this.hypothesisSampleMatches = d;
-        return _this.emit("render-hypothesis-sample-matches");
+        console.log('analyses', d);
+        _this.analyses = d;
+        return _this.emit("render-analyses");
       };
     })(this));
     DataSource.tasks((function(_this) {
@@ -371,7 +307,83 @@ $(function() {
   return GlycReSoft.updateTaskList();
 });
 
-//# sourceMappingURL=common.js.map
+//# sourceMappingURL=Application-common.js.map
+
+var ActionBook, DataSource, PartialSource, makeAPIGet, makeParameterizedAPIGet, makePartialGet;
+
+ActionBook = {
+  home: {
+    container: '#home-layer',
+    name: 'home-layer',
+    closeable: false
+  },
+  addSample: {
+    contentURL: '/add_sample',
+    name: 'add-sample'
+  },
+  glycanCompositionSearch: {
+    contentURL: '/search_glycan_composition/run_search',
+    name: 'search-glycan-composition'
+  },
+  peakGroupingMatchSamples: {
+    contentURL: '/peak_grouping_match_samples',
+    name: "peak-grouping-match-samples"
+  },
+  tandemMatchSamples: {
+    contentURL: '/tandem_match_samples',
+    name: 'tandem-match-samples'
+  },
+  naiveGlycopeptideSearchSpace: {
+    contentURL: "/glycopeptide_search_space",
+    name: "glycopeptide-search-space"
+  },
+  naiveGlycanSearchSpace: {
+    contentURL: "/glycan_search_space",
+    name: "glycan-search-space"
+  },
+  viewAnalysis: {
+    contentURLTemplate: "/view_analysis/{analysis_id}",
+    name: "view-analysis",
+    method: "post"
+  },
+  viewHypothesis: {
+    contentURLTemplate: "/view_hypothesis/{uuid}",
+    method: "post"
+  }
+};
+
+makeAPIGet = function(url) {
+  return function(callback) {
+    return $.get(url).success(callback);
+  };
+};
+
+makeParameterizedAPIGet = function(url) {
+  return function(params, callback) {
+    return $.get(url.format(params)).success(callback);
+  };
+};
+
+DataSource = {
+  hypotheses: makeAPIGet("/api/hypotheses"),
+  samples: makeAPIGet("/api/samples"),
+  analyses: makeAPIGet("/api/analyses"),
+  tasks: makeAPIGet("/api/tasks"),
+  glycopeptideMatches: makeAPIGet("/api/glycopeptide_matches")
+};
+
+makePartialGet = function(url, method) {
+  return function(parameters, callback) {
+    return $[method](url.format(parameters)).success(callback);
+  };
+};
+
+PartialSource = {
+  glycopeptideCompositionDetailsModal: makePartialGet('/view_analysis/view_glycopeptide_composition_details/{id}', "get"),
+  glycanCompositionDetailsModal: makePartialGet('/view_analysis/view_glycan_composition_details/{id}', "get")
+};
+
+//# sourceMappingURL=bind-urls.js.map
 
 var ConstraintInputGrid, MonosaccharideInputWidgetGrid;
 
@@ -480,7 +492,7 @@ ConstraintInputGrid = (function() {
   function ConstraintInputGrid(container, monosaccharideGrid) {
     this.counter = 0;
     this.container = $(container);
-    this.constraints = {};
+    this.constraints = [];
     this.monosaccharideGrid = monosaccharideGrid;
   }
 
@@ -510,8 +522,31 @@ ConstraintInputGrid = (function() {
     })(this));
   };
 
+  ConstraintInputGrid.prototype.addRow = function(lhs, op, rhs, addHeader) {
+    var row;
+    if (addHeader == null) {
+      addHeader = false;
+    }
+    row = $(this.template);
+    if (!addHeader) {
+      row.find("label").remove();
+    }
+    this.counter += 1;
+    row.find("input[name='left_hand_side']").val(lhs);
+    row.find("select[name='operator']").val(op);
+    row.find("input[name='right_hand_side']").val(rhs);
+    this.container.append(row);
+    row.find("input").change((function(_this) {
+      return function() {
+        return _this.update();
+      };
+    })(this));
+    console.log(row);
+    return this.update();
+  };
+
   ConstraintInputGrid.prototype.update = function() {
-    var constraints, entry, getMonosaccharide, i, len, notif, notify, ref, row;
+    var constraints, entry, i, len, ref, row;
     constraints = [];
     ref = this.container.find(".monosaccharide-constraints-row");
     for (i = 0, len = ref.length; i < len; i++) {
@@ -520,37 +555,11 @@ ConstraintInputGrid = (function() {
       console.log(row);
       entry = {
         lhs: row.find("input[name='left_hand_side']").val(),
-        operator: row.find("input[name='operator']").val(),
+        operator: row.find("select[name='operator']").val(),
         rhs: row.find("input[name='right_hand_side']").val()
       };
       if (entry.lhs === "" || entry.rhs === "") {
         continue;
-      }
-      getMonosaccharide = function(name) {
-        return /^(\d+)(.+)/.exec(name)[2];
-      };
-      if (!(getMonosaccharide(entry.lhs) in this.monosaccharideGrid.monosaccharides)) {
-        row.addClass("warning");
-        notify = new TinyNotification(0, 0, entry.lhs + " is not defined.", row);
-        row.data("tinyNotification", notify);
-        console.log(notify);
-      } else if (!(getMonosaccharide(entry.rhs) in this.monosaccharideGrid.monosaccharides)) {
-        row.addClass("warning");
-        if (row.data("tinyNotification") != null) {
-          notif = row.data("tinyNotification");
-          notif.dismiss();
-          row.data("tinyNotification", void 0);
-        }
-        notify = new TinyNotification(0, 0, entry.rhs + " is not defined.", row);
-        row.data("tinyNotification", notify);
-        console.log(notify);
-      } else {
-        row.removeClass("warning");
-        if (row.data("tinyNotification") != null) {
-          notif = row.data("tinyNotification");
-          notif.dismiss();
-          row.data("tinyNotification", void 0);
-        }
       }
       constraints.push(entry);
     }
@@ -564,37 +573,44 @@ ConstraintInputGrid = (function() {
 
 //# sourceMappingURL=glycan-composition-builder-ui.js.map
 
-Application.prototype.renderHypothesisSampleMatchListAt = function(container) {
-  var chunks, hsm, row, self, template;
+var analysisTypeDisplayMap;
+
+analysisTypeDisplayMap = {
+  "glycan_lc_ms": "Glycan LC-MS",
+  "glycopeptide_lc_msms": "Glycopeptide LC-MS/MS"
+};
+
+Application.prototype.renderAnalyses = function(container) {
+  var analysis, chunks, row, self, template;
   chunks = [];
   template = (function() {
     var i, len, ref, results;
-    ref = _.sortBy(_.values(this.hypothesisSampleMatches), function(o) {
+    ref = _.sortBy(_.values(this.analyses), function(o) {
       return o.id;
     });
     results = [];
     for (i = 0, len = ref.length; i < len; i++) {
-      hsm = ref[i];
-      hsm.name = hsm.name != null ? hsm.name : "HypothesisSampleMatch:" + hsm.target_hypothesis.name + "@" + hsm.sample_run_name;
-      row = $("<div data-id=" + hsm.id + " class='list-item clearfix'> <span class='handle'>" + hsm.id + ". " + (hsm.name.replace('_', ' ')) + "</span> <small class='right' style='display:inherit'> " + (hsm.hypothesis_sample_match_type.replace('HypothesisSampleMatch', '')) + " <a class='remove-hsm mdi-content-clear'></a> </small> </div>");
+      analysis = ref[i];
+      analysis.name = analysis.name !== '' ? analysis.name : "Analysis:" + analysis.uuid;
+      row = $("<div data-id=" + analysis.id + " class='list-item clearfix' data-uuid='" + analysis.uuid + "'> <span class='handle'>" + analysis.id + ". " + (analysis.name.replace('_', ' ')) + "</span> <small class='right' style='display:inherit'> " + analysisTypeDisplayMap[analysis.analysis_type] + " <a class='remove-analysis mdi-content-clear'></a> </small> </div>");
       chunks.push(row);
       self = this;
       row.click(function(event) {
         var handle, id;
         handle = $(this);
         id = handle.attr('data-id');
-        self.addLayer(ActionBook.viewDatabaseSearchResults, {
-          hypothesis_sample_match_id: id
+        self.addLayer(ActionBook.viewAnalysis, {
+          analysis_id: id
         });
         console.log(self.layers);
         console.log(self.lastAdded);
-        self.context["hypothesis_sample_match_id"] = id;
+        self.context["analysis_id"] = id;
         return self.setShowingLayer(self.lastAdded);
       });
-      results.push(row.find(".remove-hsm").click(function(event) {
+      results.push(row.find(".remove-analysis").click(function(event) {
         var handle;
         handle = $(this);
-        return console.log("Removal of HypothesisSampleMatch is not implemented.");
+        return console.log("Removal of Analysis is not implemented.");
       }));
     }
     return results;
@@ -603,14 +619,14 @@ Application.prototype.renderHypothesisSampleMatchListAt = function(container) {
 };
 
 Application.initializers.push(function() {
-  return this.on("render-hypothesis-sample-matches", (function(_this) {
+  return this.on("render-analyses", (function(_this) {
     return function() {
-      return _this.renderHypothesisSampleMatchListAt(".hypothesis-sample-match-list");
+      return _this.renderAnalyses(".analysis-list");
     };
   })(this));
 });
 
-//# sourceMappingURL=hypothesis-sample-match-ui.js.map
+//# sourceMappingURL=home-analysis-list-ui.js.map
 
 Application.prototype.renderHypothesisListAt = function(container) {
   var chunks, hypothesis, i, len, ref, row, self, template;
@@ -625,7 +641,7 @@ Application.prototype.renderHypothesisListAt = function(container) {
     if (hypothesis.is_decoy) {
       continue;
     }
-    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle'>" + hypothesis.id + ". " + (hypothesis.name.replace('_', ' ')) + "</span> <small class='right' style='display:inherit'> " + (hypothesis.hypothesis_type != null ? hypothesis.hypothesis_type : '-') + " <a class='remove-hypothesis mdi-content-clear'></a> </small> </div>");
+    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle'>" + hypothesis.id + ". " + (hypothesis.name.replace('_', ' ')) + "</span> <small class='right' style='display:inherit'> " + (hypothesis.hypothesis_type != null ? hypothesis.hypothesis_type : '-') + " <a class='remove-hypothesis mdi mdi-close'></a> </small> </div>");
     chunks.push(row);
     row.click(function(event) {
       var handle, hypothesisId, layer, uuid;
@@ -660,7 +676,7 @@ var MassShiftInputWidget;
 
 MassShiftInputWidget = (function() {
   var addEmptyRowOnEdit, counter, template;
-  template = "<div class='mass-shift-row row'>\n    <div class='input-field col s3'>\n        <label for='mass_shift_name'>Mass Shift Name</label>\n        <input class='mass-shift-name' type='text' name='mass_shift_name' placeholder='Name'>\n    </div>\n    <div class='input-field col s3'>\n        <label for='mass_shift_mass_delta'>Mass &Delta;</label>\n        <input class='mass-delta' type='number' name='mass_shift_mass_delta' step=\"0.0001\" placeholder='Mass Shift'>\n    </div>\n    <div class='input-field col s3'>\n        <label for='mass_shift_max_count'>Maximum Count</label>    \n        <input class='max-count' type='number' min='0' placeholder='Maximum Count' name='mass_shift_max_count'>\n    </div>\n</div>";
+  template = "<div class='mass-shift-row row'>\n    <div class='input-field col s3'>\n        <label for='mass_shift_name'>Name or Formula</label>\n        <input class='mass-shift-name' type='text' name='mass_shift_name' placeholder='Name/Formula'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='mass_shift_max_count'>Maximum Count</label>    \n        <input class='max-count' type='number' min='0' placeholder='Maximum Count' name='mass_shift_max_count'>\n    </div>\n</div>";
   counter = 0;
   addEmptyRowOnEdit = function(container, addHeader) {
     var callback, row;
@@ -769,7 +785,7 @@ Application.prototype.renderSampleListAt = function(container) {
     results = [];
     for (i = 0, len = ref.length; i < len; i++) {
       sample = ref[i];
-      row = $("<div data-name=" + sample.name + " class='list-item clearfix'> <span class='handle'>" + (sample.name.replace('_', ' ')) + "</span> <small class='right' style='display:inherit'> " + sample.sample_type + " <a class='remove-sample mdi-content-clear'></a> </small> </div>");
+      row = $("<div data-name=" + sample.name + " class='list-item clearfix' data-uuid='" + sample.uuid + "'> <span class='handle'>" + (sample.name.replace('_', ' ')) + "</span> <small class='right' style='display:inherit'> " + sample.sample_type + " <a class='remove-sample mdi mdi-close'></a> </small> </div>");
       chunks.push(row);
       results.push(row.find(".remove-sample").click(function(event) {
         var handle;
@@ -841,58 +857,163 @@ viewGlycanCompositionHypothesis = function(hypothesisId) {
 
 //# sourceMappingURL=view-glycan-composition-hypothesis.js.map
 
-var doZoom, viewGlycanCompositionPeakGroupingDatabaseSearchResults;
+var GlycanCompositionLCMSSearchController, GlycanCompositionLCMSSearchPaginator, GlycanCompositionLCMSSearchTabView, viewGlycanCompositionPeakGroupingDatabaseSearchResults,
+  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  hasProp = {}.hasOwnProperty;
 
-doZoom = function(selector) {
-  var svg, zoom;
-  svg = d3.select(selector);
-  zoom = function() {
-    return svg.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+GlycanCompositionLCMSSearchPaginator = (function(superClass) {
+  extend(GlycanCompositionLCMSSearchPaginator, superClass);
+
+  GlycanCompositionLCMSSearchPaginator.prototype.pageUrl = "/view_glycan_lcms_analysis/{analysisId}/page/{page}";
+
+  GlycanCompositionLCMSSearchPaginator.prototype.tableSelector = ".glycan-chromatogram-table";
+
+  GlycanCompositionLCMSSearchPaginator.prototype.tableContainerSelector = "#chromatograms-table";
+
+  GlycanCompositionLCMSSearchPaginator.prototype.rowSelector = '.glycan-match-row';
+
+  function GlycanCompositionLCMSSearchPaginator(analysisId, handle1, controller) {
+    this.analysisId = analysisId;
+    this.handle = handle1;
+    this.controller = controller;
+    this.rowClickHandler = bind(this.rowClickHandler, this);
+    GlycanCompositionLCMSSearchPaginator.__super__.constructor.call(this, 1);
+  }
+
+  GlycanCompositionLCMSSearchPaginator.prototype.getPageUrl = function(page) {
+    if (page == null) {
+      page = 1;
+    }
+    return this.pageUrl.format({
+      "page": page,
+      "analysisId": this.analysisId
+    });
   };
-  return d3.select(selector).call(d3.behavior.zoom().scaleExtent([1, 8]).on("zoom", zoom));
-};
+
+  GlycanCompositionLCMSSearchPaginator.prototype.rowClickHandler = function(row) {
+    return this.controller.showGlycanCompositionDetailsModal(row);
+  };
+
+  return GlycanCompositionLCMSSearchPaginator;
+
+})(PaginationBase);
+
+GlycanCompositionLCMSSearchTabView = (function(superClass) {
+  extend(GlycanCompositionLCMSSearchTabView, superClass);
+
+  GlycanCompositionLCMSSearchTabView.prototype.tabSelector = 'ul.tabs';
+
+  GlycanCompositionLCMSSearchTabView.prototype.tabList = ["chromatograms-plot", "chromatograms-table", "summary-abundance-plot"];
+
+  GlycanCompositionLCMSSearchTabView.prototype.defaultTab = "chromatograms-plot";
+
+  GlycanCompositionLCMSSearchTabView.prototype.updateUrl = '/view_glycan_lcms_analysis/{analysisId}/content';
+
+  GlycanCompositionLCMSSearchTabView.prototype.containerSelector = '#glycan-lcms-container';
+
+  function GlycanCompositionLCMSSearchTabView(analysisId, handle1, parent1, updateHandlers) {
+    var parent;
+    this.analysisId = analysisId;
+    this.handle = handle1;
+    this.parent = parent1;
+    parent = this.parent;
+    GlycanCompositionLCMSSearchTabView.__super__.constructor.call(this, updateHandlers);
+  }
+
+  GlycanCompositionLCMSSearchTabView.prototype.getUpdateUrl = function() {
+    return this.updateUrl.format({
+      'analysisId': this.analysisId
+    });
+  };
+
+  return GlycanCompositionLCMSSearchTabView;
+
+})(TabViewBase);
+
+GlycanCompositionLCMSSearchController = (function() {
+  GlycanCompositionLCMSSearchController.prototype.containerSelector = '#glycan-lcms-container';
+
+  GlycanCompositionLCMSSearchController.prototype.glycanTableSelector = ".glycan-chromatogram-table";
+
+  GlycanCompositionLCMSSearchController.prototype.detailModalSelector = '#glycan-detail-modal';
+
+  GlycanCompositionLCMSSearchController.prototype.detailUrl = "/view_glycan_lcms_analysis/{analysisId}/details_for/{chromatogramId}";
+
+  function GlycanCompositionLCMSSearchController(analysisId) {
+    var updateHandlers;
+    this.analysisId = analysisId;
+    this.handle = $(this.containerSelector);
+    this.currentPage = 1;
+    this.glycanTable = $(this.glycanTableSelector);
+    this.glycanDetailsModal = $(this.detailModalSelector);
+    this.paginator = new GlycanCompositionLCMSSearchPaginator(this.analysisId, this.handle, this);
+    updateHandlers = [
+      (function(_this) {
+        return function() {
+          console.log("Running update handler 1");
+          return _this.paginator.setupTable();
+        };
+      })(this), (function(_this) {
+        return function() {
+          var handle;
+          console.log("Running update handler 2");
+          handle = $(_this.tabView.containerSelector);
+          $.get("/view_glycan_lcms_analysis/" + _this.analysisId + "/chromatograms_chart").success(function(payload) {
+            console.log("Chromatograms Retrieved");
+            return handle.find("#chromatograms-plot").html(payload);
+          });
+          return $.get("/view_glycan_lcms_analysis/" + _this.analysisId + "/abundance_bar_chart").success(function(payload) {
+            console.log("Bar Chart Retrieved");
+            return handle.find("#summary-abundance-plot").html(payload);
+          });
+        };
+      })(this)
+    ];
+    this.tabView = new GlycanCompositionLCMSSearchTabView(this.analysisId, this.handle, this, updateHandlers);
+  }
+
+  GlycanCompositionLCMSSearchController.prototype.updateView = function() {
+    console.log("updateView");
+    return this.tabView.updateView();
+  };
+
+  GlycanCompositionLCMSSearchController.prototype.showGlycanCompositionDetailsModal = function(row) {
+    var handle, id, modal, url;
+    handle = $(row);
+    id = handle.attr('data-target');
+    modal = this.getModal();
+    url = this.detailUrl.format({
+      analysisId: this.analysisId,
+      chromatogramId: id
+    });
+    return $.get(url).success(function(doc) {
+      modal.find('.modal-content').html(doc);
+      $(".lean-overlay").remove();
+      return modal.openModal();
+    });
+  };
+
+  GlycanCompositionLCMSSearchController.prototype.getModal = function() {
+    return $(this.detailModalSelector);
+  };
+
+  GlycanCompositionLCMSSearchController.prototype.unload = function() {
+    return GlycReSoft.removeCurrentLayer();
+  };
+
+  return GlycanCompositionLCMSSearchController;
+
+})();
 
 viewGlycanCompositionPeakGroupingDatabaseSearchResults = function() {
-  var currentPage, downloadCSV, glycanDetailsModal, glycanTable, setup, setupGlycanCompositionTablePageHandlers, showGlycanCompositionDetailsModal, unload, updateGlycanCompositionTablePage, updateView;
+  var currentPage, downloadCSV, glycanDetailsModal, glycanTable, setup, showGlycanCompositionDetailsModal, unload, updateView;
   glycanDetailsModal = void 0;
   glycanTable = void 0;
   currentPage = 1;
   setup = function() {
     updateView();
     return $("#save-csv-file").click(downloadCSV);
-  };
-  setupGlycanCompositionTablePageHandlers = function(page) {
-    if (page == null) {
-      page = 1;
-    }
-    $('.glycan-match-row').click(showGlycanCompositionDetailsModal);
-    $(':not(.disabled) .next-page').click(function() {
-      return updateGlycanCompositionTablePage(page + 1);
-    });
-    $(':not(.disabled) .previous-page').click(function() {
-      return updateGlycanCompositionTablePage(page - 1);
-    });
-    return $('.pagination li :not(.active)').click(function() {
-      var nextPage;
-      nextPage = $(this).attr("data-index");
-      if (nextPage != null) {
-        nextPage = parseInt(nextPage);
-        return updateGlycanCompositionTablePage(nextPage);
-      }
-    });
-  };
-  updateGlycanCompositionTablePage = function(page) {
-    var url;
-    if (page == null) {
-      page = 1;
-    }
-    url = "/view_database_search_results/glycan_composition_match_table/" + page;
-    console.log(url);
-    return GlycReSoft.ajaxWithContext(url).success(function(doc) {
-      currentPage = page;
-      glycanTable.html(doc);
-      return setupGlycanCompositionTablePageHandlers(page);
-    });
   };
   updateView = function() {
     var handle;
