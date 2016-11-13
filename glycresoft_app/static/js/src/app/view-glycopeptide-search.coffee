@@ -1,0 +1,223 @@
+
+class GlycopeptideLCMSMSSearchPaginator extends PaginationBase
+    pageUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/page/{page}"
+    tableSelector: "#identified-glycopeptide-table"
+    tableContainerSelector: "#glycopeptide-table"
+    rowSelector: '.glycopeptide-match-row'
+
+    constructor: (@analysisId, @handle, @controller) ->
+        super(1) 
+
+    getPageUrl: (page=1) ->
+        @pageUrl.format {"page": page, "analysisId": @analysisId, "proteinId": @controller.proteinId}
+
+    rowClickHandler: (row) =>
+        handle = $ row
+        target = handle.attr("data-target")
+        @controller.getGlycopeptideMatchDetails(target)
+
+
+class GlycopeptideLCMSMSSearchTabView extends TabViewBase
+    tabSelector: '#protein-view ul.tabs'
+    tabList: ["chromatograms-plot", "chromatograms-table", "summary-abundance-plot"]
+    defaultTab: "chromatograms-plot"
+    updateUrl: '/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/overview'
+    containerSelector: '#glycopeptide-lcmsms-content-container'
+
+    constructor: (@analysisId, @handle, @controller, updateHandlers) ->
+        super(updateHandlers)
+
+    getUpdateUrl: ->
+        @updateUrl.format({'analysisId': @analysisId, 'proteinId': @controller.proteinId})
+
+
+class PlotManagerBase
+    plotUrl: ""
+    plotContainerSelector: ""
+
+    constructor: (handle) ->
+        @handle = handle
+
+    getPlotUrl: ->
+        @plotUrl
+
+    updateView: ->
+        GlycReSoft.ajaxWithContext(@getPlotUrl()).success (doc) =>
+            plotContainer = @handle.find(@plotContainerSelector)
+            plotContainer.html(doc)
+            @setupInteraction(plotContainer)
+
+    setupInteraction: (container) ->
+        console.log "Setup Interaction Callback"
+
+
+class PlotGlycoformsManager extends PlotManagerBase
+    plotUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/plot_glycoforms"
+    plotContainerSelector: "#protein-overview"
+
+    constructor: (handle, @controller) ->
+        super(handle)
+
+    getPlotUrl: ->
+        @plotUrl.format({"analysisId": @controller.analysisId, "proteinId": @controller.proteinId})
+
+    glycopeptideTooltipCallback: (handle) ->
+        template = '''<div><table>
+        <tr><td style='padding:3px;'><b>MS2 Score:</b> {ms2-score}</td><td style='padding:3px;'><b>Mass:</b> {calculated-mass}</td></tr>
+        <tr><td style='padding:3px;'><b>q-value:</b> {q-value}</td><td style='padding:3px;'><b>Spectrum Matches:</b> {spectra-count}</td></tr>
+        </table>
+        <span>{sequence}</span>
+        </div>'''
+
+        template.format
+            'sequence': new PeptideSequence(handle.attr('data-sequence')).format(GlycReSoft.colors)
+            'ms2-score': parseFloat(handle.attr('data-ms2-score')).toFixed(4)
+            'q-value': handle.attr('data-q-value')
+            "calculated-mass": parseFloat(handle.attr("data-calculated-mass")).toFixed(4)
+            "spectra-count": handle.attr("data-spectra-count")
+
+    modificationTooltipCallback: (handle) ->
+        template = '
+        <div>
+        <span>{value}</span>
+        </div>'
+        value = handle.parent().attr('data-modification-type')
+        if value == 'HexNAc'
+            sequence = $('#' + handle.parent().attr('data-parent')).attr('data-sequence')
+            value = 'HexNAc - Glycosylation: ' + sequence.split(/(\[|\{)/).slice(1).join('')
+        template.format 'value': value
+
+    setupTooltips: ->
+        glycopeptide = $('svg .glycopeptide')
+        glycopeptide.customTooltip @glycopeptideTooltipCallback, 'protein-view-tooltip'
+        self = @
+        glycopeptide.hover(
+            (event) ->
+                handle = $ @
+                baseColor = handle.find("path").css("fill")
+                newColor = '#74DEC5'
+                handle.data("baseColor", baseColor)
+                handle.find("path").css("fill", newColor)
+            (event) ->
+                handle = $ @
+                handle.find("path").css("fill", handle.data("baseColor"))
+            )
+        glycopeptide.click (event) ->
+            handle = $ @
+            id = handle.data("record-id")
+            self.controller.getGlycopeptideMatchDetails(id)
+        $('svg .modification path').customTooltip @modificationTooltipCallback, 'protein-view-tooltip'
+
+    setupInteraction: (container) ->
+        @setupTooltips()
+        GlycReSoft.colors.update()
+
+
+class SiteSpecificGlycosylationPlotManager extends PlotManagerBase
+    plotUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/site_specific_glycosylation"
+    plotContainerSelector: "#site-distribution"
+
+    constructor: (handle, @controller) ->
+        super(handle)
+
+    getPlotUrl: ->
+        @plotUrl.format({"analysisId": @controller.analysisId, "proteinId": @controller.proteinId})
+
+
+class GlycopeptideLCMSMSSearchController
+    containerSelector: '#glycopeptide-lcmsms-container'
+    detailModalSelector: '#glycopeptide-detail-modal'
+
+    proteinTableRowSelector: '.protein-match-table tbody tr'
+    proteinContainerSelector: '#protein-container'
+    proteinOverviewUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/overview"
+
+    detailUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/details_for/{glycopeptideId}"
+    saveCSVURL: "/view_glycopeptide_lcmsms_analysis/{analysisId}/to-csv"
+
+    monosaccharideFilterContainerSelector: '#monosaccharide-filters'
+
+    constructor: (@analysisId, @hypothesisUUID, @proteinId) ->
+        @handle = $ @containerSelector
+        @paginator = new GlycopeptideLCMSMSSearchPaginator(@analysisId, @handle, @)
+        @plotGlycoforms = new PlotGlycoformsManager(@handle, @)
+        @plotSiteSpecificGlycosylation = new SiteSpecificGlycosylationPlotManager(@handle, @)
+        updateHandlers = [
+            =>
+                @paginator.setupTable()
+                @plotGlycoforms.updateView()
+                @plotSiteSpecificGlycosylation.updateView()
+
+        ]
+        @tabView = new GlycopeptideLCMSMSSearchTabView(@analysisId, @handle, @, updateHandlers)
+        @setup()
+
+    getProteinTableRows: ->
+        handle = $ @proteinTableRowSelector
+        return handle
+
+    setup: ->
+        proteinRowHandle = $ @proteinTableRowSelector
+        self = @
+        @handle.find(".tooltipped").tooltip()
+        console.log("Setting up Save Buttons")
+        @handle.find("#save-csv-btn").click (event) ->
+            console.log("Clicked Save Button")
+            url = self.saveCSVURL.format({analysisId: self.analysisId})
+            $.get(url).success (info) ->
+                GlycReSoft.downloadFile info.filename
+        proteinRowHandle.click (event) ->
+            self.proteinChoiceHandler @
+        console.log("setup complete")
+        @proteinChoiceHandler proteinRowHandle[0]
+
+        filterContainer = $(@monosaccharideFilterContainerSelector)
+        GlycReSoft.monosaccharideFilterState.update @hypothesisUUID, (bounds) =>
+            @monosaccharideFilter = new MonosaccharideFilter(filterContainer)
+            @monosaccharideFilter.render()
+
+    getLastProteinViewed: ->
+        GlycReSoft.context['protein_id']
+
+    selectLastProteinViewed: ->
+        proteinId = @getLastProteinViewed()
+
+    updateView: ->
+        @tabView.updateView()
+
+    getModal: ->
+        $ @detailModalSelector
+
+    unload: ->
+        GlycReSoft.removeCurrentLayer()
+
+    getProteinOverviewUrl: (proteinId) ->
+        @proteinOverviewUrl.format({"analysisId": @analysisId, "proteinId": proteinId})
+
+    proteinChoiceHandler: (row) =>
+        handle = $ row
+        $('.active-row').removeClass("active-row")
+        handle.addClass("active-row")
+        id = handle.attr('data-target')
+        @proteinId = id
+        # $('#chosen-protein-container').fadeOut()
+        # $("#loading-top-level-chosen-protein-container").fadeIn()
+        $(@tabView.containerSelector).html('''
+            <br>
+            <div class="progress" id='waiting-for-protein-progress'>
+                <div class="indeterminate">
+                </div>
+            </div>
+            ''')
+        @tabView.updateView()
+
+    getGlycopeptideMatchDetails: (glycopeptideId) ->
+        url = @detailUrl.format(
+            {"analysisId": @analysisId, "proteinId": @proteinId,
+             "glycopeptideId", glycopeptideId})
+        GlycReSoft.ajaxWithContext(url).success (doc) =>
+            modalHandle = @getModal()
+            modalHandle.find('.modal-content').html doc
+            # Remove any straggler overlays from rapid re-opening of modal
+            $(".lean-overlay").remove()
+            modalHandle.openModal()

@@ -1,10 +1,11 @@
 import os
 import pickle
 from os import path
+from threading import RLock
 
 from glycan_profiling.serialize import (
     DatabaseBoundOperation, SampleRun, GlycanHypothesis,
-    GlycopeptideHypothesis, Analysis)
+    GlycopeptideHypothesis, Analysis, AnalysisTypeEnum)
 
 from glycresoft_app.task.task_process import TaskManager
 from glycresoft_app.vendor import sqlitedict
@@ -26,6 +27,7 @@ class ApplicationManager(object):
 
         self._ensure_paths_exist()
 
+        self._data_lock = RLock()
         self.app_data = sqlitedict.SqliteDict(self.app_data_path, autocommit=True)
 
         self.task_manager = TaskManager(self.task_dir)
@@ -48,6 +50,9 @@ class ApplicationManager(object):
 
     def stoploop(self):
         return self.task_manager.stoploop()
+
+    def add_message(self, message):
+        return self.task_manager.add_message(message)
 
     @property
     def session(self):
@@ -110,3 +115,16 @@ class ApplicationManager(object):
 
     def analyses(self):
         return self.session.query(Analysis)
+
+    def glycan_analyses(self):
+        return self.session.query(Analysis).filter(
+            Analysis.analysis_type == AnalysisTypeEnum.glycan_lc_ms.name)
+
+    def get_next_job_number(self):
+        with self._data_lock:
+            try:
+                job_count = self.app_data['_job_count']
+            except KeyError:
+                job_count = 0
+            self.app_data['_job_count'] = job_count + 1
+        return job_count

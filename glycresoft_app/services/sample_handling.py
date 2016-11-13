@@ -29,10 +29,8 @@ def post_add_sample():
     if sample_name == "":
         current_app.logger.info("No sample name could be extracted. %r", request.values)
         return abort(400)
-    print(sample_name)
     secure_name = secure_filename(sample_name)
     path = g.manager.get_temp_path(secure_name)
-    print(path)
     request.files['observed-ions-file'].save(path)
     # dest = g.manager.get_sample_path(sample_name)
 

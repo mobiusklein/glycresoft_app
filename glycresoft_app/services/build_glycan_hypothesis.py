@@ -1,4 +1,5 @@
 from flask import Response, g, request, render_template
+from werkzeug import secure_filename
 
 from .form_cleaners import remove_empty_rows, intify
 from .service_module import register_service
@@ -9,6 +10,7 @@ except:
     from io import StringIO
 
 from glycresoft_app.task.combinatorial_glycan_hypothesis import BuildCombinatorialGlycanHypothesis
+from glycresoft_app.task.text_file_glycan_hypothesis import BuildTextFileGlycanHypothesis
 
 
 app = make_glycan_hypothesis = register_service("make_glycan_hypothesis", __name__)
@@ -27,6 +29,12 @@ def _serialize_rules_to_buffer(rules, constraints, header_comment=""):
     for lhs, op, rhs in constraints:
         lines.append(" ".join(map(str, (lhs, op, rhs))))
     return StringIO('\n'.join(lines))
+
+
+def is_text_file_present(file_storage):
+    if file_storage.filename == "":
+        return False
+    return True
 
 
 @app.route("/glycan_search_space", methods=["POST"])
@@ -51,8 +59,6 @@ def build_naive_glycan_search_process():
         derivatization_type = None
 
     comb_monosaccharide_name = data.getlist('monosaccharide_name')[:-1]
-    # Currently unused
-    # comb_compositions = data.getlist('monosaccharide_composition')[:-1]
     comb_lower_bound = map(intify, data.getlist('monosaccharide_lower_bound')[:-1])
     comb_upper_bound = map(intify, data.getlist('monosaccharide_upper_bound')[:-1])
 
@@ -68,18 +74,32 @@ def build_naive_glycan_search_process():
     constraint_op = data.getlist("operator")[:-1]
     constraint_rhs = data.getlist("right_hand_side")[:-1]
 
-    constraints = zip(*remove_empty_rows(constraint_lhs, constraint_op, constraint_rhs))
-    rules = zip(comb_monosaccharide_name, comb_lower_bound, comb_upper_bound)
-    # File-like object to pass to the task in place of a path to a rules file
-    rules_buffer = _serialize_rules_to_buffer(rules, constraints, "generated")
+    glycan_list_file = request.files["glycan-list-file"]
 
-    task = BuildCombinatorialGlycanHypothesis(
-        rules_buffer, g.manager.connection_bridge,
-        custom_reduction_type if has_custom_reduction else reduction_type,
-        custom_derivatization_type if has_custom_derivatization else derivatization_type,
-        name=hypothesis_name,
-        callback=lambda: 0
-    )
-    g.manager.add_task(task)
+    if is_text_file_present(glycan_list_file):
+        secure_glycan_list_file = g.manager.get_temp_path(secure_filename(glycan_list_file.filename))
+        glycan_list_file.save(secure_glycan_list_file)
+        task = BuildTextFileGlycanHypothesis(
+            secure_glycan_list_file,
+            g.manager.connection_bridge,
+            reduction=custom_reduction_type if has_custom_reduction else reduction_type,
+            derivatization=custom_derivatization_type if has_custom_derivatization else derivatization_type,
+            name=hypothesis_name,
+            callback=lambda: 0)
+        g.manager.add_task(task)
+    else:
+        constraints = zip(*remove_empty_rows(constraint_lhs, constraint_op, constraint_rhs))
+        rules = zip(comb_monosaccharide_name, comb_lower_bound, comb_upper_bound)
+        # File-like object to pass to the task in place of a path to a rules file
+        rules_buffer = _serialize_rules_to_buffer(rules, constraints, "generated")
+
+        task = BuildCombinatorialGlycanHypothesis(
+            rules_buffer, g.manager.connection_bridge,
+            reduction=custom_reduction_type if has_custom_reduction else reduction_type,
+            derivatization=custom_derivatization_type if has_custom_derivatization else derivatization_type,
+            name=hypothesis_name,
+            callback=lambda: 0
+        )
+        g.manager.add_task(task)
 
     return Response("Task Scheduled")

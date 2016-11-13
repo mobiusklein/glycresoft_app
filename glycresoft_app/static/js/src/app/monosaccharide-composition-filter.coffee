@@ -1,10 +1,66 @@
 
+makeMonosaccharideRule = (count) -> {minimum: 0, maximum: count, include: true}
+
+makeRuleSet = (upperBounds) ->
+    residueNames = Object.keys upperBounds
+    rules = {}
+    for residue, count of upperBounds
+        rules[residue] = makeMonosaccharideRule(count)
+    return rules
+
+makeMonosaccharideFilter = (parent, upperBounds) ->
+    if !upperBounds?
+        upperBounds = GlycReSoft.settings.monosaccharide_filters
+    residueNames = Object.keys upperBounds
+    rules = makeRuleSet(upperBounds)
+    return new MonosaccharideFilter(parent, residueNames, rules)
+
+class MonosaccharideFilterState
+    constructor: (@application) ->
+        @setHypothesis(null)
+
+    setHypothesis: (hypothesis) ->
+        if hypothesis?
+            @currentHypothesis = hypothesis
+            @hypothesisUUID = @currentHypothesis.uuid
+            @hypothesisType = @currentHypothesis.hypothesis_type
+            @bounds = makeRuleSet(@currentHypothesis.monosaccharide_bounds)
+        else
+            @currentHypothesis = null
+            @hypothesisUUID = null
+            @hypothesisType = null
+            @bounds = {}
+    isSameHypothesis: (hypothesis) -> hypothesis.uuid == @hypothesisUUID
+
+    setApplicationFilter: ->
+        console.log "Updating Filters", @bounds
+        @application.settings.monosaccharide_filters = @bounds
+
+    update: (hypothesisUUID, callback) ->
+        console.log "Is Hypothesis New?"
+        console.log hypothesisUUID, @hypothesisUUID
+        if hypothesisUUID != @hypothesisUUID
+            console.log("Is New Hypothesis")
+            Hypothesis.get hypothesisUUID, (result) =>
+                hypothesis = result.hypothesis
+                @setHypothesis(hypothesis)
+                @setApplicationFilter()
+                callback(@bounds)
+        else
+            console.log("Is not new hypothesis")
+            @setApplicationFilter()
+            callback(@bounds)
+
+
 class MonosaccharideFilter
     constructor: (parent, residueNames, rules) ->
         if !rules?
             if !GlycReSoft.settings.monosaccharide_filters?
                 GlycReSoft.settings.monosaccharide_filters = {}
             rules = GlycReSoft.settings.monosaccharide_filters
+        if !residueNames?
+            console.log("Getting Residue Names", GlycReSoft.settings.monosaccharide_filters)
+            residueNames = Object.keys GlycReSoft.settings.monosaccharide_filters
         @container = $("<div></div>").addClass("row")
         $(parent).append(@container)
         @residueNames = residueNames
@@ -54,4 +110,12 @@ class MonosaccharideFilter
             widget = @makeFilterWidget(residue)
             @container.append(widget)
 
-    changed: _.debounce (-> GlycReSoft.emit("update_settings")), 1000 
+    changed: ->
+        console.log("MonosaccharideFilter changed")
+        if !@rules?
+            console.log("No rules", @, @rules)
+        old = GlycReSoft.settings.monosaccharide_filters
+        console.log("Updating monosaccharide_filters")
+        GlycReSoft.settings.monosaccharide_filters = @rules
+        console.log(old, GlycReSoft.settings.monosaccharide_filters)
+        GlycReSoft.emit("update_settings")    

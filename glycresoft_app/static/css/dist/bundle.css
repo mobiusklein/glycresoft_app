@@ -15578,6 +15578,14 @@ code.sequence-text {
 }
 
 
+.protein-name {
+    padding-left: 20px;
+    display: inline-block;
+    width: 300px;
+    word-break: break-all;
+}
+
+
 /*
 
 Form Elements
@@ -15716,7 +15724,7 @@ Protein Match Table
 */
 
 .protein-match-table th, .protein-match-table td {
-    width: 180px;
+    min-width: 180px;
     padding: 5px;
 }
 
@@ -15747,12 +15755,24 @@ Protein List Table
 */
 
 .protein-list-table {
-    width: 350px;
+    width: 425px;
 }
 
 .protein-list-table th, .protein-list-table td {
-    width: 180px;
-    padding: 5px;
+    padding: 3px;
+}
+
+.protein-list-table tr th:first-child, .protein-list-table tr td:first-child {
+    min-width: 220px;
+    max-width: 220px;
+}
+
+.protein-list-table tr th:nth-child(2), .protein-list-table tr td:nth-child(2) {
+    min-width: 80px;
+}
+
+.protein-list-table tr th:nth-child(3), .protein-list-table tr td:nth-child(3) {
+    min-width: 110px;
 }
 
 .protein-list-table thead, .protein-list-table tbody {
@@ -15809,6 +15829,12 @@ Display Table
     word-break: break-all;
 }
 
+.display-table th.very-very-wide, .display-table td.very-very-wide {
+    min-width: 550px;
+    max-width: 550px;
+    word-break: break-all;
+}
+
 .display-table thead, .display-table tbody {
     display: block;
     overflow-y: auto;
@@ -15854,7 +15880,7 @@ Glycopeptide Match Table
 
 */
 
-.glycopeptide-match-table th, .glycopeptide-match-table td {
+/*.glycopeptide-match-table th, .glycopeptide-match-table td {
     min-width: 90px;
     max-width: 90px;
     padding: 3px;
@@ -15892,7 +15918,7 @@ Glycopeptide Match Table
     min-width: 70px;
     max-width: 70px;
     word-break: break-all;
-}
+}*/
 
 .glycopeptide-match-table tbody tr:hover{
     background: whitesmoke;
@@ -15952,7 +15978,8 @@ Modals
 
 .modal.wide {
     width: 95% !important;
-    height: 80% !important;
+    height: 100% !important;
+    max-height: 90% !important;
 }
 
 .modal .row{

@@ -1,0 +1,28 @@
+<div class='row'>
+    <div class='col s6'>
+        <h4>{{hypothesis.name}}</h4>
+        <span>ID: {{hypothesis.id}}</span>
+    </div>
+    {% include "components/mass_search.templ" %}
+</div>
+<div class='row' id='hypothesis-protein-glycopeptide-container'>
+    <div class='row'>
+        <div class='col s4'>
+            {% with proteins=hypothesis.proteins|sort(attribute='name') %}
+                {% include "view_glycopeptide_hypothesis/components/protein_table.templ"%}
+            {% endwith %}        
+            <div id='protein-container'>
+                {% with protein=hypothesis.proteins.first() %}
+                    {% include "view_glycopeptide_hypothesis/components/protein_view.templ" %}
+                {% endwith %}
+            </div>
+        </div>        
+    </div>
+    <div id="display-table-container" class='col s8'>
+        
+    </div>
+</div>
+<script>
+// viewGlycopeptideCompositionHypothesis({{hypothesis.id}})
+controller = new GlycopeptideHypothesisController({{hypothesis.id}})
+</script>

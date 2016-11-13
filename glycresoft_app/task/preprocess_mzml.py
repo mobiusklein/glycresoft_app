@@ -14,13 +14,16 @@ from ms_deisotope.processor import MzMLLoader
 from glycan_profiling.profiler import SampleConsumer
 from glycan_profiling.serialize import DatabaseBoundOperation
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def preprocess(mzml_file, database_connection, averagine=None, start_time=None, end_time=None, maximum_charge=None,
                name=None, msn_averagine=None, score_threshold=15., msn_score_threshold=2., missed_peaks=1,
                channel=None):
     minimum_charge = 1 if maximum_charge > 0 else -1
     charge_range = (minimum_charge, maximum_charge)
-
+    logger.info("Begin Scan Interpolation")
     loader = MzMLLoader(mzml_file)
 
     start_scan_id = loader._locate_ms1_scan(
@@ -28,20 +31,22 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
     end_scan_id = loader._locate_ms1_scan(
         loader.get_scan_by_time(end_time)).id
 
+    logger.info("Resolving Sample Name")
     if name is None:
         name = os.path.splitext(os.path.basename(mzml_file))[0]
 
     name = validate_sample_run_name(None, database_connection, name)
 
+    logger.info("Validating arguments")
     try:
         averagine = validate_averagine(averagine)
-    except Abort:
+    except:
         channel.send(Message("Could not validate MS1 Averagine %s" % averagine, 'error'))
         return
 
     try:
         msn_averagine = validate_averagine(msn_averagine)
-    except Abort:
+    except:
         channel.send(Message("Could not validate MSn Averagine %s" % msn_averagine, 'error'))
         return
 
@@ -75,9 +80,10 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
         end_scan_id=end_scan_id)
 
     try:
-        handle = DatabaseBoundOperation(database_connection)
         consumer.start()
         sample_run = consumer.sample_run
+        logger.info("Updating New Sample Run")
+        handle = DatabaseBoundOperation(database_connection)
         handle.session.add(sample_run)
         channel.send(Message(json_serializer.handle_sample_run(sample_run), "new-sample-run"))
         handle.session.close()

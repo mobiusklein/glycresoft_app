@@ -2,7 +2,9 @@ import logging
 import traceback
 from os import path
 from uuid import uuid4
+import multiprocessing
 from multiprocessing import Process, Pipe
+
 from threading import Event, Thread, RLock
 from Queue import Queue, Empty as QueueEmptyException
 
@@ -43,6 +45,8 @@ def configure_log_wrapper(log_file_path, task_callable, args):
     logger.addHandler(handler)
     logger.setLevel("DEBUG")
     logger.propagate = False
+    current_process = multiprocessing.current_process()
+    logger.info("Task Running on PID %r", current_process.pid)
     return task_callable(*args)
 
 
@@ -87,7 +91,7 @@ class CallInterval(object):
 class Task(object):
     """
     Represents a separate process that is performing an long running operation against
-    the database with a distinct endpoint. This process is executing a series of function
+    the database with a distinct endpoint. This process is executing a series of functions
     launched from within Python as opposed to simply running a 3rd-party executable, and is
     able to set up two-way communication between the main process and the "task" process.
 
@@ -122,10 +126,10 @@ class Task(object):
         self.state = NEW
         self.process = None
         self.args = list(args)
-        self.args.append(child_conn)
+        self.args.append(LoggingPipe(child_conn))
         self.callback = callback
-        self.log_file_path = kwargs.get("log_file_path", "%s.log" % self.id)
         self.name = kwargs.get('name', self.id)
+        self.log_file_path = kwargs.get("log_file_path", "%s.log" % self.id)
         self.message_buffer = []
 
     def start(self):
@@ -212,6 +216,24 @@ class NullPipe(object):
         return False
 
 
+class LoggingPipe(object):
+    def __init__(self, pipe):
+        self.pipe = pipe
+
+    def send(self, message):
+        if message.type == 'info':
+            logger.info(str(message))
+        elif message.type == 'error':
+            logger.error(str(message))
+        self.pipe.send(message)
+
+    def recv(self):
+        return self.pipe.recv()
+
+    def poll(self, timeout=None):
+        return self.pipe.poll(timeout)
+
+
 class Message(object):
     """
     Represent a message sent between a Task and the main process.
@@ -219,7 +241,7 @@ class Message(object):
     Attributes
     ----------
     message : object
-        Anything, but preveriably something JSON serializeable
+        Anything, but preferiably something JSON serializeable
     source : object
         Description
     type : str

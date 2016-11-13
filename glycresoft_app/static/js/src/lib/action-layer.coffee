@@ -35,7 +35,6 @@ class ActionLayerManager extends EventEmitter
         result
 
     setShowingLayer: (id) ->
-        console.log id
         current = @getShowingLayer()
         next = @get(id)
         try
@@ -54,7 +53,6 @@ class ActionLayerManager extends EventEmitter
         if !options.closeable?
             options.closeable = true
         layer = new ActionLayer(this, options, params)
-        console.log layer
         if @layerStack.length == 0
             @layerStack.push layer
         return @
@@ -123,7 +121,6 @@ class ActionLayer
         @controller = null
 
     setup: () ->
-        console.log("Setting up", @)
         if @options.contentURLTemplate?
             @contentURL = @options.contentURLTemplate.format @params
         
@@ -135,11 +132,9 @@ class ActionLayer
             @container.find('script').each (i, tag) ->
                 tag = $(tag)
                 srcURL = tag.attr('src')
-                console.log("Setting up script", tag)
                 if srcURL != undefined
                     $.getScript srcURL
             materialRefresh()
-            console.log("This layer can be closed? #{@options.closeable}")
             if @options.closeable
                 @container.prepend("""
         <div>
@@ -148,6 +143,7 @@ class ActionLayer
         if @method == "get"
             $.get(@contentURL).success callback
         else if @method == "post"
+            console.log("Setup Post", @manager.settings)
             $.ajax(@contentURL,
                 contentType: "application/json"
                 data: JSON.stringify {params: @params, context: @manager.context, settings: @manager.settings}
@@ -160,7 +156,6 @@ class ActionLayer
         @container.find('script').each (i, tag) ->
             tag = $(tag)
             srcURL = tag.attr('src')
-            console.log("Setting up script", tag)
             if srcURL != undefined
                 $.getScript srcURL
         materialRefresh()

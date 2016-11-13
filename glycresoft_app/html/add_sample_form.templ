@@ -110,6 +110,9 @@
 materialRefresh()
 materialFileInput()
 $('.tooltipped').tooltip({delay: 50});
+$('#submit-btn').click(function(event){
+    Materialize.toast("Please wait. Reading large files may take several minutes.", 16000)
+})
 $('#add-sample-form input[name="observed-ions-file"]').change(function(){
     console.log(this.files[0].name)
     var sampleNameInput = $("#add-sample-form input[name='sample-name']")

@@ -1,0 +1,50 @@
+<div class='row'>
+    <div class='col s8'>
+        <h5>{{analysis.name}}</h5>
+    </div>
+</div>
+<div id='glycopeptide-lcmsms-container'>
+    <div class='row'>
+        <div class='col s4'>
+            <b>MS<sup>1</sup> Mass Accuracy:</b> {{analysis.parameters.mass_error_tolerance * (10 ** 6)}} PPM<br>
+            <b>Grouping Tolerance:</b> {{analysis.parameters.grouping_error_tolerance * (10 ** 6)}} PPM<br>
+            <b>MS<sup>n</sup> Mass Accuracy:</b> {{analysis.parameters.fragment_error_tolerance * (10 ** 6)}} PPM<br>
+            <b>Minimum <code>q</code>-Value For Clustering:</b> {{analysis.parameters.psm_fdr_threshold}}<br>
+        </div>
+        <div class='col s4'>
+            <b>Target Database:</b>
+            <a>{{analysis.hypothesis.name}}</a><br>
+            <b>Sample Searched:</b>
+            <a>{{analysis.sample_run.name}}</a>
+        </div>
+        <div class='col s4'>
+            <b>ID:</b> {{analysis.id}}<br>
+            <a class='mdi mdi-content-save mdi-36px tooltipped' id='save-csv-btn' style='cursor: pointer;'
+               data-tooltip='Export Identification CSV' data-position='bottom'>
+            </a>
+        </div>
+    </div>
+    <div class='row'>
+        <div class="col s6">
+            {% include "view_glycopeptide_search/components/protein_table.templ" %}
+        </div>
+        <div class='col s3'>
+        </div>
+        <div class="col s1">
+        </div>
+    </div>
+    <div id='monosaccharide-filters'>
+    </div>
+    <div class='row' id='glycopeptide-lcmsms-content-container'>
+    </div>
+    <div id="glycopeptide-detail-modal" class="modal modal-fixed-footer wide">
+        <div class="modal-content">
+        </div>
+        <div class="modal-footer">
+            <a href="#!" class=" modal-action modal-close waves-effect waves-green btn-flat">Dismiss</a>
+        </div>
+    </div>
+</div>
+<script>
+    controller = new GlycopeptideLCMSMSSearchController({{analysis.id}}, "{{analysis.hypothesis.uuid}}", null)
+</script>

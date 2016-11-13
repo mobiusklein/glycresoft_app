@@ -20,7 +20,8 @@ Modals
 
 .modal.wide {
     width: 95% !important;
-    height: 80% !important;
+    height: 100% !important;
+    max-height: 90% !important;
 }
 
 .modal .row{

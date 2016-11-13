@@ -9,7 +9,8 @@ task_actions = register_service("task_management", __name__)
 def send_log(task_id):
     return Response("<pre>%s</pre>" % open(
         g.manager.get_task_path(task_id + '.log'), 'r').read().replace(
-        ">", "&gt;").replace("<", "&lt;"), mimetype='application/text')
+        ">", "&gt;").replace("<", "&lt;").decode('string_escape'),
+        mimetype='application/text')
 
 
 @task_actions.route("/internal/test_task")

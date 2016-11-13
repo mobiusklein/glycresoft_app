@@ -1,0 +1,57 @@
+<div class='glycopeptide-details-container'>
+    <div class='row'>
+        <div class='col s6'>
+            <h6><b>Glycopeptide Sequence</b></h6>
+            <div class='sequence-emphasis'>{{glycopeptide.structure|glycopeptide_string(long=True)}}</div>
+            <b>Start Position</b>: {{glycopeptide.start_position}} <b>End Position</b>: {{glycopeptide.end_position}}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Profile Score</th>
+                        <th>Tandem Score</th>
+                        <th>TDA q-value</th>
+                        <th>Volume</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{"%0.4f"|format(glycopeptide.ms1_score)}}</td>
+                        <td>{{"%0.4f"|format(glycopeptide.ms2_score)}}</td>
+                        <td>{{"%0.4f"|format(glycopeptide.q_value)}}</td>
+                        <td>{{"%0.4e"|format(glycopeptide.total_signal)}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class='col s4'>
+            <b>Observed Mass (PPM Error)</b>:
+            <span>{{glycopeptide.chromatogram.weighted_neutral_mass}}
+                  ({{"%0.3e"|format(match.precursor_mass_accuracy())}})</span> <br>
+            <b>Spectrum Matches</b>:
+            <span>
+                {{glycopeptide.spectrum_matches | length}}</span><br>
+            <b>Charge States</b>:
+                {{glycopeptide.chromatogram.charge_states | join(", ")}}<br>
+        </div>
+    </div>
+    <div class="row">
+        <div id='chromatogram-container' class="col s6">
+            {{chromatogram_plot}}
+        </div>
+        <div id='best-spectrum-match-container' class="col s6">
+            {{spectrum_plot}}
+        </div>
+    </div>
+    <div class='row'>
+        <div class='col s3'>
+            <h5>Fragment Matches</h5>
+            {% for pair in match.solution_map|sort(attribute='fragment.series.name') %}
+                <span class='fragment-match' style='padding: 5px;display: inline-block;word-break: none;'>
+                    <span class='fragment-name'>{{pair.fragment.name}}</span>
+                    &rarr;
+                    <span class='matched-peak'>{{(pair.peak.mz, pair.peak.intensity, pair.peak.charge)}}</span>
+                </span><br>
+            {% endfor %}            
+        </div>
+    </div>
+</div>

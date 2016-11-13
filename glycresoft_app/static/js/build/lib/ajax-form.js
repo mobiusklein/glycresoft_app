@@ -1,15 +1,12 @@
 var ajaxForm, setupAjaxForm;
 
 ajaxForm = function(formHandle, success, error, transform) {
-  console.log("Ajaxifying ", formHandle);
   return $(formHandle).on('submit', function(event) {
-    var ajaxParams, data, encoding, handle, locked, method, url, wrappedSuccess;
+    var ajaxParams, data, encoding, handle, locked, method, url, wrappedError, wrappedSuccess;
     event.preventDefault();
-    console.log(formHandle, "submitting...");
     handle = $(this);
     locked = handle.data("locked");
     if (locked === true) {
-      console.log("Form Locked");
       return false;
     } else if (locked === void 0 || locked === null) {
       locked = true;
@@ -18,7 +15,6 @@ ajaxForm = function(formHandle, success, error, transform) {
       locked = true;
       handle.data("locked", locked);
     }
-    console.log("Is form locked", handle.data("locked"));
     if (transform == null) {
       transform = function(form) {
         return new FormData(form);
@@ -30,8 +26,11 @@ ajaxForm = function(formHandle, success, error, transform) {
     encoding = handle.attr('enctype') || 'application/x-www-form-urlencoded; charset=UTF-8';
     wrappedSuccess = function(a, b, c) {
       handle.data("locked", false);
-      console.log("Unlocking Form", handle.data("locked"));
       return success(a, b, c);
+    };
+    wrappedError = function(a, b, c) {
+      handle.data("locked", false);
+      return error(a, b, c);
     };
     ajaxParams = {
       'url': url,
@@ -40,7 +39,7 @@ ajaxForm = function(formHandle, success, error, transform) {
       'processData': false,
       'contentType': false,
       'success': wrappedSuccess,
-      'error': error
+      'error': wrappedError
     };
     return $.ajax(ajaxParams);
   });

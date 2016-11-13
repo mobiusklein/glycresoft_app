@@ -8,6 +8,8 @@ def run_setup(include_cext=True):
         packages=find_packages(),
         author=', '.join(["Joshua Klein"]),
         author_email=["jaklein@bu.edu"],
+        include_package_data=True,
+        zip_safe=False,
         classifiers=[
                 'Development Status :: 3 - Alpha',
                 'Intended Audience :: Science/Research',

@@ -13,11 +13,13 @@ def build_combinatorial_hypothesis(rule_file, database_connection, reduction, de
         name = validate_glycan_hypothesis_name(None, database_connection, name)
         channel.send(Message("Building Glycan Hypothesis %s" % name, 'info'))
     try:
+        reduction = str(reduction) if reduction is not None else None
         validate_reduction(None, reduction)
     except Abort:
         channel.send(Message("Could not validate reduction %s" % reduction), 'error')
         return
     try:
+        derivatization = str(derivatization) if derivatization is not None else None
         validate_derivatization(None, derivatization)
     except Abort:
         channel.send(Message("Could not validate derivatization %s" % derivatization, 'error'))

@@ -9,12 +9,9 @@ ActionBook =
     glycanCompositionSearch:
         contentURL: '/search_glycan_composition/run_search'
         name: 'search-glycan-composition'
-    peakGroupingMatchSamples:
-        contentURL: '/peak_grouping_match_samples'
-        name: "peak-grouping-match-samples"
-    tandemMatchSamples:
-        contentURL: '/tandem_match_samples'
-        name: 'tandem-match-samples'
+    glycopeptideSequenceSearch:
+        contentURL: '/search_glycopeptide_sequences/run_search'
+        name: "search-glycopeptide-sequences"
     naiveGlycopeptideSearchSpace:
         contentURL: "/glycopeptide_search_space"
         name: "glycopeptide-search-space"
@@ -32,17 +29,15 @@ ActionBook =
 makeAPIGet = (url) -> (callback) -> $.get(url).success(callback)
 makeParameterizedAPIGet = (url) -> (params, callback) -> $.get(url.format(params)).success(callback)
 
-DataSource =
-    hypotheses: makeAPIGet "/api/hypotheses"
-    samples: makeAPIGet "/api/samples"
-    analyses: makeAPIGet "/api/analyses"
-    tasks: makeAPIGet "/api/tasks"
-    glycopeptideMatches: makeAPIGet "/api/glycopeptide_matches"
+Hypothesis =
+    all: makeAPIGet("/api/hypotheses")
+    get: makeParameterizedAPIGet("/api/hypotheses/{}")
 
-makePartialGet = (url, method) -> (parameters, callback) -> $[method](url.format(parameters)).success(callback)
+Sample = 
+    all: makeAPIGet("/api/samples")
 
-PartialSource =
-    glycopeptideCompositionDetailsModal: makePartialGet(
-        '/view_analysis/view_glycopeptide_composition_details/{id}', "get")
-    glycanCompositionDetailsModal: makePartialGet(
-        '/view_analysis/view_glycan_composition_details/{id}', "get")
+Analysis = 
+    all: makeAPIGet("/api/analyses")
+
+Task =
+    all: makeAPIGet("/api/tasks")

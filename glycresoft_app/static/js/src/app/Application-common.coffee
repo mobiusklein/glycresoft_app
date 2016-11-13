@@ -1,7 +1,5 @@
 class Application extends ActionLayerManager
     constructor: (options={}) ->
-        console.log "Instantiating Application", this
-
         super options.actionContainer, options
 
         @version = [
@@ -15,6 +13,10 @@ class Application extends ActionLayerManager
         @sideNav = $('.side-nav')
         @colors = new ColorManager()
         self = this
+
+        self.monosaccharideFilterState = new MonosaccharideFilterState(self, null)
+
+        @messageHandlers = {}
         
         @connectEventSource()
         
@@ -55,7 +57,7 @@ class Application extends ActionLayerManager
             @samples[data.name] = data
             @emit "render-samples"
         @handleMessage 'new-hypothesis', (data) =>
-            @hypotheses[data.id] = data
+            @hypotheses[data.uuid] = data
             @emit "render-hypotheses"
         @handleMessage 'new-analysis', (data) =>
             @analyses[data.id] = data
@@ -65,7 +67,6 @@ class Application extends ActionLayerManager
             @colors.update()
 
     connectEventSource: ->
-        console.log "Establishing EventSource connection"
         @eventStream = new EventSource('/stream')
 
     runInitializers: ->
@@ -104,6 +105,7 @@ class Application extends ActionLayerManager
         taskListContainer.find("li").dblclick doubleClickTask
 
     handleMessage: (messageType, handler) ->
+        @messageHandlers[messageType] = handler
         @eventStream.addEventListener messageType, (event) ->
             data = JSON.parse(event.data)
             handler(data)
@@ -115,12 +117,11 @@ class Application extends ActionLayerManager
                 self.container = $(self.options.actionContainer)
                 self.sideNav = $('.side-nav')
                 self.addLayer ActionBook.home
-                $("#run-matching").click (event) ->
-                    $(".lean-overlay").remove()
-                    setupAjaxForm "/ms1_or_ms2_choice?ms1_choice=peakGroupingMatchSamples&ms2_choice=tandemMatchSamples",
-                                  "#message-modal"
                 $("#search-glycan-composition").click (event) ->
                     self.addLayer ActionBook.glycanCompositionSearch
+                    self.setShowingLayer self.lastAdded
+                $("#search-glycopeptide-database").click (event) ->
+                    self.addLayer ActionBook.glycopeptideSequenceSearch
                     self.setShowingLayer self.lastAdded
                 $("#add-sample").click (event) ->
                     self.addLayer ActionBook.addSample
@@ -143,23 +144,22 @@ class Application extends ActionLayerManager
                 if layer.name != ActionBook.home.name
                     console.log("Updated Settings, Current Layer:", layer.name)
                     layer.setup()
+
+        ->
+            setInterval(@_upkeepIntervalCallback, 10000)
     ]
 
     loadData: ->
-        DataSource.hypotheses (d) => 
-            console.log('hypothesis', d)
+        Hypothesis.all (d) => 
             @hypotheses = d
             @emit "render-hypotheses"
-        DataSource.samples (d) =>
-            console.log('samples', d)
+        Sample.all (d) =>
             @samples = d
             @emit "render-samples"
-        DataSource.analyses (d) =>
-            console.log('analyses', d)
+        Analysis.all (d) =>
             @analyses = d
             @emit "render-analyses"
-        DataSource.tasks (d) =>
-            console.log('tasks', d)
+        Task.all (d) =>
             @tasks = d
             @updateTaskList()
         @colors.update()
@@ -183,6 +183,15 @@ class Application extends ActionLayerManager
         options.contentType = "application/json"
         return $.ajax(url, options)
 
+    _upkeepIntervalCallback: =>
+        if @eventStream.readyState == 2
+            @connectEventSource()
+            for msgType, handler of @messageHandlers
+                @handleMessage msgType, handler
+        return true
+
+    setHypothesisContext: (hypothseisUUID) ->
+        @context.hypothseisUUID = hypothseisUUID
 
 
 renderTask = (task) ->
@@ -191,7 +200,6 @@ renderTask = (task) ->
 
 $(() ->
     window.GlycReSoft = new Application(options={actionContainer: ".action-layer-container"})
-    console.log("updating Application")
     GlycReSoft.runInitializers()
     GlycReSoft.updateSettings()
     GlycReSoft.updateTaskList())

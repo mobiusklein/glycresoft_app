@@ -54,7 +54,6 @@ ActionLayerManager = (function(superClass) {
 
   ActionLayerManager.prototype.setShowingLayer = function(id) {
     var current, i, next;
-    console.log(id);
     current = this.getShowingLayer();
     next = this.get(id);
     try {
@@ -81,7 +80,6 @@ ActionLayerManager = (function(superClass) {
       options.closeable = true;
     }
     layer = new ActionLayer(this, options, params);
-    console.log(layer);
     if (this.layerStack.length === 0) {
       this.layerStack.push(layer);
     }
@@ -184,7 +182,6 @@ ActionLayer = (function() {
 
   ActionLayer.prototype.setup = function() {
     var callback;
-    console.log("Setting up", this);
     if (this.options.contentURLTemplate != null) {
       this.contentURL = this.options.contentURLTemplate.format(this.params);
     }
@@ -199,13 +196,11 @@ ActionLayer = (function() {
           var srcURL;
           tag = $(tag);
           srcURL = tag.attr('src');
-          console.log("Setting up script", tag);
           if (srcURL !== void 0) {
             return $.getScript(srcURL);
           }
         });
         materialRefresh();
-        console.log("This layer can be closed? " + _this.options.closeable);
         if (_this.options.closeable) {
           return _this.container.prepend("<div>\n    <a class='dismiss-layer mdi mdi-close' onclick='GlycReSoft.removeCurrentLayer()'></a>\n</div>");
         }
@@ -214,6 +209,7 @@ ActionLayer = (function() {
     if (this.method === "get") {
       return $.get(this.contentURL).success(callback);
     } else if (this.method === "post") {
+      console.log("Setup Post", this.manager.settings);
       return $.ajax(this.contentURL, {
         contentType: "application/json",
         data: JSON.stringify({
@@ -233,7 +229,6 @@ ActionLayer = (function() {
       var srcURL;
       tag = $(tag);
       srcURL = tag.attr('src');
-      console.log("Setting up script", tag);
       if (srcURL !== void 0) {
         return $.getScript(srcURL);
       }

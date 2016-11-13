@@ -5,21 +5,17 @@
 class MonosaccharideInputWidgetGrid
     template: """
     <div class='monosaccharide-row row'>
-        <div class='input-field col s2'>
+        <div class='input-field col s3'>
             <label for='mass_shift_name'>Monosaccharide Name</label>
             <input class='monosaccharide-name' type='text' name='monosaccharide_name' placeholder='Name'>
         </div>
-        <div class='input-field col s2'>
+        <div class='input-field col s3'>
             <label for='monosaccharide_mass_delta'>Lower Bound</label>
-            <input class='lower-bound' type='number' name='monosaccharide_lower_bound' placeholder='Lower Bound'>
+            <input class='lower-bound numeric-entry' type='number' name='monosaccharide_lower_bound' placeholder='Lower Bound'>
         </div>
-        <div class='input-field col s2'>
+        <div class='input-field col s3'>
             <label for='monosaccharide_max_count'>Upper Bound</label>    
-            <input class='upper-bound' type='number' min='0' placeholder='Upper Bound' name='monosaccharide_upper_bound'>
-        </div>
-        <div class='input-field col s2'>
-            <label for='monosaccharide_composition'>Monosaccharide Composition</label>
-            <input class='monosaccharide-composition' type='text' name='monosaccharide_composition' placeholder='Composition'>
+            <input class='upper-bound numeric-entry' type='number' min='0' placeholder='Upper Bound' name='monosaccharide_upper_bound'>
         </div>
     </div>
     """
@@ -38,7 +34,7 @@ class MonosaccharideInputWidgetGrid
                 name: row.find(".monosaccharide-name").val()
                 lower_bound: row.find(".lower-bound").val()
                 upper_bound: row.find(".upper-bound").val()
-                composition: row.find(".monosaccharide-composition").val()
+                # composition: row.find(".monosaccharide-composition").val()
             }
             if entry.name == ""
                 continue
@@ -79,7 +75,7 @@ class MonosaccharideInputWidgetGrid
         row.find(".monosaccharide-name").val(name)
         row.find(".lower-bound").val(lower)
         row.find(".upper-bound").val(upper)
-        row.find(".monosaccharide-composition").val(composition)
+        # row.find(".monosaccharide-composition").val(composition)
         @container.append(row)
         row.find("input").change => @update()
         console.log(row)

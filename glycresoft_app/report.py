@@ -53,7 +53,7 @@ def render_plot(figure, **kwargs):
         figure.set_figwidth(kwargs['width'])
     if kwargs.get("bbox_inches") != 'tight' or kwargs.get("patchless"):
         figure.patch.set_visible(False)
-        figure.axes[0].patch.set_visible(False)
+        # figure.axes[0].patch.set_visible(False)
     data_buffer = StringIO()
     figure.savefig(data_buffer, **kwargs)
     plt.close(figure)
@@ -65,7 +65,7 @@ def rgbpack(color):
 
 
 def glycopeptide_string(sequence, long=False, include_glycan=True):
-    sequence = PeptideSequence(sequence)
+    sequence = PeptideSequence(str(sequence))
     parts = []
     template = "(<span class='modification-chip'"\
         " style='background-color:%s;padding-left:1px;padding-right:2px;border-radius:2px;'"\
@@ -133,6 +133,7 @@ def n_per_row(sequence, n=60):
 
 def prepare_environment(env=None):
     try:
+        raise Exception()
         loader = PackageLoader("glycresoft_app", "html")
         loader.list_templates()
     except:

@@ -14,5 +14,7 @@ def view_analysis_dispatch(id):
     analysis = g.manager.session.query(Analysis).get(id)
     if analysis.analysis_type == AnalysisTypeEnum.glycan_lc_ms:
         return view_glycan_lcms_analysis.index(id)
+    elif analysis.analysis_type == AnalysisTypeEnum.glycopeptide_lc_msms:
+        return view_glycopeptide_lcmsms_analysis.index(id)
     else:
         return abort(404)

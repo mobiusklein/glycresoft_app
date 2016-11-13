@@ -1,2 +1,1 @@
-import matplotlib
-matplotlib.use("TkAgg")
+from version import version as __version__

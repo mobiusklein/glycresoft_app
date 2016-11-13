@@ -1,18 +1,17 @@
 Application.prototype.renderHypothesisListAt = function(container) {
-  var chunks, hypothesis, i, len, ref, row, self, template;
+  var chunks, hypothesis, i, j, len, ref, row, self, template;
   chunks = [];
   template = '';
   self = this;
+  i = 0;
   ref = _.sortBy(_.values(this.hypotheses), function(o) {
     return o.id;
   });
-  for (i = 0, len = ref.length; i < len; i++) {
-    hypothesis = ref[i];
-    if (hypothesis.is_decoy) {
-      continue;
-    }
-    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle'>" + hypothesis.id + ". " + (hypothesis.name.replace('_', ' ')) + "</span> <small class='right' style='display:inherit'> " + (hypothesis.hypothesis_type != null ? hypothesis.hypothesis_type : '-') + " <a class='remove-hypothesis mdi mdi-close'></a> </small> </div>");
+  for (j = 0, len = ref.length; j < len; j++) {
+    hypothesis = ref[j];
+    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle'>" + i + ". " + (hypothesis.name.replace('_', ' ')) + "</span> <small class='right' style='display:inherit'> " + (hypothesis.hypothesis_type != null ? hypothesis.hypothesis_type : '-') + " <a class='remove-hypothesis mdi mdi-close'></a> </small> </div>");
     chunks.push(row);
+    i += 1;
     row.click(function(event) {
       var handle, hypothesisId, layer, uuid;
       handle = $(this);

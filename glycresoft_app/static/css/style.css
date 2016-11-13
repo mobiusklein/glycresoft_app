@@ -35,6 +35,14 @@ code.sequence-text {
 }
 
 
+.protein-name {
+    padding-left: 20px;
+    display: inline-block;
+    width: 300px;
+    word-break: break-all;
+}
+
+
 /*
 
 Form Elements

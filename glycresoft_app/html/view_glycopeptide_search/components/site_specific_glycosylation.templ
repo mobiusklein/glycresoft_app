@@ -1,0 +1,7 @@
+{% for site, axis in axes_map.items() %}
+    <div>
+        <h4>Site {{site}}</h4>
+        {{axis | png_plot(bbox_inches='tight', width=12, height=8)}}
+    </div>
+
+{% endfor %}

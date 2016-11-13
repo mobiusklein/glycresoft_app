@@ -1,5 +1,5 @@
 <div class='row'>
-    <h2>Glycopeptide Search Space Building</h2>
+    <h4>Glycopeptide Search Space Building</h4>
 </div>
 <div class='row'>
     <form  id='glycopeptide-hypothesis-form' action="glycopeptide_search_space" method="post" class="col s12" accept-charset="utf-8" enctype="multipart/form-data">
@@ -27,24 +27,7 @@
             </small>
         </div>
         <div id='mzid-protein-list-container'>
-            
         </div>
-        <div class='row'>
-            <div class='col s8'>
-                <div class="file-field input-field">
-                    <h6>Glycosylation Site List</h6>                    
-                    <div class="btn">
-                        <span>Select File...</span>
-                        <input name='glycosylation-site-list-file' type="file" />
-                    </div>
-                    <input class="file-path validate" type="text" style="width: 60%;padding-left:5px;"/>
-                </div>
-            </div>
-            <small class='col s4' id='sitelist-file-help'>
-            List of positions (counting starting at 1) for all glycosylation sites for each protein in Fasta format. Omit to use automatic <em>N</em>-glycan sequon pattern matching.
-            </small>
-        </div>
-
         <div class='row'>
             <div class='col s4' id='constant-modifications-container'>
                 <h6>Constant Modifications</h6>
@@ -66,7 +49,8 @@
                 {% include 'components/peptidase_selection.templ' %}        
             {% endwith %}
             <label for='missed_cleavages'>Missed Cleavages Allowed</label>
-            <input class='validate' type='number' min="0" id='missed_cleavages' name='missed_cleavages' value="2"/>
+            <input class='validate numeric-entry' type='number' min="0" id='missed_cleavages'
+                   name='missed_cleavages' value="2"/>
             <span class='message'></span>
             </div>
         </div>
@@ -98,24 +82,24 @@
             <div class='col s4'>
                 <div class='input-field'>
                     <h6>
-                        Select a Glycan Hypothesis or Sample Match
+                        Select a Glycan Hypothesis or Sample Analysis
                     </h6>
                     <select id="glycan-database-source" name="glycan-database-source" class='browser-default'>
                         <option selected="true"></option>
                         <optgroup label="Glycan Hypotheses">
-                        {% for hypothesis in Manager.ms1_glycan_hypotheses() %}
+                        {% for hypothesis in manager.glycan_hypotheses() %}
                             <option value="Hypothesis,{{hypothesis.id}}">{{hypothesis.name}}</option>
                         {% endfor %}
                         </optgroup>
-                        <optgroup label="Glycan Hypothesis Sample Matches">
-                        {% for hsm in Manager.ms1_glycan_hypothesis_sample_matches() %}
-                            <option value="HypothesisSampleMatch,{{hsm.id}}">{{hsm.name}}</option>
+                        <optgroup label="Glycan Analyses">
+                        {% for result in manager.glycan_analyses() %}
+                            <option value="Analysis,{{result.id}}">{{result.name}}</option>
                         {% endfor %}
                         </optgroup>
                     </select>
                 </div>
                 <div id='glycan-import-score-filter-container' class='input-field'>
-                    <input type='number' name='glycan-import-score-filter' 
+                    <input type='number' name='glycan-import-score-filter' class='numeric-entry'
                            id='glycan-import-score-filter' min='0' max='1' value='0.3'
                            step='0.05'/>
                     <label for='glycan-import-score-filter'>
@@ -128,7 +112,8 @@
             <div class='col s3 tooltipped' data-position='top' data-tooltip="Be careful if using a large number glycans, as this can make the hypothesis intractably large.">
                 <div>
                     <label for='max_glycosylation_sites' >Maximum Number of Glycosylations per Peptide</label>
-                    <input class='validate' type='number' min="0" id='max_glycosylation_sites' name='max_glycosylation_sites' value="1"/>
+                    <input class='validate numeric-entry' type='number' min="0" id='max_glycosylation_sites'
+                           name='max_glycosylation_sites' value="1"/>
                 </div>
             </div>
         </div>

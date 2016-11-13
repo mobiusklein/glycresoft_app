@@ -1,0 +1,21 @@
+<svg
+   viewBox="0 0 24 24"
+   height="48"
+   width="48"
+   version="1.1">
+  <path
+     style="fill-opacity:1;stroke-width:0;stroke-miterlimit:4;stroke-dasharray:none"
+     id="path4"
+     d="m 3.9243374,19.283088 c 0,0.552285 0.747958,1.700044 1.3002389,1.702082 l 13.7796607,0.05085 c 0.552281,0.002 1.394068,-1.25492 1.394068,-1.807203 0,-0.21 -0.298813,-1.02017 -0.408813,-1.18017 L 14.34336,8.0775208 14.372882,3.085 l -4.6949157,0 0.050847,5.0361864 -5.4476779,9.8863476 c 0,0 -0.2588264,0.608114 -0.2588264,0.818114 M 6,22 C 4.3431458,22 3,20.656854 3,19 3,18.4 3.18,17.84 3.5,17.37 L 9,7.81 9,6 C 8.4477153,6 8,5.5522847 8,5 L 8,4 C 8,2.8954305 8.8954305,2 10,2 l 4,0 c 1.104569,0 2,0.8954305 2,2 l 0,1 c 0,0.5522847 -0.447715,1 -1,1 l 0,1.81 5.5,9.56 c 0.32,0.47 0.5,1.03 0.5,1.63 0,1.656854 -1.343146,3 -3,3 z" />
+  <g
+     transform="translate(0.21572749,0)"
+     id="text3338"
+     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12.5px;line-height:125%;font-family:sans-serif;
+     text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1">
+    <path
+       id="path3343"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12.5px;line-height:125%;font-family:sans-serif;
+       text-align:start;writing-mode:lr-tb;text-anchor:start"
+       d="m 15.983914,16.307877 -3.253173,0 0,3.222656 -1.672364,0 0,-3.222656 -3.2531736,0 0,-1.635743 3.2531736,0 0,-3.222656 1.672364,0 0,3.222656 3.253173,0 0,1.635743 z" />
+  </g>
+</svg>

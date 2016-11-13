@@ -1,3 +1,4 @@
+from uuid import uuid4
 from flask import Blueprint, g, jsonify
 
 from glycresoft_app.utils import json_serializer
@@ -5,6 +6,7 @@ from glycan_profiling.serialize import IdentifiedGlycopeptide
 from glycan_profiling.plotting import colors
 
 from .service_module import register_service
+from .view_hypothesis import _locate_hypothesis
 
 # ----------------------------------------
 #           JSON Data API Calls
@@ -52,8 +54,13 @@ def api_hypotheses():
     for hypothesis in g.manager.glycopeptide_hypotheses():
         dump = hypothesis.to_json()
         d[hypothesis.uuid] = dump
-
     return jsonify(**d)
+
+
+@api.route("/api/hypotheses/<uuid>")
+def get_hypothesis(uuid):
+    hypothesis = _locate_hypothesis(uuid)
+    return jsonify(hypothesis=hypothesis.to_json())
 
 
 @api.route("/api/analyses")
@@ -61,6 +68,5 @@ def api_analyses():
     d = {}
     for analysis in g.manager.analyses():
         dump = analysis.to_json()
-        print(analysis.uuid)
         d[analysis.uuid] = dump
     return jsonify(**d)

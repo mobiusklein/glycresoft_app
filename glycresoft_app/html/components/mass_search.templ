@@ -1,4 +1,4 @@
-<div class='mass-search-control' data-target="{{hypothesis.id}}" style='position: relative;'>
+<div class='mass-search-control' data-target="{{hypothesis.uuid}}" style='position: relative;'>
     <div class="col s2" style="padding-top: 45px;">
         <label for="mass-search-value" class="">Search Mass</label>
         <input type="number" id="mass-search-value" name="mass-search-value">
@@ -16,17 +16,20 @@
 </div>
 <script>
     $("#mass-search-btn").click(function(evt){
-        var hypothesisId = $('.mass-search-control').attr("data-target")
-        GlycReSoft.ajaxWithContext("/view_hypothesis/" + hypothesisId + "/mass_search", {
+        var hypothesisUUID = $('.mass-search-control').attr("data-target")
+        GlycReSoft.ajaxWithContext("/view_hypothesis/" + hypothesisUUID + "/mass_search", {
             data: {
                 "mass": parseFloat($("#mass-search-value").val()),
                 "tolerance": parseFloat($("#matching-ppm-error-tolerance").val()) * 1e-6
             }
         }).success(function(matches){
-            var output = $("<div></div")
+            var output = $("<table></table>")
             for(var i = 0; i < matches.length; i++){
-                output.append($("<div></div>").text(matches[i].sequence))
-                console.log(matches[i])
+                var row = $("<tr></tr>")
+                row.append($("<td>" + matches[i].string + "</td>"))
+                row.append($("<td>" + matches[i].mass.toFixed(4) + "(" + matches[i].error.toExponential(3) + ")</td>"))
+                output.append(row)
+                console.log(matches[i], 1)
             }
             GlycReSoft.displayMessageModal(output)
         })

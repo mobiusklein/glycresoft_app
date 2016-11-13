@@ -16,10 +16,21 @@ identifyProteomicsFormat = (file, callback) ->
     reader.readAsText(file.slice(0, 100))
 
 
-getProteinName = (line) ->
-    id = /id="([^"]+)"/.exec(line)
-    id = id[1]
-    return id.split("_").slice(1).join("_")
+getProteinName = (sequence) ->
+    for line in sequence.split("\n")
+        parts = line.split /(<DBSequence)/g
+        i = 0
+        chunk = null
+        for part in parts
+            if /<DBSequence/.test part
+                chunk = parts[i + 1]
+                break
+            i += 1
+        if chunk?
+            id = /accession="([^"]+)"/.exec chunk
+            id = id[1]
+            return id # id.split("_").slice(1).join("_")
+
 
 getProteinNamesFromMzIdentML = (file, callback, nameCallback) ->
     fr = new FileReader()
@@ -27,23 +38,42 @@ getProteinNamesFromMzIdentML = (file, callback, nameCallback) ->
     if !nameCallback?
         nameCallback = (name) ->
             console.log(name)
-    chunksize = 1024 * 8
+    chunksize = 1024 * 32
     offset = 0
     proteins = {}
+    lastLine = ""
+    isDone = false
     fr.onload = ->
-        lines = @result.split("\n")
-        for line in lines
-            if /<ProteinDetectionHypothesis/i.test line
-                name = getProteinName(line)
-                if !proteins[name]
-                    proteins[name] = true
-                    nameCallback(name)
+        sequences = [lastLine].concat (@result).split /<\/DBSequence>/g
+        i = 0
+        for sequence in sequences
+            if i == 0
+                # console.log(sequence)
+                i
+            i += 1
+            line = sequence
+            try
+                if /<DBSequence/i.test line
+                    name = getProteinName(line)
+                    if !name?
+                        continue
+                    if !proteins[name]
+                        proteins[name] = true
+                        nameCallback(name)
+                else if /<\/SequenceCollection>/i.test line
+                    console.log("Done!", line)
+                    isDone = true
+                lastLine = ""
+            catch error
+                # console.log "Error while discovering protein names", error, offset, line
+                lastLine = line
+                # throw error
 
         seek()
     fr.onerror = (error) ->
-        console.log(error)
+        console.log "Error while loading proteins", error
     seek = ->
-        if offset >= file.size
+        if offset >= file.size or isDone
             callback Object.keys(proteins)
         else
             fr.readAsText(file.slice(offset, offset + chunksize))
@@ -76,15 +106,25 @@ class MzIdentMLProteinSelector
                     <input type='checkbox' id='select-all-proteins-checkbox' name='select-all-proteins-checkbox'/>
                     <label for='select-all-proteins-checkbox'>Select All</label>
                 </div>
+                <div class='col s2' id='is-working'>
+                    <span class="card-panel red">
+                        Working
+                    </span>
+                </div>
             </div>
             <div class='row'>
-                <div class='col s8 protein-name-list'>
+                <div class='col s12 protein-name-list'>
 
                 </div>
             </div>
         </div>
         """
-        @container.html template 
+        @container.html template
+        @container.find(".hideable-container").click ".protein-name label", (event) ->
+            target = event.target
+            parent = $(target.parentElement)
+            if parent.hasClass("protein-name")
+                target.parentElement.querySelector("input").click()
         @hideableContainer = @container.find ".hideable-container"
         @regex = @container.find ".protein-regex"
         @list = @container.find ".protein-name-list"
@@ -113,20 +153,34 @@ class MzIdentMLProteinSelector
                 e.preventDefault();
                 @regex.change()
                 return false;
+
+        @selectAllChecker.off()
+
         @selectAllChecker.click (e) =>
-            if @selectAllChecker.prop("checked")
-                @container.find("input[type='checkbox']:visible").prop("checked", true)
-            else
-                @container.find("input[type='checkbox']:visible").prop("checked", false)
+            callback = =>
+                if @selectAllChecker.prop("checked")
+                    @container.find(".protein-name-list input[type='checkbox'].protein-name-check:visible").prop("checked", true)
+                    @selectAllChecker.prop("checked", true)
+                else
+                    @container.find(".protein-name-list input[type='checkbox'].protein-name-check:visible").prop("checked", false)
+                    @selectAllChecker.prop("checked", false)
+            requestAnimationFrame(callback)
+
         @load()
 
     createAddProteinNameToListCallback: ->
+        regex = @regex
         callback = (name) =>
-            entryContainer = $("<p></p>").css({"padding-left": 20, "display": 'inline-block', "width": 240}).addClass('input-field protein-name')
-            checker = $("<input />").attr("type", "checkbox").attr("name", name).addClass("protein-name-check")
-            entryContainer.append checker
-            entryContainer.append $("<label></label>").html(name).attr("for", name).click(( -> checker.click()))
-            @list.append entryContainer
+            pat = new RegExp(regex.val())
+            template = $("""
+            <p class="input-field protein-name">
+                <input type="checkbox" name="#{name}" class="protein-name-check" />
+                <label for="#{name}">#{name}</label>
+            </p>
+            """)
+            if not pat.test(name)
+                template.hide()
+            @list.append template
         return callback
 
     updateVisibleProteins: (pattern) ->
@@ -141,7 +195,15 @@ class MzIdentMLProteinSelector
 
     load: ->
         callback = @createAddProteinNameToListCallback()
-        getProteinNamesFromMzIdentML(@fileObject, (->), callback)
+        finalizeCallback = =>
+            console.log("Finalizing!", arguments, @)
+            template = """
+            <span class="card-panel green">
+                Done
+            </span>
+            """
+            @container.find("#is-working").html(template)
+        getProteinNamesFromMzIdentML(@fileObject, finalizeCallback, callback)
 
     getChosenProteins: ->
         return ($(a).attr("name") for a in @container.find("input.protein-name-check:checked"))

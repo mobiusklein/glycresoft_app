@@ -1,0 +1,32 @@
+<table class='bordered protein-list-table'>
+    <thead class='protein-list-header'>
+        <tr>
+        <th>
+            Protein Name
+        </th>
+        <th>
+            Glycosite Count
+        </th>
+        <th>
+            Glycopeptide Count
+        </th>
+        <th></th>
+        </tr>
+    </thead>
+    <tbody class='protein-list-table-body' style='max-height:150px;'>
+    {% for entry in protein_table %}    
+        <tr class='protein-list-row' data-target="{{entry.protein.id}}">
+            <td>
+                <small>{{entry.protein.name}}</small>
+            </td>
+            <td>
+                {{entry.protein.glycosylation_sites|length}}
+            </td>
+            <td>
+                {{entry.theoretical_count}}
+            </td>
+            <td></td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>

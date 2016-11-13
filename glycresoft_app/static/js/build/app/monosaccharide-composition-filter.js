@@ -1,4 +1,87 @@
-var MonosaccharideFilter;
+var MonosaccharideFilter, MonosaccharideFilterState, makeMonosaccharideFilter, makeMonosaccharideRule, makeRuleSet;
+
+makeMonosaccharideRule = function(count) {
+  return {
+    minimum: 0,
+    maximum: count,
+    include: true
+  };
+};
+
+makeRuleSet = function(upperBounds) {
+  var count, residue, residueNames, rules;
+  residueNames = Object.keys(upperBounds);
+  rules = {};
+  for (residue in upperBounds) {
+    count = upperBounds[residue];
+    rules[residue] = makeMonosaccharideRule(count);
+  }
+  return rules;
+};
+
+makeMonosaccharideFilter = function(parent, upperBounds) {
+  var residueNames, rules;
+  if (upperBounds == null) {
+    upperBounds = GlycReSoft.settings.monosaccharide_filters;
+  }
+  residueNames = Object.keys(upperBounds);
+  rules = makeRuleSet(upperBounds);
+  return new MonosaccharideFilter(parent, residueNames, rules);
+};
+
+MonosaccharideFilterState = (function() {
+  function MonosaccharideFilterState(application) {
+    this.application = application;
+    this.setHypothesis(null);
+  }
+
+  MonosaccharideFilterState.prototype.setHypothesis = function(hypothesis) {
+    if (hypothesis != null) {
+      this.currentHypothesis = hypothesis;
+      this.hypothesisUUID = this.currentHypothesis.uuid;
+      this.hypothesisType = this.currentHypothesis.hypothesis_type;
+      return this.bounds = makeRuleSet(this.currentHypothesis.monosaccharide_bounds);
+    } else {
+      this.currentHypothesis = null;
+      this.hypothesisUUID = null;
+      this.hypothesisType = null;
+      return this.bounds = {};
+    }
+  };
+
+  MonosaccharideFilterState.prototype.isSameHypothesis = function(hypothesis) {
+    return hypothesis.uuid === this.hypothesisUUID;
+  };
+
+  MonosaccharideFilterState.prototype.setApplicationFilter = function() {
+    console.log("Updating Filters", this.bounds);
+    return this.application.settings.monosaccharide_filters = this.bounds;
+  };
+
+  MonosaccharideFilterState.prototype.update = function(hypothesisUUID, callback) {
+    console.log("Is Hypothesis New?");
+    console.log(hypothesisUUID, this.hypothesisUUID);
+    if (hypothesisUUID !== this.hypothesisUUID) {
+      console.log("Is New Hypothesis");
+      return Hypothesis.get(hypothesisUUID, (function(_this) {
+        return function(result) {
+          var hypothesis;
+          hypothesis = result.hypothesis;
+          _this.setHypothesis(hypothesis);
+          _this.setApplicationFilter();
+          return callback(_this.bounds);
+        };
+      })(this));
+    } else {
+      console.log("Is not new hypothesis");
+      this.setApplicationFilter();
+      return callback(this.bounds);
+    }
+  };
+
+  return MonosaccharideFilterState;
+
+})();
 
 MonosaccharideFilter = (function() {
   function MonosaccharideFilter(parent, residueNames, rules) {
@@ -7,6 +90,10 @@ MonosaccharideFilter = (function() {
         GlycReSoft.settings.monosaccharide_filters = {};
       }
       rules = GlycReSoft.settings.monosaccharide_filters;
+    }
+    if (residueNames == null) {
+      console.log("Getting Residue Names", GlycReSoft.settings.monosaccharide_filters);
+      residueNames = Object.keys(GlycReSoft.settings.monosaccharide_filters);
     }
     this.container = $("<div></div>").addClass("row");
     $(parent).append(this.container);
@@ -57,9 +144,18 @@ MonosaccharideFilter = (function() {
     return results;
   };
 
-  MonosaccharideFilter.prototype.changed = _.debounce((function() {
+  MonosaccharideFilter.prototype.changed = function() {
+    var old;
+    console.log("MonosaccharideFilter changed");
+    if (this.rules == null) {
+      console.log("No rules", this, this.rules);
+    }
+    old = GlycReSoft.settings.monosaccharide_filters;
+    console.log("Updating monosaccharide_filters");
+    GlycReSoft.settings.monosaccharide_filters = this.rules;
+    console.log(old, GlycReSoft.settings.monosaccharide_filters);
     return GlycReSoft.emit("update_settings");
-  }), 1000);
+  };
 
   return MonosaccharideFilter;
 

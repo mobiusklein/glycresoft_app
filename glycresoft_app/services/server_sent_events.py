@@ -47,7 +47,7 @@ def message_queue_stream(manager):
             break
         except QueueEmptyException, e:
             # Send a comment to keep the connection alive
-            if random.random() > 0.7:
+            if random.random() > 0.4:
                 yield payload.format(id=i, event_name='tick', data=json.dumps('Tick'))
         except Exception, e:
             logging.exception("An error occurred in message_queue_stream", exc_info=e)

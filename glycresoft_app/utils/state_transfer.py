@@ -1,4 +1,8 @@
-class MonosaccharideFilterSet(object):
+from flask import request
+from glycan_profiling.database import glycan_composition_filter
+
+
+class FilterSpecificationSet(object):
     def __init__(self, constraints=None):
         if constraints is None:
             constraints = tuple()
@@ -6,6 +10,9 @@ class MonosaccharideFilterSet(object):
 
     def __eq__(self, other):
         return self.constraints == other.constraints
+
+    def __len__(self):
+        return len(self.constraints)
 
     def __hash__(self):
         return hash(self.constraints)
@@ -16,20 +23,35 @@ class MonosaccharideFilterSet(object):
 
     @classmethod
     def fromdict(cls, filters):
-        filters = [MonosaccharideFilter(monosaccharide=monosaccharide, **constraint)
+        filters = [MonosaccharideFilterSpecification(monosaccharide=monosaccharide, **constraint)
                    for monosaccharide, constraint in filters.items()]
         filters = tuple(filters)
         return cls(filters)
 
     def __repr__(self):
-        return "MonosaccharideFilterSet(%r)" % (self.constraints,)
+        return "FilterSpecificationSet(%r)" % (self.constraints,)
+
+    def to_filter_query(self, filter_set):
+        if len(self) == 0:
+            return glycan_composition_filter.QueryComposer(filter_set)
+        first_spec = self.constraints[0]
+        if first_spec.include:
+            q = filter_set.query(first_spec.monosaccharide, first_spec.minimum, first_spec.maximum)
+        else:
+            q = filter_set.query(first_spec.monosaccharide, 0, 0)
+        for spec in self.constraints[1:]:
+            if spec.include:
+                q.add(spec.monosaccharide, spec.minimum, spec.maximum)
+            else:
+                q.add(spec.monosaccharide, 0, 0)
+        return q
 
 
-class MonosaccharideFilter(object):
+class MonosaccharideFilterSpecification(object):
     def __init__(self, monosaccharide, minimum, maximum, include):
         self.monosaccharide = monosaccharide
-        self.minimum = minimum
-        self.maximum = maximum
+        self.minimum = int(minimum)
+        self.maximum = int(maximum)
         self.include = include
 
     def __eq__(self, other):
@@ -46,7 +68,7 @@ class MonosaccharideFilter(object):
         return self.__dict__[key]
 
     def __repr__(self):
-        return "MonosaccharideFilter(monosaccharide=%r, minimum=%d, maximum=%d, include=%r)" % (
+        return "MonosaccharideFilterSpecification(monosaccharide=%r, minimum=%d, maximum=%d, include=%r)" % (
             self.monosaccharide, self.minimum, self.maximum, self.include)
 
 
@@ -56,12 +78,9 @@ def typify(s):
     elif isinstance(s, dict):
         return typify_dict(s)
     try:
-        return int(s)
+        return float(s)
     except ValueError:
-        try:
-            return float(s)
-        except ValueError:
-            return str(s)
+        return str(s)
 
 
 def typify_list(d):
@@ -69,19 +88,23 @@ def typify_list(d):
 
 
 def typify_dict(d):
+    if d is None:
+        return None
     return {
         k: typify(v) for k, v in d.items()
     }
 
 
-def request_arguments_and_context(request):
+def request_arguments_and_context():
     parameters = request.get_json()
-    context = typify_dict(parameters.get("context"))
-    settings = typify_dict(parameters.get("settings"))
+    if parameters is None:
+        return (), ApplicationState(dict(), dict(), FilterSpecificationSet.fromdict({}))
+    context = typify_dict(parameters.get("context", {}))
+    settings = typify_dict(parameters.get("settings", {}))
     arguments = {k: v for k, v in parameters.items() if k not in ("context", "settings")}
 
     monosaccharide_filters = settings.pop("monosaccharide_filters", {})
-    monosaccharide_filters = MonosaccharideFilterSet.fromdict(monosaccharide_filters)
+    monosaccharide_filters = FilterSpecificationSet.fromdict(monosaccharide_filters)
 
     return arguments, ApplicationState(settings, context, monosaccharide_filters)
 

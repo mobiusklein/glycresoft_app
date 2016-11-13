@@ -8,16 +8,8 @@ from glycan_profiling.serialize import (
     DatabaseBoundOperation, GlycanHypothesis,
     SampleRun)
 
-from glycan_profiling.trace import (
-    ChromatogramProcessor, ChromatogramExtractor)
-
-from glycan_profiling.scoring import chromatogram_solution, shape_fitter
-
 from glycan_profiling.profiler import (
-    GlycanChromatogramAnalyzer, GlycopeptideLCMSMSAnalyzer)
-
-from glycan_profiling.database.disk_backed_database import (
-    GlycanCompositionDiskBackedStructureDatabase)
+    GlycanChromatogramAnalyzer)
 
 from glycan_profiling.models import GeneralScorer
 
@@ -42,10 +34,14 @@ def get_by_name_or_id(session, model_type, name_or_id):
 
 def analyze_glycan_composition(database_connection, sample_identifier, hypothesis_identifier,
                                analysis_name, adducts, grouping_error_tolerance=1.5e-5,
-                               mass_error_tolerance=1e-5, scoring_model=None, channel=None):
+                               mass_error_tolerance=1e-5, scoring_model=None, network_sharing=None,
+                               channel=None, **kwargs):
     if scoring_model is None:
         scoring_model = GeneralScorer
-    print(scoring_model)
+
+    if network_sharing is None:
+        network_sharing = 0.2
+
     database_connection = DatabaseBoundOperation(database_connection)
 
     try:
@@ -85,7 +81,7 @@ def analyze_glycan_composition(database_connection, sample_identifier, hypothesi
             database_connection._original_connection, hypothesis.id,
             sample_run.id, adducts=adducts, mass_error_tolerance=mass_error_tolerance,
             grouping_error_tolerance=grouping_error_tolerance, scoring_model=scoring_model,
-            analysis_name=analysis_name)
+            analysis_name=analysis_name, network_sharing=network_sharing)
         proc = analyzer.start()
         analysis = analyzer.analysis
         channel.send(Message(json_serializer.handle_analysis(analysis), 'new-analysis'))
@@ -94,13 +90,20 @@ def analyze_glycan_composition(database_connection, sample_identifier, hypothesi
 
 
 class AnalyzeGlycanCompositionTask(Task):
+    count = 0
+
     def __init__(self, database_connection, sample_identifier, hypothesis_identifier,
                  analysis_name, adducts, grouping_error_tolerance=1.5e-5,
-                 mass_error_tolerance=1e-5, scoring_model=None, callback=lambda: 0,
-                 **kwargs):
+                 mass_error_tolerance=1e-5, scoring_model=None, network_sharing=None,
+                 callback=lambda: 0, **kwargs):
         args = (database_connection, sample_identifier, hypothesis_identifier,
                 analysis_name, adducts, grouping_error_tolerance,
-                mass_error_tolerance, scoring_model)
-        job_name = "Analyze Glycan Composition %s" % (analysis_name,)
+                mass_error_tolerance, scoring_model, network_sharing)
+        if analysis_name is None:
+            name_part = kwargs.pop("job_name_part", self.count)
+            self.count += 1
+        else:
+            name_part = analysis_name
+        job_name = "Analyze Glycan Composition %s" % (name_part,)
         kwargs.setdefault('name', job_name)
         Task.__init__(self, analyze_glycan_composition, args, callback, **kwargs)

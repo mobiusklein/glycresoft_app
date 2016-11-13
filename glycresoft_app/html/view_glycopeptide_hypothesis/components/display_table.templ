@@ -1,0 +1,44 @@
+    <div class='table-container'>
+        <table class='bordered display-table' style='width: 100%;'>
+            <thead>
+                <tr>
+                <th class='narrow'></th>
+                <th class='very-very-wide'>Glycopeptide Sequence</th>
+                <th>Theoretical Mass</th>
+                </tr>
+            </thead>
+            <tbody style='height:550px;'>
+                {% for element in paginator.items %}
+                <tr>
+                    <td class='narrow'>
+                        {{loop.index + base_index}}
+                    </td>
+                    <td class='very-very-wide'>
+                        {{element.glycopeptide_sequence|glycopeptide_string}}
+                    </td>
+                    <td>
+                        {{element.calculated_mass}}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<ul class='pagination'>
+    <li class={{"disabled" if paginator.page == 1 else ""}}>
+        <a class='previous-page'><i class="material-icons">chevron_left</i></a>
+    </li>
+    {% for page in paginator.iter_pages() %}
+        {% if page is not none %}
+            <li class='{{"waves-effect" if page != paginator.page else "active teal"}}'>
+                <a data-index="{{page}}">{{page}}</a>
+            </li>
+        {% else %}
+            <li> ... </li>
+        {% endif %}
+    {% endfor %}
+    <li class={{"disabled" if paginator.page == paginator.pages else ""}}>
+        <a class='next-page '><i class="material-icons">chevron_right</i></a>
+    </li>
+</ul>        

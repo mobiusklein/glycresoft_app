@@ -54,7 +54,6 @@ ActionLayerManager = (function(superClass) {
 
   ActionLayerManager.prototype.setShowingLayer = function(id) {
     var current, i, next;
-    console.log(id);
     current = this.getShowingLayer();
     next = this.get(id);
     try {
@@ -81,7 +80,6 @@ ActionLayerManager = (function(superClass) {
       options.closeable = true;
     }
     layer = new ActionLayer(this, options, params);
-    console.log(layer);
     if (this.layerStack.length === 0) {
       this.layerStack.push(layer);
     }
@@ -184,7 +182,6 @@ ActionLayer = (function() {
 
   ActionLayer.prototype.setup = function() {
     var callback;
-    console.log("Setting up", this);
     if (this.options.contentURLTemplate != null) {
       this.contentURL = this.options.contentURLTemplate.format(this.params);
     }
@@ -199,13 +196,11 @@ ActionLayer = (function() {
           var srcURL;
           tag = $(tag);
           srcURL = tag.attr('src');
-          console.log("Setting up script", tag);
           if (srcURL !== void 0) {
             return $.getScript(srcURL);
           }
         });
         materialRefresh();
-        console.log("This layer can be closed? " + _this.options.closeable);
         if (_this.options.closeable) {
           return _this.container.prepend("<div>\n    <a class='dismiss-layer mdi mdi-close' onclick='GlycReSoft.removeCurrentLayer()'></a>\n</div>");
         }
@@ -214,6 +209,7 @@ ActionLayer = (function() {
     if (this.method === "get") {
       return $.get(this.contentURL).success(callback);
     } else if (this.method === "post") {
+      console.log("Setup Post", this.manager.settings);
       return $.ajax(this.contentURL, {
         contentType: "application/json",
         data: JSON.stringify({
@@ -233,7 +229,6 @@ ActionLayer = (function() {
       var srcURL;
       tag = $(tag);
       srcURL = tag.attr('src');
-      console.log("Setting up script", tag);
       if (srcURL !== void 0) {
         return $.getScript(srcURL);
       }
@@ -272,15 +267,12 @@ ActionLayer = (function() {
 var ajaxForm, setupAjaxForm;
 
 ajaxForm = function(formHandle, success, error, transform) {
-  console.log("Ajaxifying ", formHandle);
   return $(formHandle).on('submit', function(event) {
-    var ajaxParams, data, encoding, handle, locked, method, url, wrappedSuccess;
+    var ajaxParams, data, encoding, handle, locked, method, url, wrappedError, wrappedSuccess;
     event.preventDefault();
-    console.log(formHandle, "submitting...");
     handle = $(this);
     locked = handle.data("locked");
     if (locked === true) {
-      console.log("Form Locked");
       return false;
     } else if (locked === void 0 || locked === null) {
       locked = true;
@@ -289,7 +281,6 @@ ajaxForm = function(formHandle, success, error, transform) {
       locked = true;
       handle.data("locked", locked);
     }
-    console.log("Is form locked", handle.data("locked"));
     if (transform == null) {
       transform = function(form) {
         return new FormData(form);
@@ -301,8 +292,11 @@ ajaxForm = function(formHandle, success, error, transform) {
     encoding = handle.attr('enctype') || 'application/x-www-form-urlencoded; charset=UTF-8';
     wrappedSuccess = function(a, b, c) {
       handle.data("locked", false);
-      console.log("Unlocking Form", handle.data("locked"));
       return success(a, b, c);
+    };
+    wrappedError = function(a, b, c) {
+      handle.data("locked", false);
+      return error(a, b, c);
     };
     ajaxParams = {
       'url': url,
@@ -311,7 +305,7 @@ ajaxForm = function(formHandle, success, error, transform) {
       'processData': false,
       'contentType': false,
       'success': wrappedSuccess,
-      'error': error
+      'error': wrappedError
     };
     return $.ajax(ajaxParams);
   });
@@ -488,7 +482,7 @@ $(function() {
       }
       try {
         v = JSON.stringify(data[name]);
-        if (v.length > 1) {
+        if (v.startsWith('"') && v.endsWith('"')) {
           v = v.slice(1, -1);
         }
         return v;
@@ -553,9 +547,9 @@ var MzIdentMLProteinSelector, getProteinName, getProteinNamesFromMzIdentML, iden
 identifyProteomicsFormat = function(file, callback) {
   var isMzidentML, reader;
   isMzidentML = function(lines) {
-    var i, len, line;
-    for (i = 0, len = lines.length; i < len; i++) {
-      line = lines[i];
+    var j, len, line;
+    for (j = 0, len = lines.length; j < len; j++) {
+      line = lines[j];
       if (/mzIdentML/.test(line)) {
         return true;
       }
@@ -576,44 +570,81 @@ identifyProteomicsFormat = function(file, callback) {
   return reader.readAsText(file.slice(0, 100));
 };
 
-getProteinName = function(line) {
-  var id;
-  id = /id="([^"]+)"/.exec(line);
-  id = id[1];
-  return id.split("_").slice(1).join("_");
+getProteinName = function(sequence) {
+  var chunk, i, id, j, k, len, len1, line, part, parts, ref;
+  ref = sequence.split("\n");
+  for (j = 0, len = ref.length; j < len; j++) {
+    line = ref[j];
+    parts = line.split(/(<DBSequence)/g);
+    i = 0;
+    chunk = null;
+    for (k = 0, len1 = parts.length; k < len1; k++) {
+      part = parts[k];
+      if (/<DBSequence/.test(part)) {
+        chunk = parts[i + 1];
+        break;
+      }
+      i += 1;
+    }
+    if (chunk != null) {
+      id = /accession="([^"]+)"/.exec(chunk);
+      id = id[1];
+      return id;
+    }
+  }
 };
 
 getProteinNamesFromMzIdentML = function(file, callback, nameCallback) {
-  var chunksize, fr, offset, proteins, seek;
+  var chunksize, fr, isDone, lastLine, offset, proteins, seek;
   fr = new FileReader();
   if (nameCallback == null) {
     nameCallback = function(name) {
       return console.log(name);
     };
   }
-  chunksize = 1024 * 8;
+  chunksize = 1024 * 32;
   offset = 0;
   proteins = {};
+  lastLine = "";
+  isDone = false;
   fr.onload = function() {
-    var i, len, line, lines, name;
-    lines = this.result.split("\n");
-    for (i = 0, len = lines.length; i < len; i++) {
-      line = lines[i];
-      if (/<ProteinDetectionHypothesis/i.test(line)) {
-        name = getProteinName(line);
-        if (!proteins[name]) {
-          proteins[name] = true;
-          nameCallback(name);
+    var error, i, j, len, line, name, sequence, sequences;
+    sequences = [lastLine].concat(this.result.split(/<\/DBSequence>/g));
+    i = 0;
+    for (j = 0, len = sequences.length; j < len; j++) {
+      sequence = sequences[j];
+      if (i === 0) {
+        i;
+      }
+      i += 1;
+      line = sequence;
+      try {
+        if (/<DBSequence/i.test(line)) {
+          name = getProteinName(line);
+          if (name == null) {
+            continue;
+          }
+          if (!proteins[name]) {
+            proteins[name] = true;
+            nameCallback(name);
+          }
+        } else if (/<\/SequenceCollection>/i.test(line)) {
+          console.log("Done!", line);
+          isDone = true;
         }
+        lastLine = "";
+      } catch (_error) {
+        error = _error;
+        lastLine = line;
       }
     }
     return seek();
   };
   fr.onerror = function(error) {
-    return console.log(error);
+    return console.log("Error while loading proteins", error);
   };
   seek = function() {
-    if (offset >= file.size) {
+    if (offset >= file.size || isDone) {
       return callback(Object.keys(proteins));
     } else {
       fr.readAsText(file.slice(offset, offset + chunksize));
@@ -632,8 +663,16 @@ MzIdentMLProteinSelector = (function() {
 
   MzIdentMLProteinSelector.prototype.initializeContainer = function() {
     var self, template;
-    template = "<div class='display-control'>\n    <a class='toggle-visible-btn right' data-open=\"open\" style='cursor:hand;'>\n        <i class=\"material-icons\">keyboard_arrow_up</i>\n    </a>\n</div>\n<div class='hideable-container'>\n    <div class='row'>\n        <div class='col s4'>\n            <div class='input-field'>\n                <input value='' name=\"protein-regex\" type=\"text\" class=\"validate protein-regex\">\n                <label class=\"active\" for=\"protein-regex\">Protein Pattern</label>\n            </div>\n        </div>\n        <div class='col s2'>\n            <input type='checkbox' id='select-all-proteins-checkbox' name='select-all-proteins-checkbox'/>\n            <label for='select-all-proteins-checkbox'>Select All</label>\n        </div>\n    </div>\n    <div class='row'>\n        <div class='col s8 protein-name-list'>\n\n        </div>\n    </div>\n</div>";
+    template = "<div class='display-control'>\n    <a class='toggle-visible-btn right' data-open=\"open\" style='cursor:hand;'>\n        <i class=\"material-icons\">keyboard_arrow_up</i>\n    </a>\n</div>\n<div class='hideable-container'>\n    <div class='row'>\n        <div class='col s4'>\n            <div class='input-field'>\n                <input value='' name=\"protein-regex\" type=\"text\" class=\"validate protein-regex\">\n                <label class=\"active\" for=\"protein-regex\">Protein Pattern</label>\n            </div>\n        </div>\n        <div class='col s2'>\n            <input type='checkbox' id='select-all-proteins-checkbox' name='select-all-proteins-checkbox'/>\n            <label for='select-all-proteins-checkbox'>Select All</label>\n        </div>\n        <div class='col s2' id='is-working'>\n            <span class=\"card-panel red\">\n                Working\n            </span>\n        </div>\n    </div>\n    <div class='row'>\n        <div class='col s12 protein-name-list'>\n\n        </div>\n    </div>\n</div>";
     this.container.html(template);
+    this.container.find(".hideable-container").click(".protein-name label", function(event) {
+      var parent, target;
+      target = event.target;
+      parent = $(target.parentElement);
+      if (parent.hasClass("protein-name")) {
+        return target.parentElement.querySelector("input").click();
+      }
+    });
     this.hideableContainer = this.container.find(".hideable-container");
     this.regex = this.container.find(".protein-regex");
     this.list = this.container.find(".protein-name-list");
@@ -668,34 +707,37 @@ MzIdentMLProteinSelector = (function() {
         }
       };
     })(this));
+    this.selectAllChecker.off();
     this.selectAllChecker.click((function(_this) {
       return function(e) {
-        if (_this.selectAllChecker.prop("checked")) {
-          return _this.container.find("input[type='checkbox']:visible").prop("checked", true);
-        } else {
-          return _this.container.find("input[type='checkbox']:visible").prop("checked", false);
-        }
+        var callback;
+        callback = function() {
+          if (_this.selectAllChecker.prop("checked")) {
+            _this.container.find(".protein-name-list input[type='checkbox'].protein-name-check:visible").prop("checked", true);
+            return _this.selectAllChecker.prop("checked", true);
+          } else {
+            _this.container.find(".protein-name-list input[type='checkbox'].protein-name-check:visible").prop("checked", false);
+            return _this.selectAllChecker.prop("checked", false);
+          }
+        };
+        return requestAnimationFrame(callback);
       };
     })(this));
     return this.load();
   };
 
   MzIdentMLProteinSelector.prototype.createAddProteinNameToListCallback = function() {
-    var callback;
+    var callback, regex;
+    regex = this.regex;
     callback = (function(_this) {
       return function(name) {
-        var checker, entryContainer;
-        entryContainer = $("<p></p>").css({
-          "padding-left": 20,
-          "display": 'inline-block',
-          "width": 240
-        }).addClass('input-field protein-name');
-        checker = $("<input />").attr("type", "checkbox").attr("name", name).addClass("protein-name-check");
-        entryContainer.append(checker);
-        entryContainer.append($("<label></label>").html(name).attr("for", name).click((function() {
-          return checker.click();
-        })));
-        return _this.list.append(entryContainer);
+        var pat, template;
+        pat = new RegExp(regex.val());
+        template = $("<p class=\"input-field protein-name\">\n    <input type=\"checkbox\" name=\"" + name + "\" class=\"protein-name-check\" />\n    <label for=\"" + name + "\">" + name + "</label>\n</p>");
+        if (!pat.test(name)) {
+          template.hide();
+        }
+        return _this.list.append(template);
       };
     })(this);
     return callback;
@@ -717,19 +759,27 @@ MzIdentMLProteinSelector = (function() {
   };
 
   MzIdentMLProteinSelector.prototype.load = function() {
-    var callback;
+    var callback, finalizeCallback;
     callback = this.createAddProteinNameToListCallback();
-    return getProteinNamesFromMzIdentML(this.fileObject, (function() {}), callback);
+    finalizeCallback = (function(_this) {
+      return function() {
+        var template;
+        console.log("Finalizing!", arguments, _this);
+        template = "<span class=\"card-panel green\">\n    Done\n</span>";
+        return _this.container.find("#is-working").html(template);
+      };
+    })(this);
+    return getProteinNamesFromMzIdentML(this.fileObject, finalizeCallback, callback);
   };
 
   MzIdentMLProteinSelector.prototype.getChosenProteins = function() {
     var a;
     return (function() {
-      var i, len, ref, results;
+      var j, len, ref, results;
       ref = this.container.find("input.protein-name-check:checked");
       results = [];
-      for (i = 0, len = ref.length; i < len; i++) {
-        a = ref[i];
+      for (j = 0, len = ref.length; j < len; j++) {
+        a = ref[j];
         results.push($(a).attr("name"));
       }
       return results;
@@ -739,11 +789,11 @@ MzIdentMLProteinSelector = (function() {
   MzIdentMLProteinSelector.prototype.getAllProteins = function() {
     var a;
     return (function() {
-      var i, len, ref, results;
+      var j, len, ref, results;
       ref = this.container.find("input.protein-name-check");
       results = [];
-      for (i = 0, len = ref.length; i < len; i++) {
-        a = ref[i];
+      for (j = 0, len = ref.length; j < len; j++) {
+        a = ref[j];
         results.push($(a).attr("name"));
       }
       return results;
@@ -820,7 +870,7 @@ PaginationBase = (function() {
   function PaginationBase(currentPage) {
     this.currentPage = currentPage;
     this.setupPageControls = bind(this.setupPageControls, this);
-    console.log(this, "initialized");
+    this;
   }
 
   PaginationBase.prototype.setupTable = function(page) {
@@ -836,7 +886,7 @@ PaginationBase = (function() {
       page = 1;
     }
     self = this;
-    this.handle.find('.glycan-match-row').click(function(event) {
+    this.handle.find(this.rowSelector).click(function(event) {
       return self.rowClickHandler(this);
     });
     this.handle.find(':not(.disabled) .next-page').click(function() {
@@ -878,7 +928,6 @@ PaginationBase = (function() {
       page = 1;
     }
     url = this.getPageUrl(page);
-    console.log(url);
     return GlycReSoft.ajaxWithContext(url).success((function(_this) {
       return function(doc) {
         _this.currentPage = page;

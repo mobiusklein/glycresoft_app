@@ -1,7 +1,7 @@
 var ConstraintInputGrid, MonosaccharideInputWidgetGrid;
 
 MonosaccharideInputWidgetGrid = (function() {
-  MonosaccharideInputWidgetGrid.prototype.template = "<div class='monosaccharide-row row'>\n    <div class='input-field col s2'>\n        <label for='mass_shift_name'>Monosaccharide Name</label>\n        <input class='monosaccharide-name' type='text' name='monosaccharide_name' placeholder='Name'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='monosaccharide_mass_delta'>Lower Bound</label>\n        <input class='lower-bound' type='number' name='monosaccharide_lower_bound' placeholder='Lower Bound'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='monosaccharide_max_count'>Upper Bound</label>    \n        <input class='upper-bound' type='number' min='0' placeholder='Upper Bound' name='monosaccharide_upper_bound'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='monosaccharide_composition'>Monosaccharide Composition</label>\n        <input class='monosaccharide-composition' type='text' name='monosaccharide_composition' placeholder='Composition'>\n    </div>\n</div>";
+  MonosaccharideInputWidgetGrid.prototype.template = "<div class='monosaccharide-row row'>\n    <div class='input-field col s3'>\n        <label for='mass_shift_name'>Monosaccharide Name</label>\n        <input class='monosaccharide-name' type='text' name='monosaccharide_name' placeholder='Name'>\n    </div>\n    <div class='input-field col s3'>\n        <label for='monosaccharide_mass_delta'>Lower Bound</label>\n        <input class='lower-bound numeric-entry' type='number' name='monosaccharide_lower_bound' placeholder='Lower Bound'>\n    </div>\n    <div class='input-field col s3'>\n        <label for='monosaccharide_max_count'>Upper Bound</label>    \n        <input class='upper-bound numeric-entry' type='number' min='0' placeholder='Upper Bound' name='monosaccharide_upper_bound'>\n    </div>\n</div>";
 
   function MonosaccharideInputWidgetGrid(container) {
     this.counter = 0;
@@ -20,8 +20,7 @@ MonosaccharideInputWidgetGrid = (function() {
       entry = {
         name: row.find(".monosaccharide-name").val(),
         lower_bound: row.find(".lower-bound").val(),
-        upper_bound: row.find(".upper-bound").val(),
-        composition: row.find(".monosaccharide-composition").val()
+        upper_bound: row.find(".upper-bound").val()
       };
       if (entry.name === "") {
         continue;
@@ -84,7 +83,6 @@ MonosaccharideInputWidgetGrid = (function() {
     row.find(".monosaccharide-name").val(name);
     row.find(".lower-bound").val(lower);
     row.find(".upper-bound").val(upper);
-    row.find(".monosaccharide-composition").val(composition);
     this.container.append(row);
     row.find("input").change((function(_this) {
       return function() {

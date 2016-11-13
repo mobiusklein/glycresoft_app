@@ -1,4 +1,5 @@
 var Application, renderTask,
+  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
 
@@ -10,7 +11,7 @@ Application = (function(superClass) {
     if (options == null) {
       options = {};
     }
-    console.log("Instantiating Application", this);
+    this._upkeepIntervalCallback = bind(this._upkeepIntervalCallback, this);
     Application.__super__.constructor.call(this, options.actionContainer, options);
     this.version = [0, 0, 1];
     this.context = {};
@@ -19,6 +20,8 @@ Application = (function(superClass) {
     this.sideNav = $('.side-nav');
     this.colors = new ColorManager();
     self = this;
+    self.monosaccharideFilterState = new MonosaccharideFilterState(self, null);
+    this.messageHandlers = {};
     this.connectEventSource();
     this.handleMessage('update', (function(_this) {
       return function(data) {
@@ -77,7 +80,7 @@ Application = (function(superClass) {
     })(this));
     this.handleMessage('new-hypothesis', (function(_this) {
       return function(data) {
-        _this.hypotheses[data.id] = data;
+        _this.hypotheses[data.uuid] = data;
         return _this.emit("render-hypotheses");
       };
     })(this));
@@ -95,7 +98,6 @@ Application = (function(superClass) {
   }
 
   Application.prototype.connectEventSource = function() {
-    console.log("Establishing EventSource connection");
     return this.eventStream = new EventSource('/stream');
   };
 
@@ -164,6 +166,7 @@ Application = (function(superClass) {
   };
 
   Application.prototype.handleMessage = function(messageType, handler) {
+    this.messageHandlers[messageType] = handler;
     return this.eventStream.addEventListener(messageType, function(event) {
       var data;
       data = JSON.parse(event.data);
@@ -179,12 +182,12 @@ Application = (function(superClass) {
         self.container = $(self.options.actionContainer);
         self.sideNav = $('.side-nav');
         self.addLayer(ActionBook.home);
-        $("#run-matching").click(function(event) {
-          $(".lean-overlay").remove();
-          return setupAjaxForm("/ms1_or_ms2_choice?ms1_choice=peakGroupingMatchSamples&ms2_choice=tandemMatchSamples", "#message-modal");
-        });
         $("#search-glycan-composition").click(function(event) {
           self.addLayer(ActionBook.glycanCompositionSearch);
+          return self.setShowingLayer(self.lastAdded);
+        });
+        $("#search-glycopeptide-database").click(function(event) {
+          self.addLayer(ActionBook.glycopeptideSequenceSearch);
           return self.setShowingLayer(self.lastAdded);
         });
         $("#add-sample").click(function(event) {
@@ -226,34 +229,32 @@ Application = (function(superClass) {
           }
         };
       })(this));
+    }, function() {
+      return setInterval(this._upkeepIntervalCallback, 10000);
     }
   ];
 
   Application.prototype.loadData = function() {
-    DataSource.hypotheses((function(_this) {
+    Hypothesis.all((function(_this) {
       return function(d) {
-        console.log('hypothesis', d);
         _this.hypotheses = d;
         return _this.emit("render-hypotheses");
       };
     })(this));
-    DataSource.samples((function(_this) {
+    Sample.all((function(_this) {
       return function(d) {
-        console.log('samples', d);
         _this.samples = d;
         return _this.emit("render-samples");
       };
     })(this));
-    DataSource.analyses((function(_this) {
+    Analysis.all((function(_this) {
       return function(d) {
-        console.log('analyses', d);
         _this.analyses = d;
         return _this.emit("render-analyses");
       };
     })(this));
-    DataSource.tasks((function(_this) {
+    Task.all((function(_this) {
       return function(d) {
-        console.log('tasks', d);
         _this.tasks = d;
         return _this.updateTaskList();
       };
@@ -288,6 +289,23 @@ Application = (function(superClass) {
     return $.ajax(url, options);
   };
 
+  Application.prototype._upkeepIntervalCallback = function() {
+    var handler, msgType, ref;
+    if (this.eventStream.readyState === 2) {
+      this.connectEventSource();
+      ref = this.messageHandlers;
+      for (msgType in ref) {
+        handler = ref[msgType];
+        this.handleMessage(msgType, handler);
+      }
+    }
+    return true;
+  };
+
+  Application.prototype.setHypothesisContext = function(hypothseisUUID) {
+    return this.context.hypothseisUUID = hypothseisUUID;
+  };
+
   return Application;
 
 })(ActionLayerManager);
@@ -301,7 +319,6 @@ $(function() {
   window.GlycReSoft = new Application(options = {
     actionContainer: ".action-layer-container"
   });
-  console.log("updating Application");
   GlycReSoft.runInitializers();
   GlycReSoft.updateSettings();
   return GlycReSoft.updateTaskList();
@@ -309,7 +326,7 @@ $(function() {
 
 //# sourceMappingURL=Application-common.js.map
 
-var ActionBook, DataSource, PartialSource, makeAPIGet, makeParameterizedAPIGet, makePartialGet;
+var ActionBook, Analysis, Hypothesis, Sample, Task, makeAPIGet, makeParameterizedAPIGet;
 
 ActionBook = {
   home: {
@@ -325,13 +342,9 @@ ActionBook = {
     contentURL: '/search_glycan_composition/run_search',
     name: 'search-glycan-composition'
   },
-  peakGroupingMatchSamples: {
-    contentURL: '/peak_grouping_match_samples',
-    name: "peak-grouping-match-samples"
-  },
-  tandemMatchSamples: {
-    contentURL: '/tandem_match_samples',
-    name: 'tandem-match-samples'
+  glycopeptideSequenceSearch: {
+    contentURL: '/search_glycopeptide_sequences/run_search',
+    name: "search-glycopeptide-sequences"
   },
   naiveGlycopeptideSearchSpace: {
     contentURL: "/glycopeptide_search_space",
@@ -364,23 +377,21 @@ makeParameterizedAPIGet = function(url) {
   };
 };
 
-DataSource = {
-  hypotheses: makeAPIGet("/api/hypotheses"),
-  samples: makeAPIGet("/api/samples"),
-  analyses: makeAPIGet("/api/analyses"),
-  tasks: makeAPIGet("/api/tasks"),
-  glycopeptideMatches: makeAPIGet("/api/glycopeptide_matches")
+Hypothesis = {
+  all: makeAPIGet("/api/hypotheses"),
+  get: makeParameterizedAPIGet("/api/hypotheses/{}")
 };
 
-makePartialGet = function(url, method) {
-  return function(parameters, callback) {
-    return $[method](url.format(parameters)).success(callback);
-  };
+Sample = {
+  all: makeAPIGet("/api/samples")
 };
 
-PartialSource = {
-  glycopeptideCompositionDetailsModal: makePartialGet('/view_analysis/view_glycopeptide_composition_details/{id}', "get"),
-  glycanCompositionDetailsModal: makePartialGet('/view_analysis/view_glycan_composition_details/{id}', "get")
+Analysis = {
+  all: makeAPIGet("/api/analyses")
+};
+
+Task = {
+  all: makeAPIGet("/api/tasks")
 };
 
 //# sourceMappingURL=bind-urls.js.map
@@ -388,7 +399,7 @@ PartialSource = {
 var ConstraintInputGrid, MonosaccharideInputWidgetGrid;
 
 MonosaccharideInputWidgetGrid = (function() {
-  MonosaccharideInputWidgetGrid.prototype.template = "<div class='monosaccharide-row row'>\n    <div class='input-field col s2'>\n        <label for='mass_shift_name'>Monosaccharide Name</label>\n        <input class='monosaccharide-name' type='text' name='monosaccharide_name' placeholder='Name'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='monosaccharide_mass_delta'>Lower Bound</label>\n        <input class='lower-bound' type='number' name='monosaccharide_lower_bound' placeholder='Lower Bound'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='monosaccharide_max_count'>Upper Bound</label>    \n        <input class='upper-bound' type='number' min='0' placeholder='Upper Bound' name='monosaccharide_upper_bound'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='monosaccharide_composition'>Monosaccharide Composition</label>\n        <input class='monosaccharide-composition' type='text' name='monosaccharide_composition' placeholder='Composition'>\n    </div>\n</div>";
+  MonosaccharideInputWidgetGrid.prototype.template = "<div class='monosaccharide-row row'>\n    <div class='input-field col s3'>\n        <label for='mass_shift_name'>Monosaccharide Name</label>\n        <input class='monosaccharide-name' type='text' name='monosaccharide_name' placeholder='Name'>\n    </div>\n    <div class='input-field col s3'>\n        <label for='monosaccharide_mass_delta'>Lower Bound</label>\n        <input class='lower-bound numeric-entry' type='number' name='monosaccharide_lower_bound' placeholder='Lower Bound'>\n    </div>\n    <div class='input-field col s3'>\n        <label for='monosaccharide_max_count'>Upper Bound</label>    \n        <input class='upper-bound numeric-entry' type='number' min='0' placeholder='Upper Bound' name='monosaccharide_upper_bound'>\n    </div>\n</div>";
 
   function MonosaccharideInputWidgetGrid(container) {
     this.counter = 0;
@@ -407,8 +418,7 @@ MonosaccharideInputWidgetGrid = (function() {
       entry = {
         name: row.find(".monosaccharide-name").val(),
         lower_bound: row.find(".lower-bound").val(),
-        upper_bound: row.find(".upper-bound").val(),
-        composition: row.find(".monosaccharide-composition").val()
+        upper_bound: row.find(".upper-bound").val()
       };
       if (entry.name === "") {
         continue;
@@ -471,7 +481,6 @@ MonosaccharideInputWidgetGrid = (function() {
     row.find(".monosaccharide-name").val(name);
     row.find(".lower-bound").val(lower);
     row.find(".upper-bound").val(upper);
-    row.find(".monosaccharide-composition").val(composition);
     this.container.append(row);
     row.find("input").change((function(_this) {
       return function() {
@@ -629,20 +638,19 @@ Application.initializers.push(function() {
 //# sourceMappingURL=home-analysis-list-ui.js.map
 
 Application.prototype.renderHypothesisListAt = function(container) {
-  var chunks, hypothesis, i, len, ref, row, self, template;
+  var chunks, hypothesis, i, j, len, ref, row, self, template;
   chunks = [];
   template = '';
   self = this;
+  i = 0;
   ref = _.sortBy(_.values(this.hypotheses), function(o) {
     return o.id;
   });
-  for (i = 0, len = ref.length; i < len; i++) {
-    hypothesis = ref[i];
-    if (hypothesis.is_decoy) {
-      continue;
-    }
-    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle'>" + hypothesis.id + ". " + (hypothesis.name.replace('_', ' ')) + "</span> <small class='right' style='display:inherit'> " + (hypothesis.hypothesis_type != null ? hypothesis.hypothesis_type : '-') + " <a class='remove-hypothesis mdi mdi-close'></a> </small> </div>");
+  for (j = 0, len = ref.length; j < len; j++) {
+    hypothesis = ref[j];
+    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle'>" + i + ". " + (hypothesis.name.replace('_', ' ')) + "</span> <small class='right' style='display:inherit'> " + (hypothesis.hypothesis_type != null ? hypothesis.hypothesis_type : '-') + " <a class='remove-hypothesis mdi mdi-close'></a> </small> </div>");
     chunks.push(row);
+    i += 1;
     row.click(function(event) {
       var handle, hypothesisId, layer, uuid;
       handle = $(this);
@@ -705,7 +713,90 @@ MassShiftInputWidget = (function() {
 
 //# sourceMappingURL=mass-shift-ui.js.map
 
-var MonosaccharideFilter;
+var MonosaccharideFilter, MonosaccharideFilterState, makeMonosaccharideFilter, makeMonosaccharideRule, makeRuleSet;
+
+makeMonosaccharideRule = function(count) {
+  return {
+    minimum: 0,
+    maximum: count,
+    include: true
+  };
+};
+
+makeRuleSet = function(upperBounds) {
+  var count, residue, residueNames, rules;
+  residueNames = Object.keys(upperBounds);
+  rules = {};
+  for (residue in upperBounds) {
+    count = upperBounds[residue];
+    rules[residue] = makeMonosaccharideRule(count);
+  }
+  return rules;
+};
+
+makeMonosaccharideFilter = function(parent, upperBounds) {
+  var residueNames, rules;
+  if (upperBounds == null) {
+    upperBounds = GlycReSoft.settings.monosaccharide_filters;
+  }
+  residueNames = Object.keys(upperBounds);
+  rules = makeRuleSet(upperBounds);
+  return new MonosaccharideFilter(parent, residueNames, rules);
+};
+
+MonosaccharideFilterState = (function() {
+  function MonosaccharideFilterState(application) {
+    this.application = application;
+    this.setHypothesis(null);
+  }
+
+  MonosaccharideFilterState.prototype.setHypothesis = function(hypothesis) {
+    if (hypothesis != null) {
+      this.currentHypothesis = hypothesis;
+      this.hypothesisUUID = this.currentHypothesis.uuid;
+      this.hypothesisType = this.currentHypothesis.hypothesis_type;
+      return this.bounds = makeRuleSet(this.currentHypothesis.monosaccharide_bounds);
+    } else {
+      this.currentHypothesis = null;
+      this.hypothesisUUID = null;
+      this.hypothesisType = null;
+      return this.bounds = {};
+    }
+  };
+
+  MonosaccharideFilterState.prototype.isSameHypothesis = function(hypothesis) {
+    return hypothesis.uuid === this.hypothesisUUID;
+  };
+
+  MonosaccharideFilterState.prototype.setApplicationFilter = function() {
+    console.log("Updating Filters", this.bounds);
+    return this.application.settings.monosaccharide_filters = this.bounds;
+  };
+
+  MonosaccharideFilterState.prototype.update = function(hypothesisUUID, callback) {
+    console.log("Is Hypothesis New?");
+    console.log(hypothesisUUID, this.hypothesisUUID);
+    if (hypothesisUUID !== this.hypothesisUUID) {
+      console.log("Is New Hypothesis");
+      return Hypothesis.get(hypothesisUUID, (function(_this) {
+        return function(result) {
+          var hypothesis;
+          hypothesis = result.hypothesis;
+          _this.setHypothesis(hypothesis);
+          _this.setApplicationFilter();
+          return callback(_this.bounds);
+        };
+      })(this));
+    } else {
+      console.log("Is not new hypothesis");
+      this.setApplicationFilter();
+      return callback(this.bounds);
+    }
+  };
+
+  return MonosaccharideFilterState;
+
+})();
 
 MonosaccharideFilter = (function() {
   function MonosaccharideFilter(parent, residueNames, rules) {
@@ -714,6 +805,10 @@ MonosaccharideFilter = (function() {
         GlycReSoft.settings.monosaccharide_filters = {};
       }
       rules = GlycReSoft.settings.monosaccharide_filters;
+    }
+    if (residueNames == null) {
+      console.log("Getting Residue Names", GlycReSoft.settings.monosaccharide_filters);
+      residueNames = Object.keys(GlycReSoft.settings.monosaccharide_filters);
     }
     this.container = $("<div></div>").addClass("row");
     $(parent).append(this.container);
@@ -764,15 +859,85 @@ MonosaccharideFilter = (function() {
     return results;
   };
 
-  MonosaccharideFilter.prototype.changed = _.debounce((function() {
+  MonosaccharideFilter.prototype.changed = function() {
+    var old;
+    console.log("MonosaccharideFilter changed");
+    if (this.rules == null) {
+      console.log("No rules", this, this.rules);
+    }
+    old = GlycReSoft.settings.monosaccharide_filters;
+    console.log("Updating monosaccharide_filters");
+    GlycReSoft.settings.monosaccharide_filters = this.rules;
+    console.log(old, GlycReSoft.settings.monosaccharide_filters);
     return GlycReSoft.emit("update_settings");
-  }), 1000);
+  };
 
   return MonosaccharideFilter;
 
 })();
 
 //# sourceMappingURL=monosaccharide-composition-filter.js.map
+
+var makePresetSelector, samplePreprocessingPresets, setSamplePreprocessingConfiguration;
+
+samplePreprocessingPresets = [
+  {
+    name: "Negative Mode Glycomics",
+    max_charge: -9,
+    ms1_score_threshold: 15,
+    ms1_averagine: "glycan",
+    max_missing_peaks: 1
+  }, {
+    name: "Positive Mode Glycoproteomics",
+    max_charge: 12,
+    max_missing_peaks: 1,
+    ms1_score_threshold: 35,
+    ms1_averagine: "glycopeptide",
+    msn_score_threshold: 5,
+    msn_averagine: 'peptide'
+  }
+];
+
+setSamplePreprocessingConfiguration = function(name) {
+  var config, form, found, i, len;
+  found = false;
+  for (i = 0, len = samplePreprocessingPresets.length; i < len; i++) {
+    config = samplePreprocessingPresets[i];
+    if (config.name === name) {
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    return;
+  }
+  form = $("#add-sample");
+  form.find("#maximum-charge-state").val(config.max_charge);
+  form.find("#missed-peaks").val(config.max_missing_peaks);
+  form.find('#ms1-minimum-isotopic-score').val(config.ms1_score_threshold);
+  form.find('#ms1-averagine').val(config.ms1_averagine);
+  if (config.msn_score_threshold != null) {
+    form.find('#msn-minimum-isotopic-score').val(config.msn_score_threshold);
+  }
+  if (config.msn_averagine != null) {
+    return form.find('#msn-averagine').val(config.msn_averagine);
+  }
+};
+
+makePresetSelector = function(container) {
+  var elem, i, len, preset;
+  elem = $('<select style=\'browser-default\' name=\'preset-configuration>\n</select>');
+  for (i = 0, len = samplePreprocessingPresets.length; i < len; i++) {
+    preset = samplePreprocessingPresets[i];
+    elem.append($("<option value='" + preset.name + "'>" + preset.name + "</option>"));
+  }
+  container.append(elem);
+  return elem.change(function(event, name) {
+    return console.log(arguments);
+  });
+};
+
+//# sourceMappingURL=sample-preprocessing-configurations.js.map
 
 Application.prototype.renderSampleListAt = function(container) {
   var chunks, row, sample, template;
@@ -857,7 +1022,7 @@ viewGlycanCompositionHypothesis = function(hypothesisId) {
 
 //# sourceMappingURL=view-glycan-composition-hypothesis.js.map
 
-var GlycanCompositionLCMSSearchController, GlycanCompositionLCMSSearchPaginator, GlycanCompositionLCMSSearchTabView, viewGlycanCompositionPeakGroupingDatabaseSearchResults,
+var GlycanCompositionLCMSSearchController, GlycanCompositionLCMSSearchPaginator, GlycanCompositionLCMSSearchTabView,
   bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
@@ -910,7 +1075,7 @@ GlycanCompositionLCMSSearchTabView = (function(superClass) {
 
   GlycanCompositionLCMSSearchTabView.prototype.updateUrl = '/view_glycan_lcms_analysis/{analysisId}/content';
 
-  GlycanCompositionLCMSSearchTabView.prototype.containerSelector = '#glycan-lcms-container';
+  GlycanCompositionLCMSSearchTabView.prototype.containerSelector = '#glycan-lcms-content-container';
 
   function GlycanCompositionLCMSSearchTabView(analysisId, handle1, parent1, updateHandlers) {
     var parent;
@@ -934,47 +1099,72 @@ GlycanCompositionLCMSSearchTabView = (function(superClass) {
 GlycanCompositionLCMSSearchController = (function() {
   GlycanCompositionLCMSSearchController.prototype.containerSelector = '#glycan-lcms-container';
 
-  GlycanCompositionLCMSSearchController.prototype.glycanTableSelector = ".glycan-chromatogram-table";
-
   GlycanCompositionLCMSSearchController.prototype.detailModalSelector = '#glycan-detail-modal';
 
   GlycanCompositionLCMSSearchController.prototype.detailUrl = "/view_glycan_lcms_analysis/{analysisId}/details_for/{chromatogramId}";
 
-  function GlycanCompositionLCMSSearchController(analysisId) {
+  GlycanCompositionLCMSSearchController.prototype.saveCSVURL = "/view_glycan_lcms_analysis/{analysisId}/to-csv";
+
+  GlycanCompositionLCMSSearchController.prototype.monosaccharideFilterContainerSelector = '#monosaccharide-filters';
+
+  function GlycanCompositionLCMSSearchController(analysisId, hypothesisUUID, monosaccharides) {
     var updateHandlers;
     this.analysisId = analysisId;
+    this.hypothesisUUID = hypothesisUUID;
+    this.monosaccharides = monosaccharides != null ? monosaccharides : {
+      "Hex": 10,
+      "HexNAc": 10,
+      "Fuc": 10,
+      "Neu5Ac": 10
+    };
     this.handle = $(this.containerSelector);
-    this.currentPage = 1;
-    this.glycanTable = $(this.glycanTableSelector);
-    this.glycanDetailsModal = $(this.detailModalSelector);
     this.paginator = new GlycanCompositionLCMSSearchPaginator(this.analysisId, this.handle, this);
     updateHandlers = [
       (function(_this) {
         return function() {
-          console.log("Running update handler 1");
           return _this.paginator.setupTable();
         };
       })(this), (function(_this) {
         return function() {
           var handle;
-          console.log("Running update handler 2");
           handle = $(_this.tabView.containerSelector);
           $.get("/view_glycan_lcms_analysis/" + _this.analysisId + "/chromatograms_chart").success(function(payload) {
-            console.log("Chromatograms Retrieved");
             return handle.find("#chromatograms-plot").html(payload);
           });
           return $.get("/view_glycan_lcms_analysis/" + _this.analysisId + "/abundance_bar_chart").success(function(payload) {
-            console.log("Bar Chart Retrieved");
             return handle.find("#summary-abundance-plot").html(payload);
           });
         };
       })(this)
     ];
     this.tabView = new GlycanCompositionLCMSSearchTabView(this.analysisId, this.handle, this, updateHandlers);
+    this.setup();
   }
 
+  GlycanCompositionLCMSSearchController.prototype.setup = function() {
+    var filterContainer, self;
+    this.handle.find(".tooltipped").tooltip();
+    self = this;
+    this.handle.find("#save-csv-btn").click(function(event) {
+      var url;
+      url = self.saveCSVURL.format({
+        analysisId: self.analysisId
+      });
+      return $.get(url).success(function(info) {
+        return GlycReSoft.downloadFile(info.filename);
+      });
+    });
+    this.updateView();
+    filterContainer = $(this.monosaccharideFilterContainerSelector);
+    return GlycReSoft.monosaccharideFilterState.update(this.hypothesisUUID, (function(_this) {
+      return function(bounds) {
+        _this.monosaccharideFilter = new MonosaccharideFilter(filterContainer);
+        return _this.monosaccharideFilter.render();
+      };
+    })(this));
+  };
+
   GlycanCompositionLCMSSearchController.prototype.updateView = function() {
-    console.log("updateView");
     return this.tabView.updateView();
   };
 
@@ -1006,75 +1196,7 @@ GlycanCompositionLCMSSearchController = (function() {
 
 })();
 
-viewGlycanCompositionPeakGroupingDatabaseSearchResults = function() {
-  var currentPage, downloadCSV, glycanDetailsModal, glycanTable, setup, showGlycanCompositionDetailsModal, unload, updateView;
-  glycanDetailsModal = void 0;
-  glycanTable = void 0;
-  currentPage = 1;
-  setup = function() {
-    updateView();
-    return $("#save-csv-file").click(downloadCSV);
-  };
-  updateView = function() {
-    var handle;
-    handle = $(this);
-    $("#content-container").html("<div class=\"progress\"><div class=\"indeterminate\"></div></div>").fadeIn();
-    return GlycReSoft.ajaxWithContext('/view_database_search_results/results_view/').success(function(doc) {
-      var tabs;
-      $('#content-container').hide();
-      $('#content-container').html(doc).fadeIn();
-      tabs = $('ul.tabs');
-      tabs.tabs();
-      if (GlycReSoft.context['view-active-tab'] !== void 0) {
-        console.log(GlycReSoft.context['view-active-tab']);
-        $('ul.tabs').tabs('select_tab', GlycReSoft.context['view-active-tab']);
-      } else {
-        $('ul.tabs').tabs('select_tab', 'glycome-overview');
-      }
-      $('.indicator').addClass('indigo');
-      $('ul.tabs .tab a').click(function() {
-        return GlycReSoft.context['view-active-tab'] = $(this).attr('href').slice(1);
-      });
-      glycanDetailsModal = $('#glycan-detail-modal');
-      glycanTable = $("#glycan-table");
-      return updateGlycanCompositionTablePage(1);
-    }).error(function(error) {
-      return console.log(arguments);
-    });
-  };
-  showGlycanCompositionDetailsModal = function() {
-    var handle, id;
-    handle = $(this);
-    id = handle.attr('data-target');
-    console.log(id);
-    return PartialSource.glycanCompositionDetailsModal({
-      "id": id
-    }, function(doc) {
-      glycanDetailsModal.find('.modal-content').html(doc);
-      $(".lean-overlay").remove();
-      return glycanDetailsModal.openModal();
-    });
-  };
-  unload = function() {
-    return GlycReSoft.removeCurrentLayer();
-  };
-  downloadCSV = function() {
-    var handle, id;
-    handle = $(this);
-    id = handle.attr('data-target');
-    return $.ajax("/view_database_search_results/export_csv/" + id, {
-      data: JSON.stringify({
-        "context": GlycReSoft.context,
-        "settings": GlycReSoft.settings
-      }),
-      contentType: "application/json",
-      type: 'POST'
-    });
-  };
-  return setup();
-};
-
-//# sourceMappingURL=view-glycan-composition-peak-group-database-search.js.map
+//# sourceMappingURL=view-glycan-search.js.map
 
 var viewGlycopeptideCompositionHypothesis;
 
@@ -1146,7 +1268,104 @@ viewGlycopeptideCompositionHypothesis = function(hypothesisId) {
 
 //# sourceMappingURL=view-glycopeptide-composition-hypothesis.js.map
 
-var viewGlycopeptideHypothesis;
+var GlycopeptideHypothesisController, GlycopeptideHypothesisPaginator, viewGlycopeptideHypothesis,
+  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  hasProp = {}.hasOwnProperty;
+
+GlycopeptideHypothesisPaginator = (function(superClass) {
+  extend(GlycopeptideHypothesisPaginator, superClass);
+
+  GlycopeptideHypothesisPaginator.prototype.tableSelector = "#display-table-container";
+
+  GlycopeptideHypothesisPaginator.prototype.tableContainerSelector = "#display-table-container";
+
+  GlycopeptideHypothesisPaginator.prototype.rowSelector = "#display-table-container tbody tr";
+
+  GlycopeptideHypothesisPaginator.prototype.pageUrl = "/view_glycopeptide_hypothesis/{hypothesisId}/{proteinId}/page/{page}";
+
+  function GlycopeptideHypothesisPaginator(hypothesisId1, handle1, controller) {
+    this.hypothesisId = hypothesisId1;
+    this.handle = handle1;
+    this.controller = controller;
+    this.rowClickHandler = bind(this.rowClickHandler, this);
+    GlycopeptideHypothesisPaginator.__super__.constructor.call(this, 1);
+  }
+
+  GlycopeptideHypothesisPaginator.prototype.getPageUrl = function(page) {
+    if (page == null) {
+      page = 1;
+    }
+    return this.pageUrl.format({
+      "page": page,
+      "hypothesisId": this.hypothesisId,
+      "proteinId": this.controller.proteinId
+    });
+  };
+
+  GlycopeptideHypothesisPaginator.prototype.rowClickHandler = function(row) {
+    return console.log(row);
+  };
+
+  return GlycopeptideHypothesisPaginator;
+
+})(PaginationBase);
+
+GlycopeptideHypothesisController = (function() {
+  GlycopeptideHypothesisController.prototype.containerSelector = '#hypothesis-protein-glycopeptide-container';
+
+  GlycopeptideHypothesisController.prototype.proteinTableRowSelector = '.protein-list-table tbody tr';
+
+  GlycopeptideHypothesisController.prototype.proteinContainerSelector = '#protein-container';
+
+  GlycopeptideHypothesisController.prototype.proteinViewUrl = "/view_glycopeptide_hypothesis/{hypothesisId}/{proteinId}/view";
+
+  function GlycopeptideHypothesisController(hypothesisId1, proteinId1) {
+    this.hypothesisId = hypothesisId1;
+    this.proteinId = proteinId1;
+    this.proteinChoiceHandler = bind(this.proteinChoiceHandler, this);
+    this.handle = $(this.containerSelector);
+    this.paginator = new GlycopeptideHypothesisPaginator(this.hypothesisId, this.handle, this);
+    this.setup();
+  }
+
+  GlycopeptideHypothesisController.prototype.setup = function() {
+    var self;
+    self = this;
+    $(this.proteinTableRowSelector).click(function(event) {
+      return self.proteinChoiceHandler(this);
+    });
+    return self.proteinChoiceHandler($(this.proteinTableRowSelector)[0]);
+  };
+
+  GlycopeptideHypothesisController.prototype.getProteinViewUrl = function(proteinId) {
+    return this.proteinViewUrl.format({
+      'hypothesisId': this.hypothesisId,
+      'proteinId': 'proteinId',
+      proteinId: proteinId
+    });
+  };
+
+  GlycopeptideHypothesisController.prototype.proteinChoiceHandler = function(proteinRow) {
+    var handle, id, proteinContainer, url;
+    handle = $(proteinRow);
+    this.proteinId = id = handle.attr('data-target');
+    proteinContainer = $(this.proteinContainerSelector);
+    proteinContainer.html("<div class=\"progress\"><div class=\"indeterminate\"></div></div>").fadeIn();
+    url = this.getProteinViewUrl(id);
+    return GlycReSoft.ajaxWithContext(url).success((function(_this) {
+      return function(doc) {
+        proteinContainer.hide();
+        proteinContainer.html(doc).fadeIn();
+        GlycReSoft.context["current_protein"] = id;
+        return _this.paginator.setupTable();
+      };
+    })(this));
+  };
+
+  return GlycopeptideHypothesisController;
+
+})();
 
 viewGlycopeptideHypothesis = function(hypothesisId) {
   var currentPage, displayTable, proteinContainer, proteinId, setup, setupGlycopeptideTablePageHandler, updateCompositionTablePage, updateProteinChoice;
@@ -1216,127 +1435,135 @@ viewGlycopeptideHypothesis = function(hypothesisId) {
 
 //# sourceMappingURL=view-glycopeptide-hypothesis.js.map
 
-var viewPeakGroupingDatabaseSearchResults;
+var GlycopeptideLCMSMSSearchController, GlycopeptideLCMSMSSearchPaginator, GlycopeptideLCMSMSSearchTabView, PlotGlycoformsManager, PlotManagerBase, SiteSpecificGlycosylationPlotManager,
+  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  hasProp = {}.hasOwnProperty;
 
-viewPeakGroupingDatabaseSearchResults = function() {
-  var currentPage, currentProtein, downloadCSV, glycopeptideDetailsModal, glycopeptideTable, setup, setupGlycopeptideCompositionTablePageHandlers, showGlycopeptideCompositionDetailsModal, unload, updateGlycopeptideCompositionTablePage, updateProteinChoice;
-  glycopeptideDetailsModal = void 0;
-  glycopeptideTable = void 0;
-  currentPage = 1;
-  currentProtein = void 0;
-  setup = function() {
-    $('.protein-match-table tbody tr').click(updateProteinChoice);
-    updateProteinChoice.apply($('.protein-match-table tbody tr'));
-    return $("#save-csv-file").click(downloadCSV);
-  };
-  setupGlycopeptideCompositionTablePageHandlers = function(page) {
+GlycopeptideLCMSMSSearchPaginator = (function(superClass) {
+  extend(GlycopeptideLCMSMSSearchPaginator, superClass);
+
+  GlycopeptideLCMSMSSearchPaginator.prototype.pageUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/page/{page}";
+
+  GlycopeptideLCMSMSSearchPaginator.prototype.tableSelector = "#identified-glycopeptide-table";
+
+  GlycopeptideLCMSMSSearchPaginator.prototype.tableContainerSelector = "#glycopeptide-table";
+
+  GlycopeptideLCMSMSSearchPaginator.prototype.rowSelector = '.glycopeptide-match-row';
+
+  function GlycopeptideLCMSMSSearchPaginator(analysisId, handle1, controller) {
+    this.analysisId = analysisId;
+    this.handle = handle1;
+    this.controller = controller;
+    this.rowClickHandler = bind(this.rowClickHandler, this);
+    GlycopeptideLCMSMSSearchPaginator.__super__.constructor.call(this, 1);
+  }
+
+  GlycopeptideLCMSMSSearchPaginator.prototype.getPageUrl = function(page) {
     if (page == null) {
       page = 1;
     }
-    $('.glycopeptide-match-row').click(function() {
-      var textSelection;
-      textSelection = window.getSelection();
-      if (!textSelection.toString()) {
-        return showGlycopeptideCompositionDetailsModal.apply(this);
-      }
-    });
-    $(':not(.disabled) .next-page').click(function() {
-      return updateGlycopeptideCompositionTablePage(page + 1);
-    });
-    $(':not(.disabled) .previous-page').click(function() {
-      return updateGlycopeptideCompositionTablePage(page - 1);
-    });
-    return $('.pagination li :not(.active)').click(function() {
-      var nextPage;
-      nextPage = $(this).attr("data-index");
-      if (nextPage != null) {
-        nextPage = parseInt(nextPage);
-        return updateGlycopeptideCompositionTablePage(nextPage);
-      }
+    return this.pageUrl.format({
+      "page": page,
+      "analysisId": this.analysisId,
+      "proteinId": this.controller.proteinId
     });
   };
-  updateGlycopeptideCompositionTablePage = function(page) {
-    var url;
-    if (page == null) {
-      page = 1;
-    }
-    url = "/view_database_search_results/glycopeptide_matches_composition_table/" + currentProtein + "/" + page;
-    console.log(url);
-    return GlycReSoft.ajaxWithContext(url).success(function(doc) {
-      currentPage = page;
-      glycopeptideTable.html(doc);
-      return setupGlycopeptideCompositionTablePageHandlers(page);
-    });
-  };
-  updateProteinChoice = function() {
-    var handle, id;
-    handle = $(this);
-    currentProtein = id = handle.attr('data-target');
-    $("#chosen-protein-container").html("<div class=\"progress\"><div class=\"indeterminate\"></div></div>").fadeIn();
-    return GlycReSoft.ajaxWithContext('/view_database_search_results/protein_composition_view/' + id).success(function(doc) {
-      var tabs;
-      $('#chosen-protein-container').hide();
-      $('#chosen-protein-container').html(doc).fadeIn();
-      tabs = $('ul.tabs');
-      tabs.tabs();
-      GlycReSoft.context["current_protein"] = id;
-      if (GlycReSoft.context['protein-view-active-tab'] !== void 0) {
-        console.log(GlycReSoft.context['protein-view-active-tab']);
-        $('ul.tabs').tabs('select_tab', GlycReSoft.context['protein-view-active-tab']);
-      } else {
-        $('ul.tabs').tabs('select_tab', 'protein-overview');
-      }
-      $('.indicator').addClass('indigo');
-      $('ul.tabs .tab a').click(function() {
-        return GlycReSoft.context['protein-view-active-tab'] = $(this).attr('href').slice(1);
-      });
-      glycopeptideDetailsModal = $('#peptide-detail-modal');
-      glycopeptideTable = $("#glycopeptide-table");
-      return updateGlycopeptideCompositionTablePage(1);
-    }).error(function(error) {
-      return console.log(arguments);
-    });
-  };
-  showGlycopeptideCompositionDetailsModal = function() {
-    var handle, id;
-    handle = $(this);
-    id = handle.attr('data-target');
-    console.log("ID " + id + ", Open Modal");
-    return PartialSource.glycopeptideCompositionDetailsModal({
-      "id": id
-    }, function(doc) {
-      glycopeptideDetailsModal.find('.modal-content').html(doc);
-      $(".lean-overlay").remove();
-      console.log("Opening Modal");
-      return glycopeptideDetailsModal.openModal();
-    });
-  };
-  unload = function() {
-    return GlycReSoft.removeCurrentLayer();
-  };
-  downloadCSV = function() {
-    var handle, id;
-    handle = $(this);
-    id = handle.attr('data-target');
-    return $.ajax("/view_database_search_results/export_csv/" + id, {
-      data: JSON.stringify({
-        "context": GlycReSoft.context,
-        "settings": GlycReSoft.settings
-      }),
-      contentType: "application/json",
-      type: 'POST'
-    });
-  };
-  return setup();
-};
 
-//# sourceMappingURL=view-peak-grouping-database-search.js.map
+  GlycopeptideLCMSMSSearchPaginator.prototype.rowClickHandler = function(row) {
+    var handle, target;
+    handle = $(row);
+    target = handle.attr("data-target");
+    return this.controller.getGlycopeptideMatchDetails(target);
+  };
 
-var TandemGlycopeptideDatabaseSearchResultsController;
+  return GlycopeptideLCMSMSSearchPaginator;
 
-TandemGlycopeptideDatabaseSearchResultsController = (function() {
-  var downloadCSV, getGlycopeptideMatchDetails, glycopeptideTooltipCallback, modificationTooltipCallback;
-  glycopeptideTooltipCallback = function(handle) {
+})(PaginationBase);
+
+GlycopeptideLCMSMSSearchTabView = (function(superClass) {
+  extend(GlycopeptideLCMSMSSearchTabView, superClass);
+
+  GlycopeptideLCMSMSSearchTabView.prototype.tabSelector = '#protein-view ul.tabs';
+
+  GlycopeptideLCMSMSSearchTabView.prototype.tabList = ["chromatograms-plot", "chromatograms-table", "summary-abundance-plot"];
+
+  GlycopeptideLCMSMSSearchTabView.prototype.defaultTab = "chromatograms-plot";
+
+  GlycopeptideLCMSMSSearchTabView.prototype.updateUrl = '/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/overview';
+
+  GlycopeptideLCMSMSSearchTabView.prototype.containerSelector = '#glycopeptide-lcmsms-content-container';
+
+  function GlycopeptideLCMSMSSearchTabView(analysisId, handle1, controller, updateHandlers) {
+    this.analysisId = analysisId;
+    this.handle = handle1;
+    this.controller = controller;
+    GlycopeptideLCMSMSSearchTabView.__super__.constructor.call(this, updateHandlers);
+  }
+
+  GlycopeptideLCMSMSSearchTabView.prototype.getUpdateUrl = function() {
+    return this.updateUrl.format({
+      'analysisId': this.analysisId,
+      'proteinId': this.controller.proteinId
+    });
+  };
+
+  return GlycopeptideLCMSMSSearchTabView;
+
+})(TabViewBase);
+
+PlotManagerBase = (function() {
+  PlotManagerBase.prototype.plotUrl = "";
+
+  PlotManagerBase.prototype.plotContainerSelector = "";
+
+  function PlotManagerBase(handle) {
+    this.handle = handle;
+  }
+
+  PlotManagerBase.prototype.getPlotUrl = function() {
+    return this.plotUrl;
+  };
+
+  PlotManagerBase.prototype.updateView = function() {
+    return GlycReSoft.ajaxWithContext(this.getPlotUrl()).success((function(_this) {
+      return function(doc) {
+        var plotContainer;
+        plotContainer = _this.handle.find(_this.plotContainerSelector);
+        plotContainer.html(doc);
+        return _this.setupInteraction(plotContainer);
+      };
+    })(this));
+  };
+
+  PlotManagerBase.prototype.setupInteraction = function(container) {
+    return console.log("Setup Interaction Callback");
+  };
+
+  return PlotManagerBase;
+
+})();
+
+PlotGlycoformsManager = (function(superClass) {
+  extend(PlotGlycoformsManager, superClass);
+
+  PlotGlycoformsManager.prototype.plotUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/plot_glycoforms";
+
+  PlotGlycoformsManager.prototype.plotContainerSelector = "#protein-overview";
+
+  function PlotGlycoformsManager(handle, controller) {
+    this.controller = controller;
+    PlotGlycoformsManager.__super__.constructor.call(this, handle);
+  }
+
+  PlotGlycoformsManager.prototype.getPlotUrl = function() {
+    return this.plotUrl.format({
+      "analysisId": this.controller.analysisId,
+      "proteinId": this.controller.proteinId
+    });
+  };
+
+  PlotGlycoformsManager.prototype.glycopeptideTooltipCallback = function(handle) {
     var template;
     template = '<div><table>\n<tr><td style=\'padding:3px;\'><b>MS2 Score:</b> {ms2-score}</td><td style=\'padding:3px;\'><b>Mass:</b> {calculated-mass}</td></tr>\n<tr><td style=\'padding:3px;\'><b>q-value:</b> {q-value}</td><td style=\'padding:3px;\'><b>Spectrum Matches:</b> {spectra-count}</td></tr>\n</table>\n<span>{sequence}</span>\n</div>';
     return template.format({
@@ -1347,7 +1574,8 @@ TandemGlycopeptideDatabaseSearchResultsController = (function() {
       "spectra-count": handle.attr("data-spectra-count")
     });
   };
-  modificationTooltipCallback = function(handle) {
+
+  PlotGlycoformsManager.prototype.modificationTooltipCallback = function(handle) {
     var sequence, template, value;
     template = '<div> <span>{value}</span> </div>';
     value = handle.parent().attr('data-modification-type');
@@ -1359,194 +1587,201 @@ TandemGlycopeptideDatabaseSearchResultsController = (function() {
       'value': value
     });
   };
-  getGlycopeptideMatchDetails = function(id, callback) {
-    return $.get('/api/glycopeptide_match/' + id, callback);
+
+  PlotGlycoformsManager.prototype.setupTooltips = function() {
+    var glycopeptide, self;
+    glycopeptide = $('svg .glycopeptide');
+    glycopeptide.customTooltip(this.glycopeptideTooltipCallback, 'protein-view-tooltip');
+    self = this;
+    glycopeptide.hover(function(event) {
+      var baseColor, handle, newColor;
+      handle = $(this);
+      baseColor = handle.find("path").css("fill");
+      newColor = '#74DEC5';
+      handle.data("baseColor", baseColor);
+      return handle.find("path").css("fill", newColor);
+    }, function(event) {
+      var handle;
+      handle = $(this);
+      return handle.find("path").css("fill", handle.data("baseColor"));
+    });
+    glycopeptide.click(function(event) {
+      var handle, id;
+      handle = $(this);
+      id = handle.data("record-id");
+      return self.controller.getGlycopeptideMatchDetails(id);
+    });
+    return $('svg .modification path').customTooltip(this.modificationTooltipCallback, 'protein-view-tooltip');
   };
-  downloadCSV = function() {
-    var handle, id;
-    handle = $(this);
-    id = handle.attr('data-target');
-    return $.ajax("/view_database_search_results/export_csv/" + id, {
-      data: JSON.stringify({
-        "context": GlycReSoft.context,
-        "settings": GlycReSoft.settings
-      }),
-      contentType: "application/json",
-      type: 'POST'
+
+  PlotGlycoformsManager.prototype.setupInteraction = function(container) {
+    this.setupTooltips();
+    return GlycReSoft.colors.update();
+  };
+
+  return PlotGlycoformsManager;
+
+})(PlotManagerBase);
+
+SiteSpecificGlycosylationPlotManager = (function(superClass) {
+  extend(SiteSpecificGlycosylationPlotManager, superClass);
+
+  SiteSpecificGlycosylationPlotManager.prototype.plotUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/site_specific_glycosylation";
+
+  SiteSpecificGlycosylationPlotManager.prototype.plotContainerSelector = "#site-distribution";
+
+  function SiteSpecificGlycosylationPlotManager(handle, controller) {
+    this.controller = controller;
+    SiteSpecificGlycosylationPlotManager.__super__.constructor.call(this, handle);
+  }
+
+  SiteSpecificGlycosylationPlotManager.prototype.getPlotUrl = function() {
+    return this.plotUrl.format({
+      "analysisId": this.controller.analysisId,
+      "proteinId": this.controller.proteinId
     });
   };
-  TandemGlycopeptideDatabaseSearchResultsController = (function() {
-    function TandemGlycopeptideDatabaseSearchResultsController() {
-      this.currentPage = 1;
-      this.peptideDetailsModal = void 0;
-      this.glycopeptideTable = void 0;
-      this.currentProtein = void 0;
-      this.setup();
-    }
 
-    TandemGlycopeptideDatabaseSearchResultsController.prototype.setup = function() {
-      var handle, last_id, last_selector, updateProteinChoice;
-      updateProteinChoice = this.updateProteinChoiceCallback();
-      $('.protein-match-table tbody tr').click(updateProteinChoice);
-      last_id = GlycReSoft.context['protein_id'];
-      last_selector = '.protein-match-table tbody tr[data-target="' + last_id + '"]';
-      handle = $(last_selector);
-      if (handle.length !== 0) {
-        updateProteinChoice.apply(handle);
-      } else {
-        updateProteinChoice.apply($($('.protein-match-table tbody tr')[0]));
-      }
-      $(".tooltipped").tooltip();
-      return $("#save-csv-file").click(downloadCSV);
-    };
+  return SiteSpecificGlycosylationPlotManager;
 
-    TandemGlycopeptideDatabaseSearchResultsController.prototype.setupGlycopeptideTablePageHandlers = function(page) {
-      var self;
-      if (page == null) {
-        page = 1;
-      }
-      self = this;
-      $('.glycopeptide-match-row').click(function() {
-        var textSelection;
-        textSelection = window.getSelection();
-        if (!textSelection.toString()) {
-          return self.showGlycopeptideDetailsModalCallback().apply(this);
-        }
-      });
-      $(':not(.disabled) .next-page').click(function() {
-        return self.updateGlycopeptideTablePage(page + 1);
-      });
-      $(':not(.disabled) .previous-page').click(function() {
-        return self.updateGlycopeptideTablePage(page - 1);
-      });
-      return $('.pagination li :not(.active)').click(function() {
-        var nextPage;
-        nextPage = $(this).attr("data-index");
-        if (nextPage != null) {
-          nextPage = parseInt(nextPage);
-          return self.updateGlycopeptideTablePage(nextPage);
-        }
-      });
-    };
+})(PlotManagerBase);
 
-    TandemGlycopeptideDatabaseSearchResultsController.prototype.updateGlycopeptideTablePage = function(page) {
-      var url;
-      if (page == null) {
-        page = 1;
-      }
-      url = "/view_database_search_results/glycopeptide_match_table/" + this.currentProtein + "/" + page;
-      return GlycReSoft.ajaxWithContext(url).success((function(_this) {
-        return function(doc) {
-          _this.currentPage = page;
-          _this.glycopeptideTable.html(doc);
-          return _this.setupGlycopeptideTablePageHandlers(page);
+GlycopeptideLCMSMSSearchController = (function() {
+  GlycopeptideLCMSMSSearchController.prototype.containerSelector = '#glycopeptide-lcmsms-container';
+
+  GlycopeptideLCMSMSSearchController.prototype.detailModalSelector = '#glycopeptide-detail-modal';
+
+  GlycopeptideLCMSMSSearchController.prototype.proteinTableRowSelector = '.protein-match-table tbody tr';
+
+  GlycopeptideLCMSMSSearchController.prototype.proteinContainerSelector = '#protein-container';
+
+  GlycopeptideLCMSMSSearchController.prototype.proteinOverviewUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/overview";
+
+  GlycopeptideLCMSMSSearchController.prototype.detailUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/details_for/{glycopeptideId}";
+
+  GlycopeptideLCMSMSSearchController.prototype.saveCSVURL = "/view_glycopeptide_lcmsms_analysis/{analysisId}/to-csv";
+
+  GlycopeptideLCMSMSSearchController.prototype.monosaccharideFilterContainerSelector = '#monosaccharide-filters';
+
+  function GlycopeptideLCMSMSSearchController(analysisId, hypothesisUUID, proteinId1) {
+    var updateHandlers;
+    this.analysisId = analysisId;
+    this.hypothesisUUID = hypothesisUUID;
+    this.proteinId = proteinId1;
+    this.proteinChoiceHandler = bind(this.proteinChoiceHandler, this);
+    this.handle = $(this.containerSelector);
+    this.paginator = new GlycopeptideLCMSMSSearchPaginator(this.analysisId, this.handle, this);
+    this.plotGlycoforms = new PlotGlycoformsManager(this.handle, this);
+    this.plotSiteSpecificGlycosylation = new SiteSpecificGlycosylationPlotManager(this.handle, this);
+    updateHandlers = [
+      (function(_this) {
+        return function() {
+          _this.paginator.setupTable();
+          _this.plotGlycoforms.updateView();
+          return _this.plotSiteSpecificGlycosylation.updateView();
         };
-      })(this));
-    };
+      })(this)
+    ];
+    this.tabView = new GlycopeptideLCMSMSSearchTabView(this.analysisId, this.handle, this, updateHandlers);
+    this.setup();
+  }
 
-    TandemGlycopeptideDatabaseSearchResultsController.prototype.initGlycopeptideOverviewPlot = function() {
-      var glycopeptide, self;
-      glycopeptide = $('svg .glycopeptide');
-      glycopeptide.customTooltip(glycopeptideTooltipCallback, 'protein-view-tooltip');
-      self = this;
-      glycopeptide.hover(function(event) {
-        var baseColor, handle, newColor;
-        handle = $(this);
-        baseColor = handle.find("path").css("fill");
-        newColor = '#74DEC5';
-        handle.data("baseColor", baseColor);
-        return handle.find("path").css("fill", newColor);
-      }, function(event) {
-        var handle;
-        handle = $(this);
-        return handle.find("path").css("fill", handle.data("baseColor"));
+  GlycopeptideLCMSMSSearchController.prototype.getProteinTableRows = function() {
+    var handle;
+    handle = $(this.proteinTableRowSelector);
+    return handle;
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.setup = function() {
+    var filterContainer, proteinRowHandle, self;
+    proteinRowHandle = $(this.proteinTableRowSelector);
+    self = this;
+    this.handle.find(".tooltipped").tooltip();
+    console.log("Setting up Save Buttons");
+    this.handle.find("#save-csv-btn").click(function(event) {
+      var url;
+      console.log("Clicked Save Button");
+      url = self.saveCSVURL.format({
+        analysisId: self.analysisId
       });
-      glycopeptide.click(function(event) {
-        var handle, id;
-        handle = $(this);
-        id = handle.data("record-id");
-        return $.get('/view_database_search_results/view_glycopeptide_details/' + id).success(function(doc) {
-          self.peptideDetailsModal.find('.modal-content').html(doc);
-          $(".lean-overlay").remove();
-          return self.peptideDetailsModal.openModal();
-        });
+      return $.get(url).success(function(info) {
+        return GlycReSoft.downloadFile(info.filename);
       });
-      return $('svg .modification path').customTooltip(modificationTooltipCallback, 'protein-view-tooltip');
-    };
-
-    TandemGlycopeptideDatabaseSearchResultsController.prototype.updateProteinChoiceCallback = function() {
-      var callback, self;
-      self = this;
-      return callback = function() {
-        var handle, id;
-        handle = $(this);
-        $('.active-row').removeClass("active-row");
-        handle.addClass("active-row");
-        id = handle.attr('data-target');
-        self.currentProtein = id;
-        $('#chosen-protein-container').fadeOut();
-        $("#loading-top-level-chosen-protein-container").fadeIn();
-        return $.ajax('/view_database_search_results/protein_view/' + id, {
-          data: JSON.stringify({
-            "context": GlycReSoft.context,
-            "settings": GlycReSoft.settings
-          }),
-          contentType: "application/json",
-          type: 'POST',
-          success: function(doc) {
-            var tabs;
-            $('#chosen-protein-container').hide();
-            $("#loading-top-level-chosen-protein-container").fadeOut();
-            $('#chosen-protein-container').html(doc).fadeIn();
-            tabs = $('ul.tabs');
-            GlycReSoft.ajaxWithContext("/view_database_search_results/protein_view/" + id + "/protein_overview_panel").success(function(svg) {
-              $("#protein-overview").html(svg);
-              return self.initGlycopeptideOverviewPlot();
-            });
-            GlycReSoft.ajaxWithContext("/view_database_search_results/protein_view/" + id + "/microheterogeneity_plot_panel").success(function(svgGal) {
-              return $("#site-distribution").html(svgGal);
-            });
-            tabs.tabs();
-            if (GlycReSoft.context['protein-view-active-tab'] !== void 0) {
-              $('ul.tabs').tabs('select_tab', GlycReSoft.context['protein-view-active-tab']);
-            } else {
-              $('ul.tabs').tabs('select_tab', 'protein-overview');
-            }
-            $('ul.tabs .tab a').click(function() {
-              return GlycReSoft.context['protein-view-active-tab'] = $(this).attr('href').slice(1);
-            });
-            $('.indicator').addClass('indigo');
-            self.glycopeptideTable = $("#glycopeptide-table");
-            self.updateGlycopeptideTablePage(1);
-            self.peptideDetailsModal = $('#peptide-detail-modal');
-            return GlycReSoft.context['protein_id'] = id;
-          },
-          error: function(error) {
-            return console.log(arguments);
-          }
-        });
+    });
+    proteinRowHandle.click(function(event) {
+      return self.proteinChoiceHandler(this);
+    });
+    console.log("setup complete");
+    this.proteinChoiceHandler(proteinRowHandle[0]);
+    filterContainer = $(this.monosaccharideFilterContainerSelector);
+    return GlycReSoft.monosaccharideFilterState.update(this.hypothesisUUID, (function(_this) {
+      return function(bounds) {
+        _this.monosaccharideFilter = new MonosaccharideFilter(filterContainer);
+        return _this.monosaccharideFilter.render();
       };
-    };
+    })(this));
+  };
 
-    TandemGlycopeptideDatabaseSearchResultsController.prototype.showGlycopeptideDetailsModalCallback = function() {
-      var callback, self;
-      self = this;
-      return callback = function() {
-        var handle, id;
-        handle = $(this);
-        id = handle.attr('data-target');
-        return $.get('/view_database_search_results/view_glycopeptide_details/' + id).success(function(doc) {
-          self.peptideDetailsModal.find('.modal-content').html(doc);
-          $(".lean-overlay").remove();
-          return self.peptideDetailsModal.openModal();
-        });
+  GlycopeptideLCMSMSSearchController.prototype.getLastProteinViewed = function() {
+    return GlycReSoft.context['protein_id'];
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.selectLastProteinViewed = function() {
+    var proteinId;
+    return proteinId = this.getLastProteinViewed();
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.updateView = function() {
+    return this.tabView.updateView();
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.getModal = function() {
+    return $(this.detailModalSelector);
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.unload = function() {
+    return GlycReSoft.removeCurrentLayer();
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.getProteinOverviewUrl = function(proteinId) {
+    return this.proteinOverviewUrl.format({
+      "analysisId": this.analysisId,
+      "proteinId": proteinId
+    });
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.proteinChoiceHandler = function(row) {
+    var handle, id;
+    handle = $(row);
+    $('.active-row').removeClass("active-row");
+    handle.addClass("active-row");
+    id = handle.attr('data-target');
+    this.proteinId = id;
+    $(this.tabView.containerSelector).html('<br>\n<div class="progress" id=\'waiting-for-protein-progress\'>\n    <div class="indeterminate">\n    </div>\n</div>');
+    return this.tabView.updateView();
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.getGlycopeptideMatchDetails = function(glycopeptideId) {
+    var url;
+    url = this.detailUrl.format({
+      "analysisId": this.analysisId,
+      "proteinId": this.proteinId,
+      "glycopeptideId": "glycopeptideId",
+      glycopeptideId: glycopeptideId
+    });
+    return GlycReSoft.ajaxWithContext(url).success((function(_this) {
+      return function(doc) {
+        var modalHandle;
+        modalHandle = _this.getModal();
+        modalHandle.find('.modal-content').html(doc);
+        $(".lean-overlay").remove();
+        return modalHandle.openModal();
       };
-    };
+    })(this));
+  };
 
-    return TandemGlycopeptideDatabaseSearchResultsController;
+  return GlycopeptideLCMSMSSearchController;
 
-  })();
-  return TandemGlycopeptideDatabaseSearchResultsController;
 })();
 
-//# sourceMappingURL=view-tandem-glycopeptide-database-search-results.js.map
+//# sourceMappingURL=view-glycopeptide-search.js.map

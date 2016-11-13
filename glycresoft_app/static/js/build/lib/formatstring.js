@@ -20,7 +20,7 @@
       }
       try {
         v = JSON.stringify(data[name]);
-        if (v.length > 1) {
+        if (v.startsWith('"') && v.endsWith('"')) {
           v = v.slice(1, -1);
         }
         return v;

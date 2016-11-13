@@ -1,0 +1,48 @@
+<div id='protein-view'>
+    <div class='row'>
+        <div>
+            <h5>>{{glycoprotein.name}}</h5>
+            <code>
+                {{glycoprotein.protein_sequence |
+                  highlight_sequence_site(glycoprotein.glycosylation_sites, "glycosylation-site") |
+                  n_per_row(80)}}        
+            </code>
+        </div>
+    </div>
+    <div class='row'>
+        <div class='col s12'>
+            <ul class='tabs indigo-text'>
+                <li class='tab col s3'>
+                    <a class='indigo-text' class="active" href="#protein-overview">Overview</a>
+                </li>
+                <li class='tab col s3'>
+                    <a class='indigo-text' href="#glycopeptide-table">Glycopeptides</a>
+                </li>
+                <li class='tab col s3'>
+                    <a class='indigo-text' href="#site-distribution">Site Distribution</a>
+                </li>
+            </ul>
+        </div>
+        <div id='protein-overview' class='col s12'>
+            <br>
+            <div class="progress" id='protein-overview-progress'>
+                <div class="indeterminate">
+                </div>
+            </div>
+        </div>
+        <div id='glycopeptide-table' class='col s12'>
+            <br>
+            <div class="progress" id='glycopeptide-table-progress'>
+                <div class="indeterminate">
+                </div>
+            </div>
+        </div>
+        <div id='site-distribution' class='col s12'>
+            <br>
+            <div class="progress" id='site-distribution-progress'>
+                <div class="indeterminate">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
