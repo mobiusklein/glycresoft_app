@@ -1,12 +1,14 @@
 <div id='protein-view'>
     <div class='row'>
-        <div>
+        <div class='col s7'>
             <h5>>{{glycoprotein.name}}</h5>
-            <code>
-                {{glycoprotein.protein_sequence |
-                  highlight_sequence_site(glycoprotein.glycosylation_sites, "glycosylation-site") |
-                  n_per_row(80)}}        
-            </code>
+            <div  style="max-height: 200px;overflow-y: auto;">
+                <code>
+                    {{glycoprotein.protein_sequence |
+                      highlight_sequence_site(glycoprotein.glycosylation_sites, "glycosylation-site") |
+                      n_per_row(80)}}        
+                </code>
+            </div>
         </div>
     </div>
     <div class='row'>

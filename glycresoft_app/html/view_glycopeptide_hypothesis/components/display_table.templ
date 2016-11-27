@@ -5,6 +5,7 @@
                 <th class='narrow'></th>
                 <th class='very-very-wide'>Glycopeptide Sequence</th>
                 <th>Theoretical Mass</th>
+                <th>Protein Interval</th>
                 </tr>
             </thead>
             <tbody style='height:550px;'>
@@ -19,6 +20,7 @@
                     <td>
                         {{element.calculated_mass}}
                     </td>
+                    <td>{{element.peptide.start_position}}-{{element.peptide.end_position}}</td>
                 </tr>
                 {% endfor %}
             </tbody>

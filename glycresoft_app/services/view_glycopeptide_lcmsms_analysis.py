@@ -6,6 +6,7 @@ from .service_module import register_service
 from threading import RLock
 from glycresoft_app.utils.state_transfer import request_arguments_and_context, FilterSpecificationSet
 from glycresoft_app.utils.pagination import SequencePagination
+from glycresoft_app.task.task_process import Message
 from glycresoft_app import report
 
 from glycan_profiling.serialize import (
@@ -13,7 +14,7 @@ from glycan_profiling.serialize import (
     IdentifiedGlycopeptide, func,
     MSScan)
 
-from glycan_profiling.tandem.glycopeptide.scoring.binomial_score import BinomialSpectrumMatcher
+from glycan_profiling.tandem.glycopeptide.scoring import CoverageWeightedBinomialScorer
 
 from glycan_profiling.tandem.glycopeptide.identified_structure import IdentifiedGlycoprotein
 
@@ -209,7 +210,7 @@ class GlycopeptideAnalysisView(object):
         return snapshot
 
     def get_glycopeptide(self, glycopeptide_id):
-        return self.convert_glycopeptide(self.session.query(Glycopeptide).get(glycopeptide_id))
+        return self.convert_glycopeptide(self.session.query(IdentifiedGlycopeptide).get(glycopeptide_id))
 
     def convert_glycopeptide(self, identified_glycopeptide):
         if identified_glycopeptide.id in self._converted_cache:
@@ -331,19 +332,33 @@ def glycopeptide_detail(analysis_id, protein_id, glycopeptide_id):
         gp = snapshot[glycopeptide_id]
     except:
         gp = view.get_glycopeptide(glycopeptide_id)
+
     spectrum_match_ref = max(gp.spectrum_matches, key=lambda x: x.score)
 
     session = g.manager.session
     scan = session.query(MSScan).filter(
         MSScan.scan_id == spectrum_match_ref.scan.id,
         MSScan.sample_run_id == view.analysis.sample_run_id).first().convert()
-    match = BinomialSpectrumMatcher.evaluate(scan, gp.structure)
+    match = CoverageWeightedBinomialScorer.evaluate(
+        scan, gp.structure,
+        error_tolerance=view.analysis.parameters["fragment_error_tolerance"])
+
+    def scan_from_reference(scan_reference):
+        scan_id = scan_reference.scan.id
+        return g.manager.session.query(MSScan).filter(
+            MSScan.sample_run_id == view.analysis.sample_run_id,
+            MSScan.scan_id == scan_id).first()
 
     ax = figax()
-    SmoothingChromatogramArtist([gp], ax=ax).draw(label_function=lambda *a, **k: "", legend=False)
+    SmoothingChromatogramArtist([gp], ax=ax, colorizer=lambda *a, **k: 'green').draw(
+        label_function=lambda *a, **k: "", legend=False)
+    ax.get_xaxis().get_major_formatter().set_useOffset(False)
+    labels = [tl for tl in ax.get_xticklabels()]
+    for label in labels:
+        label.set(fontsize=16)
 
     spectrum_plot = match.annotate(ax=figax(), pretty=True)
-    spectrum_plot.set_title("Annotated Scan\n\"%s\"\n" % (scan.id,), fontsize=18)
+    spectrum_plot.set_title("%s\n" % (scan.id,), fontsize=18)
     spectrum_plot.set_ylabel(spectrum_plot.get_ylabel(), fontsize=16)
     spectrum_plot.set_xlabel(spectrum_plot.get_xlabel(), fontsize=16)
 
@@ -356,13 +371,14 @@ def glycopeptide_detail(analysis_id, protein_id, glycopeptide_id):
         chromatogram_plot=report.svg_plot(ax, bbox_inches='tight', height=3, width=7),
         spectrum_plot=report.svg_plot(spectrum_plot, bbox_inches='tight', height=3, width=10),
         sequence_logo_plot=report.svg_plot(sequence_logo_plot, bbox_inches='tight', height=2, width=7),
+        scan_from_reference=scan_from_reference
     )
 
 
 @app.route("/view_glycopeptide_lcmsms_analysis/<int:analysis_id>/to-csv")
 def to_csv(analysis_id):
     view = get_view(analysis_id)
-
+    g.manager.add_message(Message("Building CSV Export", "update"))
     protein_name_resolver = {entry['protein_id']: entry['protein_name'] for entry in view.protein_index}
 
     file_name = "%s-glycopeptides.csv" % (view.analysis.name)

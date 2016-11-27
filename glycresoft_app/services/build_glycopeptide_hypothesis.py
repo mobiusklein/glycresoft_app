@@ -34,7 +34,7 @@ def build_glycopeptide_search_space_post():
     glycan_options = {}
 
     max_missed_cleavages = intify(values.get("missed_cleavages"))
-    maximum_glycosylation_sites = intify(values.get("max_glycosylation_combinations", 1))
+    maximum_glycosylation_sites = intify(values.get("max_glycosylation_sites", 1))
 
     secure_protein_list = g.manager.get_temp_path(secure_filename(protein_list.filename))
     protein_list.save(secure_protein_list)

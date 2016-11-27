@@ -1,4 +1,6 @@
-ajaxForm = (formHandle, success, error, transform) ->
+ajaxForm = (formHandle, success, error, transform, progress) ->
+    if !progress?
+        (ev) -> ev
     $(formHandle).on 'submit', (event) ->
         event.preventDefault()
         handle = $(this)
@@ -27,6 +29,11 @@ ajaxForm = (formHandle, success, error, transform) ->
             error(a, b, c)       
 
         ajaxParams = 
+            'xhr': ->
+                xhr = new window.XMLHttpRequest()
+                xhr.upload.addEventListener("progress", progress)
+                xhr.addEventListener("progress", progress)
+                return xhr
             'url': url
             'method': method
             'data': data

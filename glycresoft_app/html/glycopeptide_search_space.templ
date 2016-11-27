@@ -117,10 +117,16 @@
                 </div>
             </div>
         </div>
-
-        <button class='btn wave-effect'>
-            Generate
-        </button>
+        <div class='row'>
+            <div class='col s4'>
+                <button class='btn wave-effect'>
+                    Generate
+                </button>
+                <div id='protein-file-upload-progress' class="progress" style='width: 135px;'>
+                    <div class="determinate" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
     </form>
 </div>
 <script>
@@ -200,6 +206,9 @@ ajaxForm($("form#glycopeptide-hypothesis-form"), function(){
         formData.append("protein_names", proteinChoices)
     }
     return formData
+}, function(ev){
+    var percent = ev.loaded / ev.total * 100.
+    $("#protein-file-upload-progress .determinate").css("width", percent + '%')
 })
 materialFileInput()
 })()

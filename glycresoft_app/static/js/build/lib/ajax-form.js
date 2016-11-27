@@ -1,6 +1,11 @@
 var ajaxForm, setupAjaxForm;
 
-ajaxForm = function(formHandle, success, error, transform) {
+ajaxForm = function(formHandle, success, error, transform, progress) {
+  if (progress == null) {
+    (function(ev) {
+      return ev;
+    });
+  }
   return $(formHandle).on('submit', function(event) {
     var ajaxParams, data, encoding, handle, locked, method, url, wrappedError, wrappedSuccess;
     event.preventDefault();
@@ -33,6 +38,13 @@ ajaxForm = function(formHandle, success, error, transform) {
       return error(a, b, c);
     };
     ajaxParams = {
+      'xhr': function() {
+        var xhr;
+        xhr = new window.XMLHttpRequest();
+        xhr.upload.addEventListener("progress", progress);
+        xhr.addEventListener("progress", progress);
+        return xhr;
+      },
       'url': url,
       'method': method,
       'data': data,

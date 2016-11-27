@@ -45,6 +45,10 @@
     <div class='row'>
         <div class='col s6'>
             {{sequence_logo_plot}}
+            <br>
+            {% for sm in glycopeptide.spectrum_matches  %}
+                {{scan_from_reference(sm).scan_time}} <br>
+            {% endfor %}
         </div>
         <div class='col s3'>
             <h5>Fragment Matches</h5>
@@ -55,6 +59,11 @@
                     <span class='matched-peak'>{{(pair.peak.mz, pair.peak.intensity, pair.peak.charge)}}</span>
                 </span><br>
             {% endfor %}            
+        </div>
+    </div>
+    <div class='row'>
+        <div class='col s6'>
+
         </div>
     </div>
 </div>

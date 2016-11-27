@@ -3,7 +3,7 @@ import traceback
 from os import path
 from uuid import uuid4
 import multiprocessing
-from multiprocessing import Process, Pipe
+from multiprocessing import Process, Pipe, Event as IPCEvent
 
 from threading import Event, Thread, RLock
 from Queue import Queue, Empty as QueueEmptyException
@@ -88,6 +88,41 @@ class CallInterval(object):
         self.stopped.set()
 
 
+class LoggingPipe(object):
+    def __init__(self, pipe):
+        self.pipe = pipe
+
+    def send(self, message):
+        if message.type == 'info':
+            logger.info(str(message))
+        elif message.type == 'error':
+            logger.error(str(message))
+        self.pipe.send(message)
+
+    def recv(self):
+        return self.pipe.recv()
+
+    def poll(self, timeout=None):
+        return self.pipe.poll(timeout)
+
+
+class TaskControlContext(object):
+    def __init__(self, pipe, stop_event=None):
+        if stop_event is None:
+            stop_event = IPCEvent()
+        self.pipe = LoggingPipe(pipe)
+        self.stop_event = stop_event
+
+    def send(self, message):
+        self.pipe.send(message)
+
+    def recv(self):
+        return self.pipe.recv()
+
+    def poll(self, timeout=None):
+        return self.pipe.poll(timeout)
+
+
 class Task(object):
     """
     Represents a separate process that is performing an long running operation against
@@ -123,10 +158,12 @@ class Task(object):
         self.id = str(uuid4())
         self.task_fn = task_fn
         self.pipe, child_conn = Pipe(True)
+        control_context = TaskControlContext(child_conn)
+        self.stop_event = control_context.stop_event
         self.state = NEW
         self.process = None
         self.args = list(args)
-        self.args.append(LoggingPipe(child_conn))
+        self.args.append(control_context)
         self.callback = callback
         self.name = kwargs.get('name', self.id)
         self.log_file_path = kwargs.get("log_file_path", "%s.log" % self.id)
@@ -149,6 +186,8 @@ class Task(object):
         return None
 
     def add_message(self, message):
+        if isinstance(message, basestring):
+            message = Message(message, "update")
         self.message_buffer.append(message)
 
     def update(self):
@@ -183,7 +222,9 @@ class Task(object):
         self.args = state['args']
         self.callback = state['callback']
         self.pipe, child_conn = Pipe(True)
-        self.args.append(child_conn)
+        control_context = TaskControlContext(child_conn)
+        self.stop_event = control_context.stop_event
+        self.args.append(control_context)
         self.process = None
 
     def to_json(self):
@@ -214,24 +255,6 @@ class NullPipe(object):
 
     def poll(self, timeout=None):
         return False
-
-
-class LoggingPipe(object):
-    def __init__(self, pipe):
-        self.pipe = pipe
-
-    def send(self, message):
-        if message.type == 'info':
-            logger.info(str(message))
-        elif message.type == 'error':
-            logger.error(str(message))
-        self.pipe.send(message)
-
-    def recv(self):
-        return self.pipe.recv()
-
-    def poll(self, timeout=None):
-        return self.pipe.poll(timeout)
 
 
 class Message(object):

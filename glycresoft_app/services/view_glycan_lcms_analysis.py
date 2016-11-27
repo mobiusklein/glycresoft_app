@@ -219,6 +219,7 @@ def details_for(analysis_id, chromatogram_id):
 @app.route("/view_glycan_lcms_analysis/<int:analysis_id>/to-csv")
 def to_csv(analysis_id):
     view = get_view(analysis_id)
+    g.manager.add_message(Message("Building CSV Export", "update"))
     snapshot = view.get_items_for_display()
     file_name = "%s-glycan-chromatograms.csv" % (view.analysis.name)
     path = g.manager.get_temp_path(file_name)
