@@ -35,6 +35,7 @@ class ActionLayerManager extends EventEmitter
         result
 
     setShowingLayer: (id) ->
+        clearTooltip()
         current = @getShowingLayer()
         next = @get(id)
         try

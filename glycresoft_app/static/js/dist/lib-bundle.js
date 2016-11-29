@@ -54,6 +54,7 @@ ActionLayerManager = (function(superClass) {
 
   ActionLayerManager.prototype.setShowingLayer = function(id) {
     var current, i, next;
+    clearTooltip();
     current = this.getShowingLayer();
     next = this.get(id);
     try {
@@ -825,7 +826,7 @@ When these elements are added dynamically, they must be configured manually.
 
 This code is taken from https://github.com/Dogfalo/materialize/blob/master/js/forms.js#L156
  */
-var materialCheckbox, materialFileInput, materialRefresh;
+var clearTooltip, materialCheckbox, materialFileInput, materialRefresh;
 
 materialRefresh = function() {
   try {
@@ -836,6 +837,9 @@ materialRefresh = function() {
   } catch (_error) {}
   try {
     Materialize.updateTextFields();
+  } catch (_error) {}
+  try {
+    clearTooltip();
   } catch (_error) {}
 };
 
@@ -863,6 +867,10 @@ materialCheckbox = function(selector) {
     target = handle.attr("for");
     return $("input[name='" + target + "']").click();
   });
+};
+
+clearTooltip = function() {
+  return $('.material-tooltip').hide();
 };
 
 //# sourceMappingURL=material-shim.js.map

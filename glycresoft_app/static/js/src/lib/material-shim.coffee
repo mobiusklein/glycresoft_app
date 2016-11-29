@@ -12,6 +12,8 @@ materialRefresh = ->
         materialFileInput()
     try
         Materialize.updateTextFields()
+    try
+        clearTooltip()    
     return
 
 materialFileInput = ->
@@ -34,3 +36,6 @@ materialCheckbox = (selector) ->
         handle = $(this)
         target = handle.attr("for")
         $("input[name='#{target}']").click()
+
+clearTooltip = () ->
+    $('.material-tooltip').hide()

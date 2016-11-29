@@ -54,6 +54,7 @@ ActionLayerManager = (function(superClass) {
 
   ActionLayerManager.prototype.setShowingLayer = function(id) {
     var current, i, next;
+    clearTooltip();
     current = this.getShowingLayer();
     next = this.get(id);
     try {
