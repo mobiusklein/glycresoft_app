@@ -27,6 +27,6 @@ def download_file(b64name):
             for line in open(path):
                 yield line
         return Response(yielder(), mimetype="application/octet-stream",
-                        headers={"Content-Disposition": "attachment; filename=%s;" % name})
+                        headers={"Content-Disposition": "attachment; filename=%s" % name})
     else:
         return abort(404)

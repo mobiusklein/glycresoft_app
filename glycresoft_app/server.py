@@ -145,7 +145,6 @@ def inject_config():
 
 class RouteLoggingFilter(logging.Filter):
     def filter(self, record):
-        # print(record.getMessage())
         return "GET /api/tasks " not in record.getMessage()
 
 

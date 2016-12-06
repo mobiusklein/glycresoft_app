@@ -9,9 +9,6 @@ from glycan_profiling.plotting import colors
 from .service_module import register_service
 from .view_hypothesis import _locate_hypothesis
 
-# ----------------------------------------
-#           JSON Data API Calls
-# ----------------------------------------
 
 api = register_service("api", __name__)
 
