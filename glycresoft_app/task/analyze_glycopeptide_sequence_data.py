@@ -1,7 +1,7 @@
 from click import Abort
 
 from glycresoft_app.utils import json_serializer
-from .task_process import Task, Message
+from .task_process import Task, Message, null_user
 
 from glycan_profiling.serialize import (
     DatabaseBoundOperation, GlycopeptideHypothesis,

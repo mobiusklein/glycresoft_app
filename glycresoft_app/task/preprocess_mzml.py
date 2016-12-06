@@ -2,10 +2,11 @@ import os
 from click import Abort
 
 from glycresoft_app.utils import json_serializer
-from .task_process import Task, Message
+from .task_process import Task, Message, null_user
 
 from glycan_profiling.cli.validators import (
-    validate_averagine, validate_sample_run_name)
+    validate_averagine, validate_sample_run_name,
+    validate_database_unlocked)
 
 import ms_deisotope
 import ms_peak_picker
@@ -21,6 +22,12 @@ logger = logging.getLogger(__name__)
 def preprocess(mzml_file, database_connection, averagine=None, start_time=None, end_time=None, maximum_charge=None,
                name=None, msn_averagine=None, score_threshold=15., msn_score_threshold=2., missed_peaks=1,
                channel=None):
+
+    logger.info("Validating Database Lock")
+    if not validate_database_unlocked(database_connection):
+        channel.send(Message("Database is locked.", "error"))
+        return
+
     minimum_charge = 1 if maximum_charge > 0 else -1
     charge_range = (minimum_charge, maximum_charge)
     logger.info("Begin Scan Interpolation")

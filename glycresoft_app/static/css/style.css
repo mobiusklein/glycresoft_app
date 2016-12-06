@@ -166,3 +166,14 @@ Simple Numeric Entry
     width: 150px;
     text-align: center;
 }
+
+/*
+
+Peptide Sequence Display
+
+*/
+
+.peptide-sequence-cell {
+    word-break: break-all !important;
+    word-spacing: 0.01em !important;
+}

@@ -7,6 +7,7 @@ class Application extends ActionLayerManager
             0
             1
         ]
+
         @context = {}
         @settings = {}
         @tasks = {}
@@ -53,6 +54,16 @@ class Application extends ActionLayerManager
                     'status': 'finished'
             self.updateTaskList()
             return
+        @handleMessage "task-stopped", (data) =>
+            try
+                self.tasks[data.id].status = 'stopped'
+            catch err
+                self.tasks[data.id] =
+                    'id': data.id
+                    'name': data.name
+                    'status': 'stopped'
+            self.updateTaskList()
+            return            
         @handleMessage 'new-sample-run', (data) =>
             @samples[data.name] = data
             @emit "render-samples"
@@ -81,28 +92,40 @@ class Application extends ActionLayerManager
         ).error (err) ->
             console.log "error in updateSettings", err, arguments
 
-    updateTaskList: ->
+    updateTaskList: (clearFinished=true) ->
         taskListContainer = @sideNav.find('.task-list-container ul')
 
         clickTask = (event) ->
             handle = $(this)
             state = handle.attr('data-status')
             id = handle.attr('data-id')
-            if state == 'finished'
+            if (state == 'finished' or state == 'stopped') and event.which != 3
                 delete self.tasks[id]
                 handle.fadeOut()
                 handle.remove()
             return
         self = @
-        doubleClickTask = (event) ->
+
+        viewLog = (event) ->
             handle = $(this)    
             id = handle.attr('data-id')
-            $.get "/internal/log/" + id, (message) => self.displayMessageModal(message)
+            name = handle.attr("data-name")
+            $.get "/internal/log/" + name, (message) => self.displayMessageModal(message)
+
+        cancelTask = (event) ->
+            userInput = window.confirm("Are you sure you want to cancel this task?")
+            if userInput
+                handle = $(this)
+                id = handle.attr('data-id')
+                $.get "/internal/cancel_task/" + id
 
         taskListContainer.html _.map(@tasks, renderTask).join('')
-        taskListContainer.find('li').map (i, li) -> contextMenu li, {"View Log": doubleClickTask}
+        taskListContainer.find('li').map (i, li) -> contextMenu li, {
+            "View Log": viewLog
+            "Cancel Task": cancelTask
+        }
         taskListContainer.find('li').click clickTask
-        taskListContainer.find("li").dblclick doubleClickTask
+        taskListContainer.find("li").dblclick viewLog
 
     handleMessage: (messageType, handler) ->
         @messageHandlers[messageType] = handler
@@ -146,7 +169,15 @@ class Application extends ActionLayerManager
                     layer.setup()
 
         ->
-            setInterval(@_upkeepIntervalCallback, 10000)
+            setInterval(@_upkeepIntervalCallback, @options.upkeepInterval || 10000)
+
+            refreshTasks = =>
+                Task.all (d) =>
+                    for key, task of d
+                        @tasks[key] = task
+                    @updateTaskList()
+
+            setInterval(refreshTasks, @options.refreshTasksInterval || 250000)
     ]
 
     loadData: ->
@@ -185,6 +216,7 @@ class Application extends ActionLayerManager
 
     _upkeepIntervalCallback: =>
         if @eventStream.readyState == 2
+            console.log "Re-establishing EventSource"
             @connectEventSource()
             for msgType, handler of @messageHandlers
                 @handleMessage msgType, handler
@@ -193,13 +225,27 @@ class Application extends ActionLayerManager
     setHypothesisContext: (hypothseisUUID) ->
         @context.hypothseisUUID = hypothseisUUID
 
+    invalidate: ->
+        @monosaccharideFilterState.invalidate()
+        console.log("Invalidated")
+
 
 renderTask = (task) ->
-    '<li data-id=\'{id}\' data-status=\'{status}\'><b>{name}</b> ({status})</li>'.format task
+    '<li data-id=\'{id}\' data-status=\'{status}\' data-name=\'{name}\'><b>{name}</b> ({status})</li>'.format task
 
 
 $(() ->
-    window.GlycReSoft = new Application(options={actionContainer: ".action-layer-container"})
+    if not window.ApplicationConfiguration?
+        window.ApplicationConfiguration = {
+            refreshTasksInterval: 25000,
+            upkeepInterval: 10000,
+        }
+
+    window.GlycReSoft = new Application(options={
+        actionContainer: ".action-layer-container",
+        refreshTasksInterval: window.ApplicationConfiguration.refreshTasksInterval,
+        upkeepInterval: window.ApplicationConfiguration.upkeepInterval,
+    })
     GlycReSoft.runInitializers()
     GlycReSoft.updateSettings()
     GlycReSoft.updateTaskList())

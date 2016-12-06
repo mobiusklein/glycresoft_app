@@ -72,6 +72,22 @@ Application = (function(superClass) {
         self.updateTaskList();
       };
     })(this));
+    this.handleMessage("task-stopped", (function(_this) {
+      return function(data) {
+        var err;
+        try {
+          self.tasks[data.id].status = 'stopped';
+        } catch (_error) {
+          err = _error;
+          self.tasks[data.id] = {
+            'id': data.id,
+            'name': data.name,
+            'status': 'stopped'
+          };
+        }
+        self.updateTaskList();
+      };
+    })(this));
     this.handleMessage('new-sample-run', (function(_this) {
       return function(data) {
         _this.samples[data.name] = data;
@@ -130,39 +146,53 @@ Application = (function(superClass) {
     });
   };
 
-  Application.prototype.updateTaskList = function() {
-    var clickTask, doubleClickTask, self, taskListContainer;
+  Application.prototype.updateTaskList = function(clearFinished) {
+    var cancelTask, clickTask, self, taskListContainer, viewLog;
+    if (clearFinished == null) {
+      clearFinished = true;
+    }
     taskListContainer = this.sideNav.find('.task-list-container ul');
     clickTask = function(event) {
       var handle, id, state;
       handle = $(this);
       state = handle.attr('data-status');
       id = handle.attr('data-id');
-      if (state === 'finished') {
+      if ((state === 'finished' || state === 'stopped') && event.which !== 3) {
         delete self.tasks[id];
         handle.fadeOut();
         handle.remove();
       }
     };
     self = this;
-    doubleClickTask = function(event) {
-      var handle, id;
+    viewLog = function(event) {
+      var handle, id, name;
       handle = $(this);
       id = handle.attr('data-id');
-      return $.get("/internal/log/" + id, (function(_this) {
+      name = handle.attr("data-name");
+      return $.get("/internal/log/" + name, (function(_this) {
         return function(message) {
           return self.displayMessageModal(message);
         };
       })(this));
     };
+    cancelTask = function(event) {
+      var handle, id, userInput;
+      userInput = window.confirm("Are you sure you want to cancel this task?");
+      if (userInput) {
+        handle = $(this);
+        id = handle.attr('data-id');
+        return $.get("/internal/cancel_task/" + id);
+      }
+    };
     taskListContainer.html(_.map(this.tasks, renderTask).join(''));
     taskListContainer.find('li').map(function(i, li) {
       return contextMenu(li, {
-        "View Log": doubleClickTask
+        "View Log": viewLog,
+        "Cancel Task": cancelTask
       });
     });
     taskListContainer.find('li').click(clickTask);
-    return taskListContainer.find("li").dblclick(doubleClickTask);
+    return taskListContainer.find("li").dblclick(viewLog);
   };
 
   Application.prototype.handleMessage = function(messageType, handler) {
@@ -230,7 +260,21 @@ Application = (function(superClass) {
         };
       })(this));
     }, function() {
-      return setInterval(this._upkeepIntervalCallback, 10000);
+      var refreshTasks;
+      setInterval(this._upkeepIntervalCallback, this.options.upkeepInterval || 10000);
+      refreshTasks = (function(_this) {
+        return function() {
+          return Task.all(function(d) {
+            var key, task;
+            for (key in d) {
+              task = d[key];
+              _this.tasks[key] = task;
+            }
+            return _this.updateTaskList();
+          });
+        };
+      })(this);
+      return setInterval(refreshTasks, this.options.refreshTasksInterval || 250000);
     }
   ];
 
@@ -292,6 +336,7 @@ Application = (function(superClass) {
   Application.prototype._upkeepIntervalCallback = function() {
     var handler, msgType, ref;
     if (this.eventStream.readyState === 2) {
+      console.log("Re-establishing EventSource");
       this.connectEventSource();
       ref = this.messageHandlers;
       for (msgType in ref) {
@@ -306,18 +351,31 @@ Application = (function(superClass) {
     return this.context.hypothseisUUID = hypothseisUUID;
   };
 
+  Application.prototype.invalidate = function() {
+    this.monosaccharideFilterState.invalidate();
+    return console.log("Invalidated");
+  };
+
   return Application;
 
 })(ActionLayerManager);
 
 renderTask = function(task) {
-  return '<li data-id=\'{id}\' data-status=\'{status}\'><b>{name}</b> ({status})</li>'.format(task);
+  return '<li data-id=\'{id}\' data-status=\'{status}\' data-name=\'{name}\'><b>{name}</b> ({status})</li>'.format(task);
 };
 
 $(function() {
   var options;
+  if (window.ApplicationConfiguration == null) {
+    window.ApplicationConfiguration = {
+      refreshTasksInterval: 25000,
+      upkeepInterval: 10000
+    };
+  }
   window.GlycReSoft = new Application(options = {
-    actionContainer: ".action-layer-container"
+    actionContainer: ".action-layer-container",
+    refreshTasksInterval: window.ApplicationConfiguration.refreshTasksInterval,
+    upkeepInterval: window.ApplicationConfiguration.upkeepInterval
   });
   GlycReSoft.runInitializers();
   GlycReSoft.updateSettings();
@@ -399,7 +457,7 @@ Task = {
 var ConstraintInputGrid, MonosaccharideInputWidgetGrid;
 
 MonosaccharideInputWidgetGrid = (function() {
-  MonosaccharideInputWidgetGrid.prototype.template = "<div class='monosaccharide-row row'>\n    <div class='input-field col s3'>\n        <label for='mass_shift_name'>Monosaccharide Name</label>\n        <input class='monosaccharide-name' type='text' name='monosaccharide_name' placeholder='Name'>\n    </div>\n    <div class='input-field col s3'>\n        <label for='monosaccharide_mass_delta'>Lower Bound</label>\n        <input class='lower-bound numeric-entry' type='number' name='monosaccharide_lower_bound' placeholder='Lower Bound'>\n    </div>\n    <div class='input-field col s3'>\n        <label for='monosaccharide_max_count'>Upper Bound</label>    \n        <input class='upper-bound numeric-entry' type='number' min='0' placeholder='Upper Bound' name='monosaccharide_upper_bound'>\n    </div>\n</div>";
+  MonosaccharideInputWidgetGrid.prototype.template = "<div class='monosaccharide-row row'>\n    <div class='input-field col s2'>\n        <label for='mass_shift_name'>Residue Name</label>\n        <input class='monosaccharide-name center-align' type='text' name='monosaccharide_name' placeholder='Name'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='monosaccharide_mass_delta'>Lower Bound</label>\n        <input class='lower-bound numeric-entry' min='0' type='number' name='monosaccharide_lower_bound' placeholder='Bound'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='monosaccharide_max_count'>Upper Bound</label>    \n        <input class='upper-bound numeric-entry' type='number' min='0' placeholder='Bound' name='monosaccharide_upper_bound'>\n    </div>\n</div>";
 
   function MonosaccharideInputWidgetGrid(container) {
     this.counter = 0;
@@ -408,7 +466,7 @@ MonosaccharideInputWidgetGrid = (function() {
   }
 
   MonosaccharideInputWidgetGrid.prototype.update = function() {
-    var entry, i, len, monosaccharides, notif, notify, ref, row;
+    var entry, i, len, monosaccharides, notif, notify, pos, ref, row;
     monosaccharides = {};
     ref = this.container.find(".monosaccharide-row");
     for (i = 0, len = ref.length; i < len; i++) {
@@ -425,7 +483,9 @@ MonosaccharideInputWidgetGrid = (function() {
       }
       if (entry.name in monosaccharides) {
         row.addClass("warning");
-        notify = new TinyNotification(0, 0, "This monosaccharide is already present.", row);
+        pos = row.position();
+        notify = new TinyNotification(pos.top + 50, pos.left, "This monosaccharide is already present.", row);
+        console.log(row, notify);
         row.data("tinyNotification", notify);
         console.log(notify);
       } else {
@@ -496,7 +556,7 @@ MonosaccharideInputWidgetGrid = (function() {
 })();
 
 ConstraintInputGrid = (function() {
-  ConstraintInputGrid.prototype.template = "<div class=\"monosaccharide-constraints-row row\">\n    <div class='input-field col s4'>\n        <label for='left_hand_side'>Name</label>\n        <input class='monosaccharide-name' type='text' name='left_hand_side' placeholder='Name'>\n    </div>\n    <div class='input-field col s1' style='padding-left: 2px;padding-right: 2px;'>\n        <select class='browser-default' name='operator'>\n            <option>=</option>\n            <option>!=</option>\n            <option>&gt;</option>\n            <option>&lt;</option>\n            <option>&gt;=</option>\n            <option>&lt;=</option>\n        </select>\n    </div>\n    <div class='input-field col s4'>\n        <label for='right_hand_side'>Name/Value</label>\n        <input class='monosaccharide-name' type='text' name='right_hand_side' placeholder='Name/Value'>\n    </div>\n</div>";
+  ConstraintInputGrid.prototype.template = "<div class=\"monosaccharide-constraints-row row\">\n    <div class='input-field col s2'>\n        <label for='left_hand_side'>Limit</label>\n        <input class='monosaccharide-name center-align' type='text' name='left_hand_side' placeholder='Name'>\n    </div>\n    <div class='input-field col s2' style='padding-left: 2px;padding-right: 2px;'>\n        <select class='browser-default center-align' name='operator'>\n            <option>=</option>\n            <option>!=</option>\n            <option>&gt;</option>\n            <option>&lt;</option>\n            <option>&gt;=</option>\n            <option>&lt;=</option>\n        </select>\n    </div>\n    <div class='input-field col s4 constrained-value-cell'>\n        <label for='right_hand_side'>Constrained Value</label>\n        <input class='monosaccharide-name constrained-value' type='text' name='right_hand_side' placeholder='Name/Value'>\n    </div>\n</div>";
 
   function ConstraintInputGrid(container, monosaccharideGrid) {
     this.counter = 0;
@@ -606,6 +666,7 @@ Application.prototype.renderAnalyses = function(container) {
       self = this;
       row.click(function(event) {
         var handle, id;
+        GlycReSoft.invalidate();
         handle = $(this);
         id = handle.attr('data-id');
         self.addLayer(ActionBook.viewAnalysis, {
@@ -794,6 +855,11 @@ MonosaccharideFilterState = (function() {
     }
   };
 
+  MonosaccharideFilterState.prototype.invalidate = function() {
+    this.setHypothesis(null);
+    return this.setApplicationFilter();
+  };
+
   return MonosaccharideFilterState;
 
 })();
@@ -882,13 +948,14 @@ var makePresetSelector, samplePreprocessingPresets, setSamplePreprocessingConfig
 
 samplePreprocessingPresets = [
   {
-    name: "Negative Mode Glycomics",
-    max_charge: -9,
+    name: "MS Glycomics Profiling",
+    max_charge: 9,
     ms1_score_threshold: 15,
     ms1_averagine: "glycan",
-    max_missing_peaks: 1
+    max_missing_peaks: 1,
+    msn_averagine: 'glycan'
   }, {
-    name: "Positive Mode Glycoproteomics",
+    name: "LC-MS/MS Glycoproteomics",
     max_charge: 12,
     max_missing_peaks: 1,
     ms1_score_threshold: 35,
@@ -908,10 +975,12 @@ setSamplePreprocessingConfiguration = function(name) {
       break;
     }
   }
+  console.log(found, config);
   if (!found) {
     return;
   }
-  form = $("#add-sample");
+  form = $("form#add-sample-form");
+  console.log(form);
   form.find("#maximum-charge-state").val(config.max_charge);
   form.find("#missed-peaks").val(config.max_missing_peaks);
   form.find('#ms1-minimum-isotopic-score').val(config.ms1_score_threshold);
@@ -925,22 +994,25 @@ setSamplePreprocessingConfiguration = function(name) {
 };
 
 makePresetSelector = function(container) {
-  var elem, i, len, preset;
-  elem = $('<select style=\'browser-default\' name=\'preset-configuration>\n</select>');
+  var elem, i, label, len, preset;
+  label = $("<label for='preset-configuration'>Preset Configurations</label>");
+  container.append(label);
+  elem = $('<select class=\'browser-default\' name=\'preset-configuration\'></select>');
   for (i = 0, len = samplePreprocessingPresets.length; i < len; i++) {
     preset = samplePreprocessingPresets[i];
     elem.append($("<option value='" + preset.name + "'>" + preset.name + "</option>"));
   }
   container.append(elem);
-  return elem.change(function(event, name) {
-    return console.log(arguments);
+  return elem.change(function(event) {
+    console.log(this, arguments);
+    return setSamplePreprocessingConfiguration(this.value);
   });
 };
 
 //# sourceMappingURL=sample-preprocessing-configurations.js.map
 
 Application.prototype.renderSampleListAt = function(container) {
-  var chunks, row, sample, template;
+  var chunks, row, sample, sampleStatusDisplay, template;
   chunks = [];
   template = (function() {
     var i, len, ref, results;
@@ -950,7 +1022,11 @@ Application.prototype.renderSampleListAt = function(container) {
     results = [];
     for (i = 0, len = ref.length; i < len; i++) {
       sample = ref[i];
-      row = $("<div data-name=" + sample.name + " class='list-item clearfix' data-uuid='" + sample.uuid + "'> <span class='handle user-provided-name'>" + (sample.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + sample.sample_type + " <a class='remove-sample mdi mdi-close'></a> </small> </div>");
+      row = $("<div data-name=" + sample.name + " class='list-item sample-entry clearfix' data-uuid='" + sample.uuid + "'> <span class='handle user-provided-name'>" + (sample.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + sample.sample_type + " <span class='status-indicator'></span> <a class='remove-sample mdi mdi-close'></a> </small> </div>");
+      sampleStatusDisplay = row.find(".status-indicator");
+      if (!sample.completed) {
+        sampleStatusDisplay.html("<small class='yellow-text'>(Incomplete)</small>");
+      }
       chunks.push(row);
       results.push(row.find(".remove-sample").click(function(event) {
         var handle;
@@ -1712,14 +1788,18 @@ GlycopeptideLCMSMSSearchController = (function() {
       return self.proteinChoiceHandler(this);
     });
     console.log("setup complete");
-    this.proteinChoiceHandler(proteinRowHandle[0]);
     filterContainer = $(this.monosaccharideFilterContainerSelector);
-    return GlycReSoft.monosaccharideFilterState.update(this.hypothesisUUID, (function(_this) {
+    GlycReSoft.monosaccharideFilterState.update(this.hypothesisUUID, (function(_this) {
       return function(bounds) {
         _this.monosaccharideFilter = new MonosaccharideFilter(filterContainer);
         return _this.monosaccharideFilter.render();
       };
     })(this));
+    if (proteinRowHandle[0] != null) {
+      return this.proteinChoiceHandler(proteinRowHandle[0]);
+    } else {
+      return this.noResultsHandler();
+    }
   };
 
   GlycopeptideLCMSMSSearchController.prototype.getLastProteinViewed = function() {
@@ -1748,6 +1828,10 @@ GlycopeptideLCMSMSSearchController = (function() {
       "analysisId": this.analysisId,
       "proteinId": proteinId
     });
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.noResultsHandler = function() {
+    return $(this.tabView.containerSelector).html('<h5 class=\'red-text center\' style=\'margin: 50px;\'>\nYou don\'t appear to have any results to show. Your filters may be set too high. <br>\nTo lower your filters, please go to the Preferences menu in the upper right corner <br>\nof the screen and set the <code>"Minimum MS2 Score Filter"</code> to be lower and try again.<br>\n</h5>');
   };
 
   GlycopeptideLCMSMSSearchController.prototype.proteinChoiceHandler = function(row) {

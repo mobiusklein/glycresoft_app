@@ -1,3 +1,4 @@
+import logging
 import os
 import pickle
 from os import path
@@ -9,15 +10,21 @@ from glycan_profiling.serialize import (
 
 from glycresoft_app.task.task_process import TaskManager
 from glycresoft_app.vendor import sqlitedict
+from glycresoft_app.config import get as config_from_path
 
 
 class ApplicationManager(object):
     app_data_name = "app_data.db"
+    _config_file_name = 'config.ini'
 
     def __init__(self, database_conection, base_path=None):
         if base_path is None:
             base_path = os.getcwd()
         self.base_path = os.path.abspath(base_path)
+        self.configuration = dict()
+        self.configuration.update(
+            config_from_path(self.configuration_path))
+
         self.database_conection = DatabaseBoundOperation(database_conection)
 
         self.sample_dir = path.join(base_path, 'sample_dir')
@@ -31,6 +38,17 @@ class ApplicationManager(object):
         self.app_data = sqlitedict.SqliteDict(self.app_data_path, autocommit=True)
 
         self.task_manager = TaskManager(self.task_dir)
+
+        logger = logging.getLogger()
+        logger.addHandler(logging.FileHandler(self.application_log_path))
+
+    @property
+    def application_log_path(self):
+        return os.path.join(self.base_path, "glycresoft-log")
+
+    @property
+    def configuration_path(self):
+        return os.path.join(self.base_path, self._config_file_name)
 
     @property
     def halting(self):
@@ -98,14 +116,20 @@ class ApplicationManager(object):
         path = self.get_task_path(task.name)
         pickle.dump(task.args[:-1], open(path, 'wb'))
 
+    def cancel_task(self, task_id):
+        self.task_manager.cancel_task(task_id)
+
     def __getitem__(self, key):
         return self.app_data[key]
 
     def __setitem__(self, key, value):
         self.app_data[key] = value
 
-    def samples(self):
-        return self.session.query(SampleRun)
+    def samples(self, include_incomplete=True):
+        q = self.session.query(SampleRun)
+        if not include_incomplete:
+            q = q.filter(SampleRun.completed)
+        return q
 
     def glycan_hypotheses(self):
         return self.session.query(GlycanHypothesis)

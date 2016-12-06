@@ -28,6 +28,11 @@
     <script src="{{ url_for('static',filename='dist/js/app-bundle.js') }}"></script>
     <script>
 
+ApplicationConfiguration = {
+    refreshTasksInterval: {{ configuration.refresh_task_interval or 25000}},
+    upkeepInterval: {{ configuration.upkeep_interval or 10000}},
+}
+
 $(function() {
     $(".side-nav").css('top', $('.nav-wrapper').innerHeight()).css("z-index", 3)
     $("#preferences-link").click(function(event){

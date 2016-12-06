@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import traceback
 from os import path
@@ -10,15 +11,21 @@ from Queue import Queue, Empty as QueueEmptyException
 
 from glycan_profiling.task import TaskBase
 
+from glycresoft_app.utils.message_queue import identity_provider, make_message_queue
+
 TaskBase.display_fields = True
 
 logger = logging.getLogger("task_process")
 logger.setLevel("ERROR")
 
-NEW = intern('new')
-RUNNING = intern('running')
-ERROR = intern('error')
-FINISHED = intern('finished')
+NEW = 'new'
+RUNNING = 'running'
+ERROR = 'error'
+STOPPED = "stopped"
+FINISHED = 'finished'
+
+
+null_user = identity_provider.new_user(0)
 
 
 def noop():
@@ -29,7 +36,7 @@ def printop(*args, **kwargs):
     print(args, kwargs)
 
 
-def configure_log_wrapper(log_file_path, task_callable, args):
+def configure_log_wrapper(log_file_path, task_callable, args, channel):
     import logging
     logger = logging.getLogger()
     handler = logging.FileHandler(log_file_path)
@@ -47,7 +54,14 @@ def configure_log_wrapper(log_file_path, task_callable, args):
     logger.propagate = False
     current_process = multiprocessing.current_process()
     logger.info("Task Running on PID %r", current_process.pid)
-    return task_callable(*args)
+
+    try:
+        out = task_callable(*args)
+        return out
+    except:
+        channel.send(Message.traceback())
+        import sys
+        sys.exit(1)
 
 
 class CallInterval(object):
@@ -107,11 +121,12 @@ class LoggingPipe(object):
 
 
 class TaskControlContext(object):
-    def __init__(self, pipe, stop_event=None):
+    def __init__(self, pipe, stop_event=None, user=null_user):
         if stop_event is None:
             stop_event = IPCEvent()
         self.pipe = LoggingPipe(pipe)
         self.stop_event = stop_event
+        self.user = user
 
     def send(self, message):
         self.pipe.send(message)
@@ -154,11 +169,14 @@ class Task(object):
     task_fn : callable
         The function to call in the "task" process
     """
-    def __init__(self, task_fn, args, callback=printop, **kwargs):
+    def __init__(self, task_fn, args, callback=printop, user=null_user, **kwargs):
         self.id = str(uuid4())
         self.task_fn = task_fn
         self.pipe, child_conn = Pipe(True)
-        control_context = TaskControlContext(child_conn)
+        self.created_at = datetime.now()
+        self.started_at = None
+        control_context = TaskControlContext(child_conn, user=user)
+        self.control_context = control_context
         self.stop_event = control_context.stop_event
         self.state = NEW
         self.process = None
@@ -166,13 +184,19 @@ class Task(object):
         self.args.append(control_context)
         self.callback = callback
         self.name = kwargs.get('name', self.id)
-        self.log_file_path = kwargs.get("log_file_path", "%s.log" % self.id)
+        self.log_file_path = kwargs.get("log_file_path", "%s-%s.log" % (self.name, self.created_at))
         self.message_buffer = []
+        self.user = user
 
     def start(self):
-        self.process = Process(target=configure_log_wrapper, args=(self.log_file_path, self.task_fn, self.args))
+        self.process = Process(target=configure_log_wrapper, args=(
+            self.log_file_path, self.task_fn, self.args, self.control_context))
         self.state = RUNNING
         self.process.start()
+
+    def cancel(self):
+        self.process.terminate()
+        self.state = STOPPED
 
     def get_message(self):
         if len(self.message_buffer) > 0:
@@ -212,7 +236,8 @@ class Task(object):
             "state": self.state,
             "task_fn": self.task_fn,
             "args": self.args[:-1],
-            "callback": self.callback
+            "callback": self.callback,
+            "user": self.user
         }
 
     def __setstate__(self, state):
@@ -221,8 +246,9 @@ class Task(object):
         self.state = state['state']
         self.args = state['args']
         self.callback = state['callback']
+        self.user = state['user']
         self.pipe, child_conn = Pipe(True)
-        control_context = TaskControlContext(child_conn)
+        control_context = TaskControlContext(child_conn, user=self.user)
         self.stop_event = control_context.stop_event
         self.args.append(control_context)
         self.process = None
@@ -270,14 +296,16 @@ class Message(object):
     type : str
         A constant similar to logging levels. Options in use include
         ("info", "error", "update")
+    user : UserIdentity
     """
-    def __init__(self, message, type="info", source=None):
+    def __init__(self, message, type="info", source=None, user=null_user):
         self.message = message
         self.source = source
         self.type = type
+        self.user = user
 
     def __str__(self):
-        return "%s:%s - %r" % (self.source, self.type, self.message)
+        return "%r@%s:%s - %r" % (self.user, self.source, self.type, self.message)
 
     @classmethod
     def traceback(cls):
@@ -321,7 +349,7 @@ class TaskManager(object):
         self.completed_tasks = set()
         self.timer = CallInterval(self.interval, self.tick)
         self.timer.start()
-        self.messages = Queue()
+        self.messages = make_message_queue()
         self.running_lock = RLock()
         self.halting = False
 
@@ -339,8 +367,12 @@ class TaskManager(object):
         self.tasks[task.id] = task
         self.messages.put(Message({"id": task.id, "name": task.name}, "task-queued"))
 
+    def cancel_task(self, task_id):
+        task = self.tasks[task_id]
+        task.cancel()
+
     def get_task_log_path(self, task):
-        return path.join(getattr(self, "task_dir", ""), task.id + '.log')
+        return path.join(self.task_dir, task.name + '.log')
 
     def startloop(self):
         self.timer.start()
@@ -395,6 +427,14 @@ class TaskManager(object):
                         self.tasks.pop(task.id)
                         self.n_running -= 1
                         self.running_lock.release()
+            elif task.state == STOPPED:
+                if task.id in self.currently_running:
+                    if self.running_lock.acquire(0):
+                        self.currently_running.pop(task.id)
+                        self.messages.put(Message({"id": task.id, "name": task.name}, "task-stopped"))
+                        self.tasks.pop(task.id)
+                        self.n_running -= 1
+                        self.running_lock.release()
             elif task.state == RUNNING:
                 if running:
                     continue
@@ -446,6 +486,8 @@ class TaskManager(object):
             self.add_message(Message({"id": task.id, "name": task.name}, 'task-start'))
 
     def add_message(self, message):
+        if message.user is None:
+            message.user = null_user
         self.messages.put(message)
 
     def task_list(self):

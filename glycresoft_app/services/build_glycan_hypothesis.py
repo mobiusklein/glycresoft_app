@@ -26,17 +26,14 @@ def build_naive_glycan_search():
 def _serialize_rules_to_buffer(rules, constraints, header_comment=""):
     lines = [';%s' % header_comment]
     for symbol, low, high in rules:
-        lines.append(" ".join(map(str, [symbol, low, high])))
+        symbol, low, high = map(lambda x: str(x).strip(), (symbol, low, high))
+        if any(c == "" for c in [symbol, low, high]):
+            continue
+        lines.append(" ".join([symbol, low, high]))
     lines.append("")
     for lhs, op, rhs in constraints:
         lines.append(" ".join(map(str, (lhs, op, rhs))))
     return StringIO('\n'.join(lines))
-
-
-def is_text_file_present(file_storage):
-    if file_storage.filename == "":
-        return False
-    return True
 
 
 @app.route("/glycan_search_space", methods=["POST"])

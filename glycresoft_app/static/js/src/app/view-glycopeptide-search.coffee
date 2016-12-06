@@ -169,12 +169,15 @@ class GlycopeptideLCMSMSSearchController
         proteinRowHandle.click (event) ->
             self.proteinChoiceHandler @
         console.log("setup complete")
-        @proteinChoiceHandler proteinRowHandle[0]
-
         filterContainer = $(@monosaccharideFilterContainerSelector)
         GlycReSoft.monosaccharideFilterState.update @hypothesisUUID, (bounds) =>
             @monosaccharideFilter = new MonosaccharideFilter(filterContainer)
             @monosaccharideFilter.render()
+        if proteinRowHandle[0]?
+            @proteinChoiceHandler proteinRowHandle[0]
+        else
+            @noResultsHandler()
+
 
     getLastProteinViewed: ->
         GlycReSoft.context['protein_id']
@@ -193,6 +196,15 @@ class GlycopeptideLCMSMSSearchController
 
     getProteinOverviewUrl: (proteinId) ->
         @proteinOverviewUrl.format({"analysisId": @analysisId, "proteinId": proteinId})
+
+    noResultsHandler: ->
+        $(@tabView.containerSelector).html('''
+            <h5 class='red-text center' style='margin: 50px;'>
+            You don't appear to have any results to show. Your filters may be set too high. <br>
+            To lower your filters, please go to the Preferences menu in the upper right corner <br>
+            of the screen and set the <code>"Minimum MS2 Score Filter"</code> to be lower and try again.<br>
+            </h5>
+        ''')
 
     proteinChoiceHandler: (row) =>
         handle = $ row

@@ -1,4 +1,4 @@
-var ActionLayer, ActionLayerManager,
+var ActionLayer, ActionLayerManager, errorLoadingContent, loadingContent,
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
 
@@ -143,9 +143,11 @@ ActionLayerManager = (function(superClass) {
 
 })(EventEmitter);
 
-ActionLayer = (function() {
-  ActionLayer.actions = {};
+loadingContent = "<div class='content-loading-please-wait' style='margin-top:5%'>\n    <h5 class='center-align green-text'>Loading Content. Please Wait.</h5>\n    <div class=\"progress\">\n        <div class=\"indeterminate\"></div>\n    </div>\n</div>";
 
+errorLoadingContent = "<div class='content-loading-please-wait' style='margin-top:5%'>\n    <h5 class='center-align red-text'>Something Went Wrong.</h5>\n</div>";
+
+ActionLayer = (function() {
   function ActionLayer(manager, options, params, method) {
     if (method == null) {
       method = 'get';
@@ -182,7 +184,7 @@ ActionLayer = (function() {
   }
 
   ActionLayer.prototype.setup = function() {
-    var callback;
+    var callback, errorHandler;
     if (this.options.contentURLTemplate != null) {
       this.contentURL = this.options.contentURLTemplate.format(this.params);
     }
@@ -207,8 +209,14 @@ ActionLayer = (function() {
         }
       };
     })(this);
+    errorHandler = (function(_this) {
+      return function(err) {
+        return _this.container.html(errorLoadingContent);
+      };
+    })(this);
+    this.container.html(loadingContent);
     if (this.method === "get") {
-      return $.get(this.contentURL).success(callback);
+      return $.get(this.contentURL).success(callback).error(errorHandler);
     } else if (this.method === "post") {
       console.log("Setup Post", this.manager.settings);
       return $.ajax(this.contentURL, {
@@ -219,6 +227,7 @@ ActionLayer = (function() {
           settings: this.manager.settings
         }),
         success: callback,
+        error: errorHandler,
         type: "POST"
       });
     }

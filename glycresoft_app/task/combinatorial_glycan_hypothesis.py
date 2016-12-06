@@ -5,7 +5,7 @@ from glycan_profiling.cli.build_db import (
     validate_derivatization, validate_glycan_hypothesis_name)
 
 from glycresoft_app.utils import json_serializer
-from .task_process import Task, Message
+from .task_process import Task, Message, null_user
 
 
 def build_combinatorial_hypothesis(rule_file, database_connection, reduction, derivatization, name, channel):

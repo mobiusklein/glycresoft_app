@@ -79,6 +79,11 @@ MonosaccharideFilterState = (function() {
     }
   };
 
+  MonosaccharideFilterState.prototype.invalidate = function() {
+    this.setHypothesis(null);
+    return this.setApplicationFilter();
+  };
+
   return MonosaccharideFilterState;
 
 })();

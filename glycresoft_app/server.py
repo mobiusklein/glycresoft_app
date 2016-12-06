@@ -42,16 +42,11 @@ app.wsgi_app = StreamConsumingMiddleware(app.wsgi_app)
 app.config['PROPAGATE_EXCEPTIONS'] = True
 report.prepare_environment(app.jinja_env)
 
-DATABASE = None
 DEBUG = True
 SECRETKEY = 'TG9yZW0gaXBzdW0gZG90dW0'
 SERVER = None
 manager = None
 
-# app.register_blueprint(task_management.task_actions)
-# app.register_blueprint(server_sent_events.server_sent_events)
-# app.register_blueprint(api.api)
-# app.register_blueprint(build_glycan_hypothesis.app)
 service_module.load_all_services(app)
 
 
@@ -119,6 +114,13 @@ def before_request():
     connect_db()
 
 
+@app.after_request
+def per_request_callbacks(response):
+    for func in getattr(g, 'call_after_request', ()):
+        response = func(response)
+    return response
+
+
 @app.teardown_request
 def teardown_request(exception):
     db = getattr(g, 'db', None)
@@ -134,40 +136,37 @@ def inject_info():
     }
 
 
-def setup_logging():
-    try:
-        logging.basicConfig(
-            level=logging.INFO, filename='glycresoft-log', filemode='w',
-            format="%(asctime)s - %(processName)s:%(name)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s",
-            datefmt="%H:%M:%S")
-        fmt = logging.Formatter(
-            "%(asctime)s - %(processName)s:%(name)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s", "%H:%M:%S")
-        handler = logging.StreamHandler()
-        handler.setFormatter(fmt)
-        logging.getLogger().addHandler(handler)
-    except Exception, e:
-        logging.exception("Error, %r", e, exc_info=e)
-        raise e
+@app.context_processor
+def inject_config():
+    return {
+        "configuration": g.manager.configuration
+    }
+
+
+class RouteLoggingFilter(logging.Filter):
+    def filter(self, record):
+        # print(record.getMessage())
+        return "GET /api/tasks " not in record.getMessage()
+
+
+logging.getLogger("werkzeug").addFilter(RouteLoggingFilter())
 
 
 @cli.command()
 @click.pass_context
 @click.argument("database-connection")
 @click.option("-b", "--base-path", default=None, help='Location to store application instance information')
-@click.option("-e", "--external", is_flag=True, help="Allow connections from non-local clients")
-@click.option("-n", "--no-execute-tasks", is_flag=True, help="Prevent the execution of tasks (read-only)")
+@click.option("-e", "--external", is_flag=True, help="Allow connections from non-local machines")
+# @click.option("-n", "--no-execute-tasks", is_flag=True, help="Prevent the execution of tasks (read-only)")
 @click.option("-p", "--port", default=8080, type=int, help="The port to listen on")
 def server(context, database_connection, base_path, external=False, port=None, no_execute_tasks=False):
-    global DATABASE, manager, CAN_EXECUTE, SERVER
+    global manager, SERVER
+    manager = ApplicationManager(database_connection, base_path)
+    print(manager.configuration)
+    manager.configuration["allow_external_connections"] |= external
     host = None
-    if external:
+    if manager.configuration["allow_external_connections"]:
         host = "0.0.0.0"
-    DATABASE = database_connection
-    CAN_EXECUTE = not no_execute_tasks
-    print("BASE PATH", base_path)
-    manager = ApplicationManager(DATABASE, base_path)
-    print(manager.base_path)
-
     app.debug = DEBUG
     app.secret_key = SECRETKEY
     SERVER = ApplicationServerManager.werkzeug_server()

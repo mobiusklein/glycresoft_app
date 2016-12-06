@@ -92,8 +92,25 @@ class ActionLayerManager extends EventEmitter
         return layer.controller
 
 
+loadingContent = """
+<div class='content-loading-please-wait' style='margin-top:5%'>
+    <h5 class='center-align green-text'>Loading Content. Please Wait.</h5>
+    <div class="progress">
+        <div class="indeterminate"></div>
+    </div>
+</div>
+"""
+
+errorLoadingContent = """
+<div class='content-loading-please-wait' style='margin-top:5%'>
+    <h5 class='center-align red-text'>Something Went Wrong.</h5>
+</div>
+"""
+
+
 class ActionLayer
-    @actions = {}
+    # @actions = {}
+
     constructor: (manager, options, params, method='get') ->
         @manager = manager
         @options = options
@@ -141,16 +158,21 @@ class ActionLayer
         <div>
             <a class='dismiss-layer mdi mdi-close' onclick='GlycReSoft.removeCurrentLayer()'></a>
         </div>""")
+        errorHandler = (err) =>
+            @container.html(errorLoadingContent)
+        @container.html(loadingContent)
         if @method == "get"
-            $.get(@contentURL).success callback
+            $.get(@contentURL).success(callback).error(errorHandler)
         else if @method == "post"
             console.log("Setup Post", @manager.settings)
             $.ajax(@contentURL,
                 contentType: "application/json"
                 data: JSON.stringify {params: @params, context: @manager.context, settings: @manager.settings}
                 success: callback
+                error: errorHandler
                 type: "POST"
                 )
+
     
     reload: ->
         @container.html @options.document

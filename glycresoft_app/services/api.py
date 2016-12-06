@@ -1,5 +1,6 @@
 from uuid import uuid4
-from flask import Blueprint, g, jsonify
+from flask import Blueprint, g, jsonify, current_app
+
 
 from glycresoft_app.utils import json_serializer
 from glycan_profiling.serialize import IdentifiedGlycopeptide
@@ -39,9 +40,12 @@ def api_colors():
 @api.route("/api/samples")
 def api_samples():
     samples = g.manager.samples()
-    d = {
-        str(h.name): h.to_json() for h in samples
-    }
+    d = {}
+    for h in samples:
+        try:
+            d[str(h.name)] = h.to_json()
+        except:
+            current_app.logger.exception("Error occurred in api_samples", exc_info=True)
     return jsonify(**d)
 
 
@@ -49,11 +53,17 @@ def api_samples():
 def api_hypotheses():
     d = {}
     for hypothesis in g.manager.glycan_hypotheses():
-        dump = hypothesis.to_json()
-        d[hypothesis.uuid] = dump
+        try:
+            dump = hypothesis.to_json()
+            d[hypothesis.uuid] = dump
+        except:
+            current_app.logger.exception("Error occurred in api_hypotheses", exc_info=True)
     for hypothesis in g.manager.glycopeptide_hypotheses():
-        dump = hypothesis.to_json()
-        d[hypothesis.uuid] = dump
+        try:
+            dump = hypothesis.to_json()
+            d[hypothesis.uuid] = dump
+        except:
+            current_app.logger.exception("Error occurred in api_hypotheses", exc_info=True)
     return jsonify(**d)
 
 
@@ -67,6 +77,9 @@ def get_hypothesis(uuid):
 def api_analyses():
     d = {}
     for analysis in g.manager.analyses():
-        dump = analysis.to_json()
-        d[analysis.uuid] = dump
+        try:
+            dump = analysis.to_json()
+            d[analysis.uuid] = dump
+        except Exception:
+            current_app.logger.exception("Error occurred in api_analyses", exc_info=True)
     return jsonify(**d)

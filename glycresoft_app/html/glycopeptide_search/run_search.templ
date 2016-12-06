@@ -2,15 +2,7 @@
 <div class='row'>
     <form id='match-sample-form' action="/search_glycopeptide_sequences/run_search" class="col s12" method="post" accept-charset="utf-8" enctype="multipart/form-data">
         <div class='col s6'>
-        {% set samples = manager.samples().all() %}
-        {% if samples|length > 0 %}
-            <label for="samples">Select one or more samples</label>
-            <select name="samples" class='browser-default' multiple style='height:150px;'>
-                {% for sample in manager.samples() %}
-                    <option value="{{sample.id}}">{{sample.name}}</option>
-                {% endfor %}
-            </select>
-        {% endif %}
+            {% include "components/sample_selection.templ" %}
         </div>
         <div class='row'>
             <div class='input-field col s6'>    

@@ -9,6 +9,12 @@ var clearTooltip, materialCheckbox, materialFileInput, materialRefresh;
 
 materialRefresh = function() {
   try {
+    $('.material-tooltip').remove();
+    $('.tooltipped').tooltip({
+      delay: 50
+    });
+  } catch (_error) {}
+  try {
     $('select').material_select();
   } catch (_error) {}
   try {

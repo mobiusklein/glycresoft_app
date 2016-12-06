@@ -12,7 +12,7 @@ from glycan_profiling.database.builder.glycopeptide.naive_glycopeptide import (
 from glycopeptidepy.structure.modification import RestrictedModificationTable
 
 from glycresoft_app.utils import json_serializer
-from .task_process import Task, Message
+from .task_process import Task, Message, null_user
 
 
 def fasta_glycopeptide(database_connection, fasta_file, enzyme, missed_cleavages, occupied_glycosites, name,
@@ -49,6 +49,7 @@ def fasta_glycopeptide(database_connection, fasta_file, enzyme, missed_cleavages
 
     try:
         builder.start()
+        builder.session.add(builder.hypothesis)
         channel.send(Message(json_serializer.handle_glycopeptide_hypothesis(
             builder.hypothesis), "new-hypothesis"))
     except Exception:

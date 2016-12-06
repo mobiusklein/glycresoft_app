@@ -51,6 +51,10 @@ class MonosaccharideFilterState
             @setApplicationFilter()
             callback(@bounds)
 
+    invalidate: ->
+        @setHypothesis(null)
+        @setApplicationFilter()
+
 
 class MonosaccharideFilter
     constructor: (parent, residueNames, rules) ->

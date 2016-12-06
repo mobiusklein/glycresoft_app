@@ -5,17 +5,17 @@
 class MonosaccharideInputWidgetGrid
     template: """
     <div class='monosaccharide-row row'>
-        <div class='input-field col s3'>
-            <label for='mass_shift_name'>Monosaccharide Name</label>
-            <input class='monosaccharide-name' type='text' name='monosaccharide_name' placeholder='Name'>
+        <div class='input-field col s2'>
+            <label for='mass_shift_name'>Residue Name</label>
+            <input class='monosaccharide-name center-align' type='text' name='monosaccharide_name' placeholder='Name'>
         </div>
-        <div class='input-field col s3'>
+        <div class='input-field col s2'>
             <label for='monosaccharide_mass_delta'>Lower Bound</label>
-            <input class='lower-bound numeric-entry' type='number' name='monosaccharide_lower_bound' placeholder='Lower Bound'>
+            <input class='lower-bound numeric-entry' min='0' type='number' name='monosaccharide_lower_bound' placeholder='Bound'>
         </div>
-        <div class='input-field col s3'>
+        <div class='input-field col s2'>
             <label for='monosaccharide_max_count'>Upper Bound</label>    
-            <input class='upper-bound numeric-entry' type='number' min='0' placeholder='Upper Bound' name='monosaccharide_upper_bound'>
+            <input class='upper-bound numeric-entry' type='number' min='0' placeholder='Bound' name='monosaccharide_upper_bound'>
         </div>
     </div>
     """
@@ -40,7 +40,9 @@ class MonosaccharideInputWidgetGrid
                 continue
             if entry.name of monosaccharides
                 row.addClass "warning"
-                notify = new TinyNotification(0, 0, "This monosaccharide is already present.", row)
+                pos = row.position()
+                notify = new TinyNotification(pos.top + 50, pos.left, "This monosaccharide is already present.", row)
+                console.log(row, notify)
                 row.data("tinyNotification", notify)
                 console.log(notify)
             else
@@ -85,12 +87,12 @@ class MonosaccharideInputWidgetGrid
 class ConstraintInputGrid
     template: """
     <div class="monosaccharide-constraints-row row">
-        <div class='input-field col s4'>
-            <label for='left_hand_side'>Name</label>
-            <input class='monosaccharide-name' type='text' name='left_hand_side' placeholder='Name'>
+        <div class='input-field col s2'>
+            <label for='left_hand_side'>Limit</label>
+            <input class='monosaccharide-name center-align' type='text' name='left_hand_side' placeholder='Name'>
         </div>
-        <div class='input-field col s1' style='padding-left: 2px;padding-right: 2px;'>
-            <select class='browser-default' name='operator'>
+        <div class='input-field col s2' style='padding-left: 2px;padding-right: 2px;'>
+            <select class='browser-default center-align' name='operator'>
                 <option>=</option>
                 <option>!=</option>
                 <option>&gt;</option>
@@ -99,9 +101,9 @@ class ConstraintInputGrid
                 <option>&lt;=</option>
             </select>
         </div>
-        <div class='input-field col s4'>
-            <label for='right_hand_side'>Name/Value</label>
-            <input class='monosaccharide-name' type='text' name='right_hand_side' placeholder='Name/Value'>
+        <div class='input-field col s4 constrained-value-cell'>
+            <label for='right_hand_side'>Constrained Value</label>
+            <input class='monosaccharide-name constrained-value' type='text' name='right_hand_side' placeholder='Name/Value'>
         </div>
     </div>
     """

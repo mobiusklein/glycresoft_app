@@ -1,3 +1,4 @@
+from weakref import WeakValueDictionary
 from collections import OrderedDict
 
 from flask import Response, g, request, render_template, jsonify
@@ -12,14 +13,13 @@ from glycresoft_app import report
 from glycan_profiling.serialize import (
     Analysis, Protein, Glycopeptide, GlycanCombination,
     IdentifiedGlycopeptide, func,
-    MSScan)
+    MSScan, GlycopeptideSpectrumSolutionSet)
 
 from glycan_profiling.tandem.glycopeptide.scoring import CoverageWeightedBinomialScorer
 
 from glycan_profiling.tandem.glycopeptide.identified_structure import IdentifiedGlycoprotein
 
 from glycan_profiling.serialize.hypothesis.glycan import GlycanCombinationGlycanComposition
-from weakref import WeakValueDictionary
 
 
 from glycan_profiling.database.glycan_composition_filter import (
@@ -29,7 +29,9 @@ from glycan_profiling.plotting.summaries import (
     SmoothingChromatogramArtist,
     figax)
 
-from glycan_profiling.output import GlycopeptideLCMSMSAnalysisCSVSerializer
+from glycan_profiling.output import (
+    GlycopeptideLCMSMSAnalysisCSVSerializer,
+    GlycopeptideSpectrumMatchAnalysisCSVSerializer)
 
 from glycan_profiling.plotting.plot_glycoforms import plot_glycoforms_svg
 from glycan_profiling.plotting.sequence_fragment_logo import glycopeptide_match_logo
@@ -135,6 +137,19 @@ class GlycopeptideAnalysisView(object):
             pass
             # TODO switch from using a plain dict to using
             # something connected to an LRU cache
+
+    def search_by_scan(self, scan_id):
+        case = self.session.query(GlycopeptideSpectrumSolutionSet).join(MSScan).filter(
+            MSScan.scan_id == scan_id,
+            GlycopeptideSpectrumSolutionSet.analysis_id == self.analysis_id).first()
+        if case is None:
+            return jsonify(status="No Match", solutions=[])
+        else:
+            case = case.convert()
+            solutions = []
+            for member in case:
+                solutions.append(dict(score=member.score, target=str(member.target), id=member.target.id))
+            return jsonify(status='Match', solutions=solutions)
 
     def _resolve_sources(self):
         self.analysis = self.session.query(Analysis).get(self.analysis_id)
@@ -276,6 +291,7 @@ def index(analysis_id):
     view = get_view(analysis_id)
     args, state = request_arguments_and_context()
     print("Loading Index")
+    print(state.monosaccharide_filters)
     view.update_threshold(state.settings['minimum_ms2_score'], state.monosaccharide_filters)
     return render_template(
         "view_glycopeptide_search/overview.templ", analysis=view.analysis,
@@ -286,6 +302,7 @@ def index(analysis_id):
 def protein_view(analysis_id, protein_id):
     view = get_view(analysis_id)
     args, state = request_arguments_and_context()
+    print(state.monosaccharide_filters)
     view.update_threshold(state.settings['minimum_ms2_score'], state.monosaccharide_filters)
     snapshot = view.get_items_for_display(protein_id)
     glycoprotein = snapshot.get_glycoprotein(g.manager.session)
@@ -322,6 +339,12 @@ def site_specific_glycosylation(analysis_id, protein_id):
         axes_map=axes_map, glycoprotein=glycoprotein)
 
 
+@app.route("/view_glycopeptide_lcmsms_analysis/<int:analysis_id>/search_by_scan/<scan_id>")
+def search_by_scan(analysis_id, scan_id):
+    view = get_view(analysis_id)
+    return view.search_by_scan(scan_id)
+
+
 @app.route(
     "/view_glycopeptide_lcmsms_analysis/<int:analysis_id>/<int:protein_id>/details_for/<int:glycopeptide_id>",
     methods=['POST'])
@@ -355,7 +378,7 @@ def glycopeptide_detail(analysis_id, protein_id, glycopeptide_id):
     ax.get_xaxis().get_major_formatter().set_useOffset(False)
     labels = [tl for tl in ax.get_xticklabels()]
     for label in labels:
-        label.set(fontsize=16)
+        label.set(fontsize=12)
 
     spectrum_plot = match.annotate(ax=figax(), pretty=True)
     spectrum_plot.set_title("%s\n" % (scan.id,), fontsize=18)

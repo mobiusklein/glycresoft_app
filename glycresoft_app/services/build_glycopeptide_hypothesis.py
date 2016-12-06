@@ -19,10 +19,11 @@ def build_glycopeptide_search_space():
 @app.route("/glycopeptide_search_space", methods=["POST"])
 def build_glycopeptide_search_space_post():
     values = request.values
-    print values
     constant_modifications = values.getlist("constant_modifications")
     variable_modifications = values.getlist("variable_modifications")
-    enzyme = values.get("enzyme")
+    enzyme = values.getlist("enzyme")
+    if len(enzyme) == 1:
+        enzyme = enzyme[0]
     hypothesis_name = values.get("hypothesis_name")
 
     protein_list = request.files["protein-list-file"]

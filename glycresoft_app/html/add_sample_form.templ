@@ -1,8 +1,8 @@
-<h2>Add Sample To Workspace</h2>
+<h4>Add Sample To Workspace</h4>
 <div class='row'>
     <form id='add-sample-form' action="/add_sample" class="col s12" method="post" accept-charset="utf-8" enctype="multipart/form-data">
         <div class="row">
-            <div class='col s5'>
+            <div class='col s4'>
                 <div class="file-field input-field">
                     <span class="btn">
                         <span>Select mzML File</span>
@@ -11,10 +11,14 @@
                     <input class="file-path validate" type="text" placeholder="Please provide a file in mzML format" />
                 </div>
             </div>
-            <div class="input-field col s4">
-                <label for="sample-name">Sample Name</label>
-                <input id='sample-name' name="sample-name" type="text" class="validate"
-                       placeholder="Provide a name to identify this sample">
+            <div class='col s4'>
+                <div class="input-field">
+                    <label for="sample-name">Sample Name</label>
+                    <input id='sample-name' name="sample-name" type="text" class="validate"
+                           placeholder="Provide a name to identify this sample">
+                </div>
+                <div id='configuration-presets-container' class=''>
+                </div>
             </div>
         </div>
         <div class='row'>
@@ -38,11 +42,11 @@
                 <div class='input-field'>
                     <label for='end-time'>End Processing Time</label>
                     <input type="number" id="end-time" name="end-time"
-                           min='0' value="90" step='1' placeholder="End Processing Time"
+                           min='0' value="256" step='1' placeholder="End Processing Time"
                            class='numeric-entry'>
                 </div>
             </div>
-            <div class='col s2'>
+            <div class='col s2 tooltipped' data-position='bottom' data-tooltip='The number of missing isotopic peaks to permit when filtering isotopic fits.'>
                 <div class='input-field'>
                     <label for='missed-peaks'>Missed Peaks Permitted</label>
                     <input type="number" id="missed-peaks" name="missed-peaks"
@@ -59,8 +63,8 @@
         <div class='row'>
             <div class='col s6'>
                 <div>
-                    <h4>MS<sup>1</sup> Parameters</h4>
-                    <div class="col s3">
+                    <h6>MS<sup>1</sup> Parameters</h6>
+                    <div class="col s5">
                         <div class='input-field'>
                             <label for='ms1-minimum-isotopic-score'>Minimum Isotopic Score</label>
                             <input type="number" id="ms1-minimum-isotopic-score" name="ms1-minimum-isotopic-score"
@@ -71,7 +75,7 @@
                     <div class="col s5 tooltipped" data-position='top' data-tooltip='A formula or name for the averagine used for MS1 scans'>
                         <div class='input-field'>
                             <label for='ms1-averagine'>Averagine</label>
-                            <select name='ms1-averagine' class='browser-default'>
+                            <select id='ms1-averagine' name='ms1-averagine' class='browser-default'>
                                 <option value='glycan' selected>Glycan</option>
                                 <option value='glycopeptide'>Glycopeptide</option>
                                 <option value='peptide'>Peptide</option>
@@ -86,8 +90,8 @@
             </div>
             <div class='col s6'>
                 <div>
-                    <h4>MS<sup>n</sup> Parameters</h4>
-                    <div class="col s3">
+                    <h6>MS<sup>n</sup> Parameters</h6>
+                    <div class="col s5">
                         <div class='input-field'>
                             <label for='msn-minimum-isotopic-score'>Minimum Isotopic Score</label>
                             <input type="number" id="msn-minimum-isotopic-score" name="msn-minimum-isotopic-score"
@@ -98,7 +102,7 @@
                     <div class="col s5 tooltipped" data-position='top' data-tooltip='A formula or name for the averagine used for MSn scans'>
                         <div class='input-field'>
                             <label for='msn-averagine'>Averagine</label>
-                            <select name='msn-averagine' class='browser-default'>
+                            <select id='msn-averagine' name='msn-averagine' class='browser-default'>
                                 <option value='glycan' selected>Glycan</option>
                                 <option value='glycopeptide'>Glycopeptide</option>
                                 <option value='peptide'>Peptide</option>
@@ -120,30 +124,35 @@
         </div>
     </form>
     <script>
-materialRefresh()
-materialFileInput()
-$('.tooltipped').tooltip({delay: 50});
-$('#submit-btn').click(function(event){
-    Materialize.toast("Please wait. Reading large files may take several minutes.", 16000)
-})
-$('#add-sample-form input[name="observed-ions-file"]').change(function(){
-    console.log(this.files[0].name)
-    var sampleNameInput = $("#add-sample-form input[name='sample-name']")
-    var sampleName = sampleNameInput.val()
-    if(sampleName === ""){
-        sampleName = this.files[0].name.split(".").slice(0, -1).join(".")
-        sampleNameInput.val(sampleName)
-    }
-})
-ajaxForm($("form#add-sample-form"), function(){
-    var currentAction = GlycReSoft.getShowingLayer()
-    GlycReSoft.setShowingLayer("home-layer")
-    currentAction.dispose()
-}, function(err){
-    console.log(arguments)
-}, null, function(ev){
-    var percent = ev.loaded / ev.total * 100.
-    $("#mzml-upload-progress .determinate").css("width", percent + '%')
-})
+
+(function(){
+    makePresetSelector($("#configuration-presets-container"))
+    setSamplePreprocessingConfiguration(samplePreprocessingPresets[0].name)
+    materialRefresh()
+    materialFileInput()
+
+    $('#submit-btn').click(function(event){
+        Materialize.toast("Please wait. Reading large files may take several minutes.", 16000)
+    })
+    $('#add-sample-form input[name="observed-ions-file"]').change(function(){
+        console.log(this.files[0].name)
+        var sampleNameInput = $("#add-sample-form input[name='sample-name']")
+        var sampleName = sampleNameInput.val()
+        if(sampleName === ""){
+            sampleName = this.files[0].name.split(".").slice(0, -1).join(".")
+            sampleNameInput.val(sampleName)
+        }
+    })
+    ajaxForm($("form#add-sample-form"), function(){
+        var currentAction = GlycReSoft.getShowingLayer()
+        GlycReSoft.setShowingLayer("home-layer")
+        currentAction.dispose()
+    }, function(err){
+        console.log(arguments)
+    }, null, function(ev){
+        var percent = ev.loaded / ev.total * 100.
+        $("#mzml-upload-progress .determinate").css("width", percent + '%')
+    })
+})()
     </script>    
 </div>

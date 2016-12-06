@@ -20,6 +20,7 @@ Application::renderAnalyses = (container)->
         chunks.push row
         self = @
         row.click (event) ->
+            GlycReSoft.invalidate()
             handle = $(@)
             id = handle.attr('data-id')
             self.addLayer ActionBook.viewAnalysis, {analysis_id: id}

@@ -10,7 +10,7 @@ from glycan_profiling.database.builder.glycopeptide.informed_glycopeptide import
     MultipleProcessMzIdentMLGlycopeptideHypothesisSerializer)
 
 from glycresoft_app.utils import json_serializer
-from .task_process import Task, Message
+from .task_process import Task, Message, null_user
 
 
 def mzid_glycopeptide(database_connection, mzid_file, name, occupied_glycosites, target_protein,

@@ -7,6 +7,9 @@ This code is taken from https://github.com/Dogfalo/materialize/blob/master/js/fo
 
 materialRefresh = ->
     try
+        $('.material-tooltip').remove()
+        $('.tooltipped').tooltip({delay: 50});
+    try
         $('select').material_select();
     try
         materialFileInput()

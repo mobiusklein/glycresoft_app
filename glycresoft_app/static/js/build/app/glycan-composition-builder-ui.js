@@ -1,7 +1,7 @@
 var ConstraintInputGrid, MonosaccharideInputWidgetGrid;
 
 MonosaccharideInputWidgetGrid = (function() {
-  MonosaccharideInputWidgetGrid.prototype.template = "<div class='monosaccharide-row row'>\n    <div class='input-field col s3'>\n        <label for='mass_shift_name'>Monosaccharide Name</label>\n        <input class='monosaccharide-name' type='text' name='monosaccharide_name' placeholder='Name'>\n    </div>\n    <div class='input-field col s3'>\n        <label for='monosaccharide_mass_delta'>Lower Bound</label>\n        <input class='lower-bound numeric-entry' type='number' name='monosaccharide_lower_bound' placeholder='Lower Bound'>\n    </div>\n    <div class='input-field col s3'>\n        <label for='monosaccharide_max_count'>Upper Bound</label>    \n        <input class='upper-bound numeric-entry' type='number' min='0' placeholder='Upper Bound' name='monosaccharide_upper_bound'>\n    </div>\n</div>";
+  MonosaccharideInputWidgetGrid.prototype.template = "<div class='monosaccharide-row row'>\n    <div class='input-field col s2'>\n        <label for='mass_shift_name'>Residue Name</label>\n        <input class='monosaccharide-name center-align' type='text' name='monosaccharide_name' placeholder='Name'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='monosaccharide_mass_delta'>Lower Bound</label>\n        <input class='lower-bound numeric-entry' min='0' type='number' name='monosaccharide_lower_bound' placeholder='Bound'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='monosaccharide_max_count'>Upper Bound</label>    \n        <input class='upper-bound numeric-entry' type='number' min='0' placeholder='Bound' name='monosaccharide_upper_bound'>\n    </div>\n</div>";
 
   function MonosaccharideInputWidgetGrid(container) {
     this.counter = 0;
@@ -10,7 +10,7 @@ MonosaccharideInputWidgetGrid = (function() {
   }
 
   MonosaccharideInputWidgetGrid.prototype.update = function() {
-    var entry, i, len, monosaccharides, notif, notify, ref, row;
+    var entry, i, len, monosaccharides, notif, notify, pos, ref, row;
     monosaccharides = {};
     ref = this.container.find(".monosaccharide-row");
     for (i = 0, len = ref.length; i < len; i++) {
@@ -27,7 +27,9 @@ MonosaccharideInputWidgetGrid = (function() {
       }
       if (entry.name in monosaccharides) {
         row.addClass("warning");
-        notify = new TinyNotification(0, 0, "This monosaccharide is already present.", row);
+        pos = row.position();
+        notify = new TinyNotification(pos.top + 50, pos.left, "This monosaccharide is already present.", row);
+        console.log(row, notify);
         row.data("tinyNotification", notify);
         console.log(notify);
       } else {
@@ -98,7 +100,7 @@ MonosaccharideInputWidgetGrid = (function() {
 })();
 
 ConstraintInputGrid = (function() {
-  ConstraintInputGrid.prototype.template = "<div class=\"monosaccharide-constraints-row row\">\n    <div class='input-field col s4'>\n        <label for='left_hand_side'>Name</label>\n        <input class='monosaccharide-name' type='text' name='left_hand_side' placeholder='Name'>\n    </div>\n    <div class='input-field col s1' style='padding-left: 2px;padding-right: 2px;'>\n        <select class='browser-default' name='operator'>\n            <option>=</option>\n            <option>!=</option>\n            <option>&gt;</option>\n            <option>&lt;</option>\n            <option>&gt;=</option>\n            <option>&lt;=</option>\n        </select>\n    </div>\n    <div class='input-field col s4'>\n        <label for='right_hand_side'>Name/Value</label>\n        <input class='monosaccharide-name' type='text' name='right_hand_side' placeholder='Name/Value'>\n    </div>\n</div>";
+  ConstraintInputGrid.prototype.template = "<div class=\"monosaccharide-constraints-row row\">\n    <div class='input-field col s2'>\n        <label for='left_hand_side'>Limit</label>\n        <input class='monosaccharide-name center-align' type='text' name='left_hand_side' placeholder='Name'>\n    </div>\n    <div class='input-field col s2' style='padding-left: 2px;padding-right: 2px;'>\n        <select class='browser-default center-align' name='operator'>\n            <option>=</option>\n            <option>!=</option>\n            <option>&gt;</option>\n            <option>&lt;</option>\n            <option>&gt;=</option>\n            <option>&lt;=</option>\n        </select>\n    </div>\n    <div class='input-field col s4 constrained-value-cell'>\n        <label for='right_hand_side'>Constrained Value</label>\n        <input class='monosaccharide-name constrained-value' type='text' name='right_hand_side' placeholder='Name/Value'>\n    </div>\n</div>";
 
   function ConstraintInputGrid(container, monosaccharideGrid) {
     this.counter = 0;

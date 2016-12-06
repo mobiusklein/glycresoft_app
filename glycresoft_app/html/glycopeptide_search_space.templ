@@ -135,11 +135,15 @@ $("#protein-list-file").on("change", function(event){
     if(this.files[0] === undefined){
         return
     }
-    file = this.files[0]
+    var file = this.files[0]
     identifyProteomicsFormat(file, function(format){
         $("#proteomics-file-type").val(format)
         updateFormatOptions(format, file)
     })
+    var nameInput = $("#hypothesis_name")
+    if(nameInput.val() == ""){
+        nameInput.val(file.name)
+    }
 })
 
 $('.tooltipped').tooltip({delay: 50});

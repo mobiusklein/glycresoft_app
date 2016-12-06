@@ -4,11 +4,19 @@ from glycan_profiling.cli.build_db import (
     TextFileGlycanHypothesisSerializer, validate_reduction,
     validate_derivatization, validate_glycan_hypothesis_name)
 
+from glycan_profiling.cli.validators import validate_database_unlocked
+
 from glycresoft_app.utils import json_serializer
-from .task_process import Task, Message
+from .task_process import Task, Message, null_user
 
 
-def build_text_file_hypothesis(text_file, database_connection, reduction, derivatization, name, channel):
+def build_text_file_hypothesis(text_file, database_connection, reduction, derivatization, name,
+                               channel):
+
+    if not validate_database_unlocked(database_connection):
+        channel.send(Message("Database is locked.", "error"))
+        return
+
     if name is not None:
         name = validate_glycan_hypothesis_name(None, database_connection, name)
         channel.send(Message("Building Glycan Hypothesis %s" % name, 'info'))
