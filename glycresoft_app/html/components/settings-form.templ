@@ -1,0 +1,35 @@
+<div class='settings-container row'>
+    <div id="settings-menu" class="col s12">
+        <h4>Settings and Internal Options</h4>
+        <div class='row'>
+            
+        </div>
+        <h5>Internal Options</h5>
+        <div class='row'>
+            <div class='col s4 input-field'>
+                <button id='view-server-log-btn' class='btn wave-effect'>
+                    View Server Log
+                </button>
+            <div class='col s4'>
+                <button id='reindex-btn' class='btn wave-effect'>
+                    Reindex Database
+                </button>
+            </div>
+        </div>
+    </div>
+    <script>
+(function(){
+    materialRefresh()
+    var sectionHandle = $("#settings-menu")
+    sectionHandle.find("#reindex-btn").click(function(){
+        $.get("/index_db")
+    })
+    sectionHandle.find("#view-server-log-btn").click(function() {
+        $.get("/server_log").success(function(logText){
+            GlycReSoft.displayMessageModal(logText)
+        })
+    })
+
+})()
+    </script>
+</div>

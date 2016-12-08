@@ -320,7 +320,7 @@ class TaskManager(object):
     task_dir: str
         file system directory path for writing task-specific information
     tasks: dict
-        A task id -> `Task` object mapping for all tasks, running or otherwise
+        A task id -> `Task` object mapping for all tasks, running or waiting
     task_queue: Queue.Queue
         A `Queue.Queue` for holding `Task` objects currently waiting to be ran
     currently_running: dict

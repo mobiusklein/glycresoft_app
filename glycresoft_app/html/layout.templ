@@ -39,6 +39,10 @@ $(function() {
         event.preventDefault()
         setupAjaxForm("/preferences", "#dialog-modal")
     })
+    $("#settings-link").click(function(event){
+        event.preventDefault()
+        setupAjaxForm("/server_settings", "#dialog-modal")
+    })
 
     var contentCenter = parseFloat($(".action-layer-container > :visible").css("margin-left"))
     console.log(contentCenter, (contentCenter * .75) + 'px')

@@ -91,7 +91,7 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
         sample_run = consumer.sample_run
         logger.info("Updating New Sample Run")
         handle = DatabaseBoundOperation(database_connection)
-        handle.session.add(sample_run)
+        handle.session.merge(sample_run)
         channel.send(Message(json_serializer.handle_sample_run(sample_run), "new-sample-run"))
         handle.session.close()
     except:

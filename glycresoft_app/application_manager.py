@@ -40,7 +40,7 @@ class ApplicationManager(object):
         self.task_manager = TaskManager(self.task_dir)
 
         logger = logging.getLogger()
-        logger.addHandler(logging.FileHandler(self.application_log_path))
+        logger.addHandler(logging.FileHandler(self.application_log_path, mode='a'))
 
     @property
     def application_log_path(self):
