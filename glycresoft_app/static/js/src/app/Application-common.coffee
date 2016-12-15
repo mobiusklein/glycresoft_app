@@ -29,6 +29,7 @@ class Application extends ActionLayerManager
             self.tasks[data.id] =
                 'id': data.id
                 'name': data.name
+                "created_at": data.created_at
                 'status': 'queued'
             self.updateTaskList()
             return
@@ -36,6 +37,7 @@ class Application extends ActionLayerManager
             self.tasks[data.id] =
                 'id': data.id
                 'name': data.name
+                "created_at": data.created_at
                 'status': 'running'
             self.updateTaskList()
             return
@@ -51,6 +53,7 @@ class Application extends ActionLayerManager
                 self.tasks[data.id] =
                     'id': data.id
                     'name': data.name
+                    "created_at": data.created_at
                     'status': 'finished'
             self.updateTaskList()
             return
@@ -110,7 +113,10 @@ class Application extends ActionLayerManager
             handle = $(this)    
             id = handle.attr('data-id')
             name = handle.attr("data-name")
-            $.get "/internal/log/" + name, (message) => self.displayMessageModal(message)
+            createdAt = handle.attr("data-created_at")
+            $.get("/internal/log/#{name}-#{createdAt}").success(
+                (message) => self.displayMessageModal(message)).error(
+                (err) => alert("An error occurred during retrieval. #{err.toString()}"))
 
         cancelTask = (event) ->
             userInput = window.confirm("Are you sure you want to cancel this task?")
@@ -119,7 +125,8 @@ class Application extends ActionLayerManager
                 id = handle.attr('data-id')
                 $.get "/internal/cancel_task/" + id
 
-        taskListContainer.html _.map(@tasks, renderTask).join('')
+        taskListContainer.html("")
+        taskListContainer.append(_.map(@tasks, renderTask))
         taskListContainer.find('li').map (i, li) -> contextMenu li, {
             "View Log": viewLog
             "Cancel Task": cancelTask
@@ -231,7 +238,13 @@ class Application extends ActionLayerManager
 
 
 renderTask = (task) ->
-    '<li data-id=\'{id}\' data-status=\'{status}\' data-name=\'{name}\'><b>{name}</b> ({status})</li>'.format task
+    name = task.name
+    status = task.status
+    id = task.id
+    created_at = task.created_at
+    element = $("<li data-id=\'#{id}\' data-status=\'#{status}\' data-name=\'#{name}\' data-created_at=\'#{created_at}\'><b>#{name}</b> (#{status})</li>")
+    element.attr("data-name", name)
+    element
 
 
 $(() ->

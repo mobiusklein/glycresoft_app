@@ -7,7 +7,14 @@ import multiprocessing
 from multiprocessing import Process, Pipe, Event as IPCEvent
 
 from threading import Event, Thread, RLock
-from Queue import Queue, Empty as QueueEmptyException
+try:
+    from Queue import Queue, Empty as QueueEmptyException
+except:
+    from queue import Queue, Empty as QueueEmptyException
+
+
+import psutil
+
 
 from glycan_profiling.task import TaskBase
 
@@ -34,6 +41,10 @@ def noop():
 
 def printop(*args, **kwargs):
     print(args, kwargs)
+
+
+def make_log_path(name, created_at):
+    return "%s-%s" % (name, str(created_at).replace(":", "-"))
 
 
 def configure_log_wrapper(log_file_path, task_callable, args, channel):
@@ -92,8 +103,8 @@ class CallInterval(object):
         while not self.stopped.wait(self.interval):
             try:
                 self.call_target(*self.args)
-            except Exception, e:
-                logger.exception("An error occurred in %r", self, exc_info=e)
+            except Exception:
+                logger.exception("An error occurred in %r", self, exc_info=True)
 
     def start(self):
         self.thread.start()
@@ -127,6 +138,10 @@ class TaskControlContext(object):
         self.pipe = LoggingPipe(pipe)
         self.stop_event = stop_event
         self.user = user
+
+    def abort(self, message, exc_type=Exception):
+        self.send(Message(message, 'error'))
+        raise exc_type(message)
 
     def send(self, message):
         self.pipe.send(message)
@@ -173,7 +188,7 @@ class Task(object):
         self.id = str(uuid4())
         self.task_fn = task_fn
         self.pipe, child_conn = Pipe(True)
-        self.created_at = datetime.now()
+        self.created_at = str(datetime.now()).replace(":", "-")
         self.started_at = None
         control_context = TaskControlContext(child_conn, user=user)
         self.control_context = control_context
@@ -195,7 +210,12 @@ class Task(object):
         self.process.start()
 
     def cancel(self):
-        self.process.terminate()
+        if self.state == RUNNING:
+            proc_handle = psutil.Process(self.process.pid)
+            with proc_handle.oneshot():
+                for child in proc_handle.children(True):
+                    child.kill()
+            self.process.terminate()
         self.state = STOPPED
 
     def get_message(self):
@@ -254,7 +274,8 @@ class Task(object):
         self.process = None
 
     def to_json(self):
-        return dict(id=self.id, name=self.name, status=self.state)
+        d = dict(id=self.id, name=self.name, status=self.state, created_at=str(self.created_at))
+        return d
 
     def messages(self):
         message = self.get_message()
@@ -365,14 +386,15 @@ class TaskManager(object):
             The task to be scheduled
         """
         self.tasks[task.id] = task
-        self.messages.put(Message({"id": task.id, "name": task.name}, "task-queued"))
+        self.messages.put(Message({
+            "id": task.id, "name": task.name, "created_at": task.created_at}, "task-queued"))
 
     def cancel_task(self, task_id):
         task = self.tasks[task_id]
         task.cancel()
 
     def get_task_log_path(self, task):
-        return path.join(self.task_dir, task.name + '.log')
+        return path.join(self.task_dir, task.log_file_path)
 
     def startloop(self):
         self.timer.start()
@@ -416,14 +438,16 @@ class TaskManager(object):
                     self.tasks.pop(task.id)
                     self.n_running -= 1
                     task.callback()
-                    self.messages.put(Message({"id": task.id, "name": task.name}, "task-complete"))
+                    self.messages.put(Message(
+                        {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-complete"))
                     self.running_lock.release()
                     self.completed_tasks.add(task.id)
             elif task.state == ERROR:
                 if task.id in self.currently_running:
                     if self.running_lock.acquire(0):
                         self.currently_running.pop(task.id)
-                        self.messages.put(Message({"id": task.id, "name": task.name}, "task-error"))
+                        self.messages.put(Message(
+                            {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-error"))
                         self.tasks.pop(task.id)
                         self.n_running -= 1
                         self.running_lock.release()
@@ -431,7 +455,8 @@ class TaskManager(object):
                 if task.id in self.currently_running:
                     if self.running_lock.acquire(0):
                         self.currently_running.pop(task.id)
-                        self.messages.put(Message({"id": task.id, "name": task.name}, "task-stopped"))
+                        self.messages.put(Message(
+                            {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-stopped"))
                         self.tasks.pop(task.id)
                         self.n_running -= 1
                         self.running_lock.release()
@@ -483,7 +508,7 @@ class TaskManager(object):
             task.log_file_path = self.get_task_log_path(task)
             self.n_running += 1
             task.start()
-            self.add_message(Message({"id": task.id, "name": task.name}, 'task-start'))
+            self.add_message(Message({"id": task.id, "name": task.name, "created_at": task.created_at}, 'task-start'))
 
     def add_message(self, message):
         if message.user is None:

@@ -7,6 +7,7 @@ from threading import RLock
 from glycresoft_app.utils.state_transfer import request_arguments_and_context, FilterSpecificationSet
 from glycresoft_app import report
 from glycresoft_app.utils.pagination import SequencePagination
+from glycresoft_app.task import Message
 
 from glycan_profiling.serialize import (
     Analysis, GlycanComposition, GlycanHypothesis, GlycanCompositionChromatogram,
@@ -209,8 +210,9 @@ def details_for(analysis_id, chromatogram_id):
     view = get_view(analysis_id)
     snapshot = view.get_items_for_display()
     chroma = snapshot[chromatogram_id]
-    plot = SmoothingChromatogramArtist([chroma], ax=figax()).draw(label_function=lambda *a, **k: "", legend=False).ax
-    chroma_svg = report.svg_plot(plot, bbox_inches='tight', height=4, width=6)
+    plot = SmoothingChromatogramArtist([chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
+        label_function=lambda *a, **k: "", legend=False).ax
+    chroma_svg = report.svg_plot(plot, bbox_inches='tight', height=5, width=9)
     return render_template(
         "/view_glycan_search/detail_modal.templ", chromatogram=chroma,
         chromatogram_svg=chroma_svg)

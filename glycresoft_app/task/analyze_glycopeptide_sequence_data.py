@@ -43,13 +43,13 @@ def analyze_glycopeptide_sequences(database_connection, sample_identifier, hypot
             database_connection, SampleRun, sample_identifier)
     except:
         channel.send(Message("Could not locate sample %r" % sample_identifier, "error"))
-        return
+        channel.abort("An error occurred during analysis.")
     try:
         hypothesis = get_by_name_or_id(
             database_connection, GlycopeptideHypothesis, hypothesis_identifier)
     except:
         channel.send(Message("Could not locate hypothesis %r" % hypothesis_identifier, "error"))
-        return
+        channel.abort("An error occurred during analysis.")
 
     if analysis_name is None:
         analysis_name = "%s @ %s" % (sample_run.name, hypothesis.name)
@@ -66,6 +66,7 @@ def analyze_glycopeptide_sequences(database_connection, sample_identifier, hypot
         channel.send(Message(json_serializer.handle_analysis(analysis), 'new-analysis'))
     except:
         channel.send(Message.traceback())
+        channel.abort("An error occurred during analysis.")
 
 
 class AnalyzeGlycopeptideSequenceTask(Task):

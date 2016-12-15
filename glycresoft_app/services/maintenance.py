@@ -10,7 +10,7 @@ api = register_service("maintenance", __name__)
 
 @api.route("/index_db")
 def index_db():
-    g.manager.add_task(IndexDatabaseTask())
+    g.manager.add_task(IndexDatabaseTask(g.manager.database_connection._original_connection))
     return jsonify(status="success")
 
 

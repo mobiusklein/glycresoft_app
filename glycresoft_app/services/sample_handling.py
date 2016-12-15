@@ -1,4 +1,4 @@
-import functools
+from multiprocessing import cpu_count
 from werkzeug import secure_filename
 from flask import Response, g, request, render_template, redirect, abort, current_app
 from .service_module import register_service
@@ -62,11 +62,15 @@ def post_add_sample():
     missed_peaks = int(request.values['missed-peaks'])
     maximum_charge_state = int(request.values['maximum-charge-state'])
 
+    n_workers = 5
+    if cpu_count() < n_workers:
+        n_workers = cpu_count()
+
     task = PreprocessMSTask(
         path, g.manager.connection_bridge,
         averagine, start_time, end_time, maximum_charge_state,
         sample_name, msn_averagine, ms1_score_threshold,
-        msn_score_threshold, missed_peaks, callback=lambda: 0)
+        msn_score_threshold, missed_peaks, n_processes=n_workers, callback=lambda: 0)
 
     g.manager.add_task(task)
     return Response("Task Scheduled")

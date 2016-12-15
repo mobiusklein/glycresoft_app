@@ -2,7 +2,9 @@
     <div class='row'>
         <div class='col s4'>
             {{chromatogram.glycan_composition | glycan_composition_string}} <br/>
-            <b>Observed Mass</b>: {{chromatogram.weighted_neutral_mass}} <br/>
+            <b>Observed Mass</b>: {{chromatogram.weighted_neutral_mass}} (
+                {{(chromatogram.glycan_composition.mass() - chromatogram.weighted_neutral_mass) / chromatogram.weighted_neutral_mass}}
+            ) <br/>
             <b>Total Abundance</b>: {{"%0.4e" % chromatogram.total_signal}} <br/>
             {% if chromatogram.adducts|length > 1 %}
                 <b>Adduct Signal Fractions</b>
@@ -24,7 +26,7 @@
         </div>
     </div>
     <div class='row'>
-        <div class='col s6'>
+        <div class='col s10'>
             {{chromatogram_svg}}
         </div>
     </div>

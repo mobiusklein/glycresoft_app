@@ -19,7 +19,7 @@ app = make_glycan_hypothesis = register_service("make_glycan_hypothesis", __name
 
 
 @app.route("/glycan_search_space")
-def build_naive_glycan_search():
+def build_glycan_search_space():
     return render_template("glycan_search_space.templ")
 
 
@@ -37,7 +37,7 @@ def _serialize_rules_to_buffer(rules, constraints, header_comment=""):
 
 
 @app.route("/glycan_search_space", methods=["POST"])
-def build_naive_glycan_search_process():
+def build_glycan_search_space_process():
     data = request.values
     custom_reduction_type = data.get("custom-reduction-type")
     custom_derivatization_type = data.get("custom-derivatization-type")

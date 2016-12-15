@@ -5,7 +5,7 @@ from glycan_profiling.cli.build_db import (
     validate_derivatization, validate_glycan_hypothesis_name)
 
 from glycresoft_app.utils import json_serializer
-from .task_process import Task, Message, null_user
+from .task_process import Task, Message
 
 
 def merge_glycan_hypothesis(database_connection, hypothesis_ids, name, channel):
@@ -16,8 +16,9 @@ def merge_glycan_hypothesis(database_connection, hypothesis_ids, name, channel):
             task = GlycanCompositionHypothesisMerger(database_connection, [int(i) for i in hypothesis_ids], name)
             task.start()
             channel.send(Message(json_serializer.handle_glycan_hypothesis(task.hypothesis), "new-hypothesis"))
-        except Exception as e:
+        except Exception:
             channel.send(Message.traceback())
+            channel.abort("An error occurred during merging.")
 
 
 class MergeGlycanHypotheses(Task):

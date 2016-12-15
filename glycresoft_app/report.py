@@ -108,6 +108,16 @@ def glycan_composition_string(composition):
         name = str(k)
         color = colors.get_color(str(name))
         parts.append(template % (rgbpack(color), name, v))
+    reduced = composition.reducing_end
+    if reduced:
+        reducing_end_template = (
+            "<span class='monosaccharide-name'"
+            "style='background-color:%s;padding:2px;border-radius:2px;'>"
+            "%s</span>")
+        name = formula(reduced.composition)
+        color = colors.get_color(str(name))
+        parts.append(reducing_end_template % (rgbpack(color), name))
+
     return ' '.join(parts)
 
 

@@ -89,6 +89,7 @@ def analyze_glycan_composition(database_connection, sample_identifier, hypothesi
         channel.send(Message(json_serializer.handle_analysis(analysis), 'new-analysis'))
     except:
         channel.send(Message.traceback())
+        channel.abort("An error occurred during analysis.")
 
 
 class AnalyzeGlycanCompositionTask(Task):

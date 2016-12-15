@@ -17,7 +17,7 @@ class ApplicationManager(object):
     app_data_name = "app_data.db"
     _config_file_name = 'config.ini'
 
-    def __init__(self, database_conection, base_path=None):
+    def __init__(self, database_connection, base_path=None):
         if base_path is None:
             base_path = os.getcwd()
         self.base_path = os.path.abspath(base_path)
@@ -25,7 +25,7 @@ class ApplicationManager(object):
         self.configuration.update(
             config_from_path(self.configuration_path))
 
-        self.database_conection = DatabaseBoundOperation(database_conection)
+        self.database_connection = DatabaseBoundOperation(database_connection)
 
         self.sample_dir = path.join(base_path, 'sample_dir')
         self.results_dir = path.join(base_path, 'results_dir')
@@ -74,11 +74,11 @@ class ApplicationManager(object):
 
     @property
     def session(self):
-        return self.database_conection.session
+        return self.database_connection.session
 
     @property
     def connection_bridge(self):
-        return self.database_conection._original_connection
+        return self.database_connection._original_connection
 
     @property
     def app_data_path(self):

@@ -21,12 +21,11 @@ logger = logging.getLogger(__name__)
 
 def preprocess(mzml_file, database_connection, averagine=None, start_time=None, end_time=None, maximum_charge=None,
                name=None, msn_averagine=None, score_threshold=15., msn_score_threshold=2., missed_peaks=1,
-               channel=None):
+               n_processes=5, channel=None):
 
     logger.info("Validating Database Lock")
     if not validate_database_unlocked(database_connection):
-        channel.send(Message("Database is locked.", "error"))
-        return
+        channel.abort("Database is locked.")
 
     minimum_charge = 1 if maximum_charge > 0 else -1
     charge_range = (minimum_charge, maximum_charge)
@@ -48,14 +47,12 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
     try:
         averagine = validate_averagine(averagine)
     except:
-        channel.send(Message("Could not validate MS1 Averagine %s" % averagine, 'error'))
-        return
+        channel.abort("Could not validate MS1 Averagine %s" % averagine)
 
     try:
         msn_averagine = validate_averagine(msn_averagine)
     except:
-        channel.send(Message("Could not validate MSn Averagine %s" % msn_averagine, 'error'))
-        return
+        channel.abort("Could not validate MSn Averagine %s" % msn_averagine)
 
     ms1_peak_picking_args = {
         "transforms": [
@@ -84,7 +81,8 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
         msn_deconvolution_args=msn_deconvolution_args,
         storage_path=database_connection, sample_name=name,
         start_scan_id=start_scan_id,
-        end_scan_id=end_scan_id)
+        end_scan_id=end_scan_id,
+        n_processes=n_processes)
 
     try:
         consumer.start()
@@ -96,14 +94,16 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
         handle.session.close()
     except:
         channel.send(Message.traceback())
+        channel.abort("An error occurred during preprocessing.")
 
 
 class PreprocessMSTask(Task):
     def __init__(self, mzml_file, database_connection, averagine, start_time, end_time, maximum_charge,
-                 name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, callback,
+                 name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, n_processes,
+                 callback,
                  **kwargs):
         args = (mzml_file, database_connection, averagine, start_time, end_time, maximum_charge,
-                name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks)
+                name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, n_processes)
         job_name = "Preprocess MS %s" % (name,)
         kwargs.setdefault('name', job_name)
         Task.__init__(self, preprocess, args, callback, **kwargs)

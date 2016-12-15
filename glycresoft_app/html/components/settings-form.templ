@@ -27,6 +27,8 @@
     sectionHandle.find("#view-server-log-btn").click(function() {
         $.get("/server_log").success(function(logText){
             GlycReSoft.displayMessageModal(logText)
+        }).error(function(err){
+            alert("An error occurred during retrieval, " + err)
         })
     })
 

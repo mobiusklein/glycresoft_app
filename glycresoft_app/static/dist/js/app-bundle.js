@@ -33,6 +33,7 @@ Application = (function(superClass) {
         self.tasks[data.id] = {
           'id': data.id,
           'name': data.name,
+          "created_at": data.created_at,
           'status': 'queued'
         };
         self.updateTaskList();
@@ -43,6 +44,7 @@ Application = (function(superClass) {
         self.tasks[data.id] = {
           'id': data.id,
           'name': data.name,
+          "created_at": data.created_at,
           'status': 'running'
         };
         self.updateTaskList();
@@ -66,6 +68,7 @@ Application = (function(superClass) {
           self.tasks[data.id] = {
             'id': data.id,
             'name': data.name,
+            "created_at": data.created_at,
             'status': 'finished'
           };
         }
@@ -165,13 +168,18 @@ Application = (function(superClass) {
     };
     self = this;
     viewLog = function(event) {
-      var handle, id, name;
+      var createdAt, handle, id, name;
       handle = $(this);
       id = handle.attr('data-id');
       name = handle.attr("data-name");
-      return $.get("/internal/log/" + name, (function(_this) {
+      createdAt = handle.attr("data-created_at");
+      return $.get("/internal/log/" + name + "-" + createdAt).success((function(_this) {
         return function(message) {
           return self.displayMessageModal(message);
+        };
+      })(this)).error((function(_this) {
+        return function(err) {
+          return alert("An error occurred during retrieval. " + (err.toString()));
         };
       })(this));
     };
@@ -184,7 +192,8 @@ Application = (function(superClass) {
         return $.get("/internal/cancel_task/" + id);
       }
     };
-    taskListContainer.html(_.map(this.tasks, renderTask).join(''));
+    taskListContainer.html("");
+    taskListContainer.append(_.map(this.tasks, renderTask));
     taskListContainer.find('li').map(function(i, li) {
       return contextMenu(li, {
         "View Log": viewLog,
@@ -361,7 +370,14 @@ Application = (function(superClass) {
 })(ActionLayerManager);
 
 renderTask = function(task) {
-  return '<li data-id=\'{id}\' data-status=\'{status}\' data-name=\'{name}\'><b>{name}</b> ({status})</li>'.format(task);
+  var created_at, element, id, name, status;
+  name = task.name;
+  status = task.status;
+  id = task.id;
+  created_at = task.created_at;
+  element = $("<li data-id=\'" + id + "\' data-status=\'" + status + "\' data-name=\'" + name + "\' data-created_at=\'" + created_at + "\'><b>" + name + "</b> (" + status + ")</li>");
+  element.attr("data-name", name);
+  return element;
 };
 
 $(function() {

@@ -156,7 +156,6 @@ logging.getLogger("werkzeug").addFilter(RouteLoggingFilter())
 @click.argument("database-connection")
 @click.option("-b", "--base-path", default=None, help='Location to store application instance information')
 @click.option("-e", "--external", is_flag=True, help="Allow connections from non-local machines")
-# @click.option("-n", "--no-execute-tasks", is_flag=True, help="Prevent the execution of tasks (read-only)")
 @click.option("-p", "--port", default=8080, type=int, help="The port to listen on")
 def server(context, database_connection, base_path, external=False, port=None, no_execute_tasks=False):
     global manager, SERVER

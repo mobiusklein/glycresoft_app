@@ -497,22 +497,16 @@ $(function() {
       keys = Object.keys(arguments);
     }
     res = this.replace(/\{([^\}]*)\}/g, function(placeholder, name, position) {
-      var err, v;
+      var v;
       if (name === '') {
         name = keys[i];
         i++;
       }
-      try {
-        v = JSON.stringify(data[name]);
-        if (v.startsWith('"') && v.endsWith('"')) {
-          v = v.slice(1, -1);
-        }
-        return v;
-      } catch (_error) {
-        err = _error;
-        console.log(err, name, data);
-        return void 0;
+      v = JSON.stringify(data[name]);
+      if (v.startsWith('"') && v.endsWith('"')) {
+        v = v.slice(1, -1);
       }
+      return v;
     });
     return res;
   };
@@ -1213,6 +1207,33 @@ PeptideSequence = (function() {
 })();
 
 //# sourceMappingURL=peptide-sequence.js.map
+
+var SVGSaver,
+  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+
+SVGSaver = (function() {
+  function SVGSaver(svgElement) {
+    this.svgElement = svgElement;
+    this.draw = bind(this.draw, this);
+    this.canvas = $("<canvas></canvas>")[0];
+    this.img = $("<img>");
+    this.canvas.height = this.svgElement.height();
+    this.canvas.width = this.svgElement.width();
+  }
+
+  SVGSaver.prototype.draw = function() {
+    var ctx, xml;
+    xml = new XMLSerializer().serializeToString(this.svgElement[0]);
+    this.img.attr("src", "data:image/svg+xml;base64," + btoa(xml));
+    ctx = this.canvas.getContext('2d');
+    return ctx.drawImage(this.img[0], 0, 0);
+  };
+
+  return SVGSaver;
+
+})();
+
+//# sourceMappingURL=svg-to-png.js.map
 
 var TabViewBase;
 
