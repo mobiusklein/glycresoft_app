@@ -1,5 +1,5 @@
 from uuid import uuid4
-from flask import Response, g, jsonify, current_app, render_template
+from flask import Response, g, jsonify, current_app, render_template, request
 from .service_module import register_service
 
 from glycresoft_app.task.index_db import IndexDatabaseTask
@@ -26,3 +26,10 @@ def view_server_log():
 @api.route("/server_settings")
 def form_render():
     return render_template("components/settings-form.templ")
+
+
+@api.route("/log_js_error", methods=["POST"])
+def log_js_errors():
+    json = request.get_json()
+    print(json, request.values)
+    return Response("logged")

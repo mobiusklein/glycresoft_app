@@ -393,6 +393,13 @@ $(function() {
     refreshTasksInterval: window.ApplicationConfiguration.refreshTasksInterval,
     upkeepInterval: window.ApplicationConfiguration.upkeepInterval
   });
+  window.onerror = function(msg, url, line, col, error) {
+    console.log(msg, url, line, col, error);
+    GlycReSoft.ajaxWithContext(ErrorLogURL, {
+      data: [msg, url, line, col, error]
+    });
+    return false;
+  };
   GlycReSoft.runInitializers();
   GlycReSoft.updateSettings();
   return GlycReSoft.updateTaskList();
@@ -400,7 +407,7 @@ $(function() {
 
 //# sourceMappingURL=Application-common.js.map
 
-var ActionBook, Analysis, Hypothesis, Sample, Task, makeAPIGet, makeParameterizedAPIGet;
+var ActionBook, Analysis, ErrorLogURL, Hypothesis, Sample, Task, makeAPIGet, makeParameterizedAPIGet;
 
 ActionBook = {
   home: {
@@ -467,6 +474,8 @@ Analysis = {
 Task = {
   all: makeAPIGet("/api/tasks")
 };
+
+ErrorLogURL = "/log_js_error";
 
 //# sourceMappingURL=bind-urls.js.map
 
@@ -677,7 +686,7 @@ Application.prototype.renderAnalyses = function(container) {
     for (i = 0, len = ref.length; i < len; i++) {
       analysis = ref[i];
       analysis.name = analysis.name !== '' ? analysis.name : "Analysis:" + analysis.uuid;
-      row = $("<div data-id=" + analysis.id + " class='list-item clearfix' data-uuid='" + analysis.uuid + "'> <span class='handle user-provided-name'>" + analysis.id + ". " + (analysis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + analysisTypeDisplayMap[analysis.analysis_type] + " <a class='remove-analysis mdi-content-clear'></a> </small> </div>");
+      row = $("<div data-id=" + analysis.id + " class='list-item clearfix' data-uuid='" + analysis.uuid + "'> <span class='handle user-provided-name'>" + (analysis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + analysisTypeDisplayMap[analysis.analysis_type] + " <a class='remove-analysis mdi-content-clear'></a> </small> </div>");
       chunks.push(row);
       self = this;
       row.click(function(event) {
@@ -725,7 +734,7 @@ Application.prototype.renderHypothesisListAt = function(container) {
   });
   for (j = 0, len = ref.length; j < len; j++) {
     hypothesis = ref[j];
-    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle user-provided-name'>" + i + ". " + (hypothesis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + (hypothesis.hypothesis_type != null ? hypothesis.hypothesis_type : '-') + " <a class='remove-hypothesis mdi mdi-close'></a> </small> </div>");
+    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle user-provided-name'>" + (hypothesis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + (hypothesis.hypothesis_type != null ? hypothesis.hypothesis_type : '-') + " <a class='remove-hypothesis mdi mdi-close'></a> </small> </div>");
     chunks.push(row);
     i += 1;
     row.click(function(event) {

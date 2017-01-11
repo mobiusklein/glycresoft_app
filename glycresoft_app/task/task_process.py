@@ -4,7 +4,7 @@ import traceback
 from os import path
 from uuid import uuid4
 import multiprocessing
-from multiprocessing import Process, Pipe, Event as IPCEvent
+from multiprocessing import Process, Pipe, Event as IPCEvent, Manager as _IPCManager
 
 from threading import Event, Thread, RLock
 try:
@@ -132,12 +132,17 @@ class LoggingPipe(object):
 
 
 class TaskControlContext(object):
-    def __init__(self, pipe, stop_event=None, user=null_user):
+    def __init__(self, pipe, stop_event=None, user=null_user, context=None):
+        if context is None:
+            context = dict()
+        else:
+            context = dict(context)
         if stop_event is None:
             stop_event = IPCEvent()
         self.pipe = LoggingPipe(pipe)
         self.stop_event = stop_event
         self.user = user
+        self.context = context
 
     def abort(self, message, exc_type=Exception):
         self.send(Message(message, 'error'))
@@ -151,6 +156,12 @@ class TaskControlContext(object):
 
     def poll(self, timeout=None):
         return self.pipe.poll(timeout)
+
+    def update(self, context):
+        self.context.update(context)
+
+    def __getitem__(self, key):
+        return self.context[key]
 
 
 class Task(object):
@@ -184,13 +195,15 @@ class Task(object):
     task_fn : callable
         The function to call in the "task" process
     """
-    def __init__(self, task_fn, args, callback=printop, user=null_user, **kwargs):
+    def __init__(self, task_fn, args, callback=printop, user=null_user, context=None, **kwargs):
+        if context is None:
+            context = dict()
         self.id = str(uuid4())
         self.task_fn = task_fn
         self.pipe, child_conn = Pipe(True)
         self.created_at = str(datetime.now()).replace(":", "-")
         self.started_at = None
-        control_context = TaskControlContext(child_conn, user=user)
+        control_context = TaskControlContext(child_conn, user=user, context=context)
         self.control_context = control_context
         self.stop_event = control_context.stop_event
         self.state = NEW
@@ -202,6 +215,9 @@ class Task(object):
         self.log_file_path = kwargs.get("log_file_path", "%s-%s.log" % (self.name, self.created_at))
         self.message_buffer = []
         self.user = user
+
+    def update_control_context(self, context):
+        self.control_context.update(context)
 
     def start(self):
         self.process = Process(target=configure_log_wrapper, args=(
@@ -417,6 +433,10 @@ class TaskManager(object):
             self.launch_new_tasks()
         except Exception, e:
             logger.exception("an error occurred in `tick`", exc_info=e)
+
+    def cancel_all_tasks(self):
+        for task_id, task in self.tasks.items():
+            task.cancel()
 
     def check_state(self):
         """Iterate over all tasks in :attr:`TaskManager.tasks` and check their status.

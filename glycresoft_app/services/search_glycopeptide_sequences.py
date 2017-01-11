@@ -18,7 +18,7 @@ def run_search():
 @app.route("/search_glycopeptide_sequences/run_search", methods=["POST"])
 def run_search_post():
     data = request.values
-    matching_tolerance = float(data.get("mass-matching-tolerance", 10))
+    matching_tolerance = float(data.get("ms1-tolerance", 10))
     if matching_tolerance > 1e-4:
         matching_tolerance *= 1e-6
 

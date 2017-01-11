@@ -15,7 +15,9 @@ from glycresoft_app.config import get as config_from_path
 
 class ApplicationManager(object):
     app_data_name = "app_data.db"
-    _config_file_name = 'config.ini'
+    _config_file_name = "config.ini"
+
+    project_id = None
 
     def __init__(self, database_connection, base_path=None):
         if base_path is None:
@@ -41,6 +43,15 @@ class ApplicationManager(object):
 
         logger = logging.getLogger()
         logger.addHandler(logging.FileHandler(self.application_log_path, mode='a'))
+
+    def __eq__(self, other):
+        try:
+            return self.database_connection == other.database_connection
+        except AttributeError:
+            return NotImplemented
+
+    def __hash__(self):
+        return hash(self.database_connection)
 
     @property
     def application_log_path(self):
@@ -111,13 +122,27 @@ class ApplicationManager(object):
     def get_task_path(self, name):
         return path.join(self.task_dir, name)
 
+    def get_results_path(self, name):
+        return path.join(self.results_dir, name)
+
+    def make_task_context(self, name):
+        return {
+            "results_dir": self.get_results_path(name),
+            "temp_dir": self.get_temp_path(name),
+        }
+
     def add_task(self, task):
+        context = self.make_task_context(task.name)
+        task.update_control_context(context)
         self.task_manager.add_task(task)
         path = self.get_task_path(task.name)
         pickle.dump(task.args[:-1], open(path, 'wb'))
 
     def cancel_task(self, task_id):
         self.task_manager.cancel_task(task_id)
+
+    def cancel_all_tasks(self):
+        self.task_manager.cancel_all_tasks()
 
     def __getitem__(self, key):
         return self.app_data[key]
@@ -152,3 +177,56 @@ class ApplicationManager(object):
                 job_count = 0
             self.app_data['_job_count'] = job_count + 1
         return job_count
+
+
+class UnknownProjectError(Exception):
+    pass
+
+
+class ProjectIDAllocationError(Exception):
+    pass
+
+
+class ProjectMultiplexer(object):
+    def __init__(self):
+        self.storage = dict()
+        self.counter = 0
+        self._lock = RLock()
+
+    def register_project(self, project_manager):
+        if project_manager.project_id is not None:
+            with self._lock:
+                project_id = project_manager.project_id
+                if project_id in self.storage:
+                    if project_manager == self.get_project(project_id):
+                        return project_id
+                    else:
+                        raise ProjectIDAllocationError("Project Manager %r's ID has been reallocated." % (
+                            project_manager,))
+        with self._lock:
+            self.storage[self.counter] = project_manager
+            project_manager.project_id = self.counter
+            self.counter += 1
+        return project_manager.project_id
+
+    def unregister_project(self, project_id):
+        with self._lock:
+            self.storage.pop(project_id, None)
+
+    def get_project(self, project_id):
+        try:
+            with self._lock:
+                project = self.storage[project_id]
+            return project
+        except KeyError:
+            raise UnknownProjectError(project_id)
+
+    def __len__(self):
+        with self._lock:
+            n = len(self.storage)
+        return n
+
+    def __iter__(self):
+        with self._lock:
+            gen = iter(list(self.storage.items()))
+        return gen

@@ -1,4 +1,4 @@
-var ActionBook, Analysis, Hypothesis, Sample, Task, makeAPIGet, makeParameterizedAPIGet;
+var ActionBook, Analysis, ErrorLogURL, Hypothesis, Sample, Task, makeAPIGet, makeParameterizedAPIGet;
 
 ActionBook = {
   home: {
@@ -65,5 +65,7 @@ Analysis = {
 Task = {
   all: makeAPIGet("/api/tasks")
 };
+
+ErrorLogURL = "/log_js_error";
 
 //# sourceMappingURL=bind-urls.js.map

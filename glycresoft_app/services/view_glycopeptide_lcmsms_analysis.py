@@ -1,7 +1,7 @@
 from weakref import WeakValueDictionary
 from collections import OrderedDict
 
-from flask import Response, g, request, render_template, jsonify
+from flask import Response, g, request, render_template, jsonify, current_app
 from .service_module import register_service
 
 from threading import RLock
@@ -10,6 +10,8 @@ from glycresoft_app.utils.pagination import SequencePagination
 from glycresoft_app.task.task_process import Message
 from glycresoft_app import report
 
+
+from glycan_profiling.tandem.ref import SpectrumReference
 from glycan_profiling.serialize import (
     Analysis, Protein, Glycopeptide, GlycanCombination,
     IdentifiedGlycopeptide, func,
@@ -25,9 +27,14 @@ from glycan_profiling.serialize.hypothesis.glycan import GlycanCombinationGlycan
 from glycan_profiling.database.glycan_composition_filter import (
     GlycanCompositionFilter, InclusionFilter)
 
+from glycan_profiling.plotting.chromatogram_artist import ChromatogramArtist
 from glycan_profiling.plotting.summaries import (
     SmoothingChromatogramArtist,
     figax)
+
+
+from glycan_profiling.tandem.glycopeptide import chromatogram_graph
+
 
 from glycan_profiling.output import (
     GlycopeptideLCMSMSAnalysisCSVSerializer,
@@ -216,10 +223,10 @@ class GlycopeptideAnalysisView(object):
             if protein_id in self._snapshots:
                 snapshot = self._snapshots[protein_id]
                 if not snapshot.is_valid(self.score_threshold, self.monosaccharide_bounds):
-                    print("Previous Snapshot Invalid, Rebuilding")
+                    current_app.logger.info("Previous Snapshot Invalid, Rebuilding")
                     snapshot = self._build_protein_snap_shot(protein_id)
             else:
-                print("New Protein, Building Snapshot")
+                current_app.logger.info("New Protein, Building Snapshot")
                 snapshot = self._build_protein_snap_shot(protein_id)
             self._snapshots[protein_id] = snapshot
         return snapshot
@@ -236,7 +243,7 @@ class GlycopeptideAnalysisView(object):
             return inst
 
     def _build_protein_snap_shot(self, protein_id):
-        print("Loading Glycopeptides")
+        current_app.logger.info("Loading Glycopeptides")
         gps = self.session.query(
             IdentifiedGlycopeptide,
             Glycopeptide.glycan_combination_id).join(IdentifiedGlycopeptide.structure).filter(
@@ -244,19 +251,19 @@ class GlycopeptideAnalysisView(object):
             Glycopeptide.protein_id == protein_id,
             IdentifiedGlycopeptide.ms2_score > self.score_threshold).all()
 
-        print("Retrieving Valid Glycan Combinations")
+        current_app.logger.info("Retrieving Valid Glycan Combinations")
         valid_glycan_combinations = self.filter_glycan_combinations()
 
-        print("Filtering Glycopeptides by Glycans")
+        current_app.logger.info("Filtering Glycopeptides by Glycans")
         keepers = []
         for gp, glycan_combination_id in gps:
             if glycan_combination_id in valid_glycan_combinations:
                 keepers.append(gp)
 
-        print("Converting Kept Glycopeptides")
+        current_app.logger.info("Converting Kept Glycopeptides")
         keepers = [self.convert_glycopeptide(gp) for gp in keepers]
 
-        print("Snapshot Complete")
+        current_app.logger.info("Snapshot Complete")
         snapshot = GlycopeptideSnapShot(protein_id, self.score_threshold, self.monosaccharide_bounds, keepers)
         return snapshot
 
@@ -268,7 +275,7 @@ class GlycopeptideAnalysisView(object):
         last_threshold = self.score_threshold
         self.score_threshold = score_threshold
         if last_threshold != score_threshold:
-            print("Reindexing Proteins")
+            current_app.logger.info("Reindexing Proteins")
             self._build_protein_index()
         self.monosaccharide_bounds = monosaccharide_bounds
 
@@ -290,8 +297,8 @@ def get_view(analysis_id):
 def index(analysis_id):
     view = get_view(analysis_id)
     args, state = request_arguments_and_context()
-    print("Loading Index")
-    print(state.monosaccharide_filters)
+    current_app.logger.info("Loading Index")
+    current_app.logger.info("%s" % state.monosaccharide_filters)
     view.update_threshold(state.settings['minimum_ms2_score'], state.monosaccharide_filters)
     return render_template(
         "view_glycopeptide_search/overview.templ", analysis=view.analysis,
@@ -302,7 +309,7 @@ def index(analysis_id):
 def protein_view(analysis_id, protein_id):
     view = get_view(analysis_id)
     args, state = request_arguments_and_context()
-    print(state.monosaccharide_filters)
+    current_app.logger.info("%s" % state.monosaccharide_filters)
     view.update_threshold(state.settings['minimum_ms2_score'], state.monosaccharide_filters)
     snapshot = view.get_items_for_display(protein_id)
     glycoprotein = snapshot.get_glycoprotein(g.manager.session)
@@ -351,14 +358,25 @@ def search_by_scan(analysis_id, scan_id):
 def glycopeptide_detail(analysis_id, protein_id, glycopeptide_id):
     view = get_view(analysis_id)
     snapshot = view.get_items_for_display(protein_id)
+    session = g.manager.session
     try:
         gp = snapshot[glycopeptide_id]
     except:
         gp = view.get_glycopeptide(glycopeptide_id)
 
+    matched_scans = []
+    for solution_set in gp.spectrum_matches:
+        psm = solution_set[0]
+        if isinstance(psm.scan, SpectrumReference):
+            scan = session.query(MSScan).filter(
+                MSScan.scan_id == psm.scan.id,
+                MSScan.sample_run_id == view.analysis.sample_run_id).first().convert()
+        else:
+            scan = psm.scan
+        matched_scans.append(scan)
+
     spectrum_match_ref = max(gp.spectrum_matches, key=lambda x: x.score)
 
-    session = g.manager.session
     scan = session.query(MSScan).filter(
         MSScan.scan_id == spectrum_match_ref.scan.id,
         MSScan.sample_run_id == view.analysis.sample_run_id).first().convert()
@@ -366,18 +384,21 @@ def glycopeptide_detail(analysis_id, protein_id, glycopeptide_id):
         scan, gp.structure,
         error_tolerance=view.analysis.parameters["fragment_error_tolerance"])
 
-    def scan_from_reference(scan_reference):
-        scan_id = scan_reference.scan.id
-        return g.manager.session.query(MSScan).filter(
-            MSScan.sample_run_id == view.analysis.sample_run_id,
-            MSScan.scan_id == scan_id).first()
-
     ax = figax()
-    SmoothingChromatogramArtist([gp], ax=ax, colorizer=lambda *a, **k: 'green').draw(
+    art = SmoothingChromatogramArtist([gp], ax=ax, colorizer=lambda *a, **k: 'green').draw(
         label_function=lambda *a, **k: "", legend=False)
+    lo, hi = ax.get_xlim()
+    lo -= 0.5
+    hi += 0.5
+    yl = ax.get_ylabel()
+    ax.set_ylabel(yl, fontsize=16)
+    ax.set_xlabel(ax.get_xlabel(), fontsize=16)
+    ax.set_xlim(lo, hi)
     ax.get_xaxis().get_major_formatter().set_useOffset(False)
     labels = [tl for tl in ax.get_xticklabels()]
     for label in labels:
+        label.set(fontsize=12)
+    for label in ax.get_yticklabels():
         label.set(fontsize=12)
 
     spectrum_plot = match.annotate(ax=figax(), pretty=True)
@@ -391,10 +412,10 @@ def glycopeptide_detail(analysis_id, protein_id, glycopeptide_id):
         "/view_glycopeptide_search/components/glycopeptide_detail.templ",
         glycopeptide=gp,
         match=match,
-        chromatogram_plot=report.svg_plot(ax, bbox_inches='tight', height=3, width=7),
-        spectrum_plot=report.svg_plot(spectrum_plot, bbox_inches='tight', height=3, width=10),
-        sequence_logo_plot=report.svg_plot(sequence_logo_plot, bbox_inches='tight', height=2, width=7),
-        scan_from_reference=scan_from_reference
+        chromatogram_plot=report.svg_plot(ax, bbox_inches='tight', height=3, width=7, patchless=True),
+        spectrum_plot=report.svg_plot(spectrum_plot, bbox_inches='tight', height=3, width=10, patchless=True),
+        sequence_logo_plot=report.svg_plot(sequence_logo_plot, bbox_inches='tight', height=2, width=7, patchless=True),
+        matched_scans=matched_scans,
     )
 
 

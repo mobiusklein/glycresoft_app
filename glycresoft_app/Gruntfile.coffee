@@ -12,11 +12,6 @@ module.exports = (grunt) ->
                 expand: true
                 src: "static/css/dist/*"
                 dest: "static/dist/css/"
-            # font:
-            #     flatten: true
-            #     expand: true
-            #     src: "static/font/roboto/*"
-            #     dest: "static/dist/font/roboto/"
             icons:
                 flatten: true
                 expand: true

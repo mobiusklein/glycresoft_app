@@ -15559,6 +15559,10 @@ Monosaccharide Grid
     padding-right: 5%;
 }
 
+.log-display {
+
+}
+
 
 code.sequence-text {
     font-family: Consolas, monospace !important;
@@ -15737,6 +15741,10 @@ Peptide Sequence Display
 .peptide-sequence-cell {
     word-break: break-all !important;
     word-spacing: 0.01em !important;
+}
+
+#figure_1 > #patch_1{
+    display: none;
 }
 .table-container {
     overflow-x: scroll;

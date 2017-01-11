@@ -1,8 +1,7 @@
 import os
-from click import Abort
 
 from glycresoft_app.utils import json_serializer
-from .task_process import Task, Message, null_user
+from .task_process import Task, Message
 
 from glycan_profiling.cli.validators import (
     validate_averagine, validate_sample_run_name,
@@ -11,7 +10,7 @@ from glycan_profiling.cli.validators import (
 import ms_deisotope
 import ms_peak_picker
 
-from ms_deisotope.processor import MzMLLoader
+from ms_deisotope.processor import MSFileLoader
 from glycan_profiling.profiler import SampleConsumer
 from glycan_profiling.serialize import DatabaseBoundOperation
 
@@ -30,12 +29,19 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
     minimum_charge = 1 if maximum_charge > 0 else -1
     charge_range = (minimum_charge, maximum_charge)
     logger.info("Begin Scan Interpolation")
-    loader = MzMLLoader(mzml_file)
+    loader = MSFileLoader(mzml_file)
 
     start_scan_id = loader._locate_ms1_scan(
         loader.get_scan_by_time(start_time)).id
     end_scan_id = loader._locate_ms1_scan(
         loader.get_scan_by_time(end_time)).id
+
+    loader.reset()
+    is_profile = next(loader).precursor.is_profile
+    if is_profile:
+        logger.info("Spectra are profile")
+    else:
+        logger.info("Spectra are centroided")
 
     logger.info("Resolving Sample Name")
     if name is None:
@@ -54,13 +60,19 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
     except:
         channel.abort("Could not validate MSn Averagine %s" % msn_averagine)
 
-    ms1_peak_picking_args = {
-        "transforms": [
-            ms_peak_picker.scan_filter.FTICRBaselineRemoval(scale=2.),
-            ms_peak_picker.scan_filter.SavitskyGolayFilter()
-        ]
-    }
-
+    if is_profile:
+        ms1_peak_picking_args = {
+            "transforms": [
+                ms_peak_picker.scan_filter.FTICRBaselineRemoval(scale=2.),
+                ms_peak_picker.scan_filter.SavitskyGolayFilter()
+            ]
+        }
+    else:
+        ms1_peak_picking_args = {
+            "transforms": [
+                ms_peak_picker.scan_filter.FTICRBaselineRemoval(scale=2.),
+            ]
+        }
     ms1_deconvolution_args = {
         "scorer": ms_deisotope.scoring.PenalizedMSDeconVFitter(score_threshold),
         "max_missed_peaks": missed_peaks,
@@ -89,9 +101,12 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
         sample_run = consumer.sample_run
         logger.info("Updating New Sample Run")
         handle = DatabaseBoundOperation(database_connection)
-        handle.session.merge(sample_run)
+        session = handle.session()
+        try:
+            session.add(sample_run)
+        except:
+            session.merge(sample_run)
         channel.send(Message(json_serializer.handle_sample_run(sample_run), "new-sample-run"))
-        handle.session.close()
     except:
         channel.send(Message.traceback())
         channel.abort("An error occurred during preprocessing.")

@@ -259,6 +259,12 @@ $(() ->
         refreshTasksInterval: window.ApplicationConfiguration.refreshTasksInterval,
         upkeepInterval: window.ApplicationConfiguration.upkeepInterval,
     })
+    window.onerror = (msg, url, line, col, error) ->
+        console.log(msg, url, line, col, error)
+        GlycReSoft.ajaxWithContext(ErrorLogURL, {
+            data: [msg, url, line, col, error]
+        })
+        return false
     GlycReSoft.runInitializers()
     GlycReSoft.updateSettings()
     GlycReSoft.updateTaskList())

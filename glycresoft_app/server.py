@@ -5,7 +5,7 @@ from glycan_profiling.cli.base import cli
 from flask import (
     Flask, request, session, g, redirect, url_for,
     abort, render_template, flash, Markup, make_response, jsonify,
-    Response)
+    Response, current_app)
 
 import click
 from werkzeug.wsgi import LimitedStream
@@ -13,7 +13,9 @@ from werkzeug.wsgi import LimitedStream
 from glycresoft_app import report
 # Set up json serialization methods
 from glycresoft_app.utils import json_serializer
-from glycresoft_app.application_manager import ApplicationManager
+from glycresoft_app.application_manager import (
+    ApplicationManager, ProjectMultiplexer, ProjectIDAllocationError,
+    UnknownProjectError)
 from glycresoft_app.services import (
     service_module)
 
@@ -46,6 +48,7 @@ DEBUG = True
 SECRETKEY = 'TG9yZW0gaXBzdW0gZG90dW0'
 SERVER = None
 manager = None
+project_multiplexer = None
 
 service_module.load_all_services(app)
 
@@ -85,8 +88,35 @@ class ApplicationServerManager(object):
 def shutdown():
     g.manager.halting = True
     g.manager.stoploop()
+    g.manager.cancel_all_tasks()
     SERVER.shutdown_server()
     return Response("Should be dead")
+
+# ----------------------------------------
+#
+# ----------------------------------------
+
+
+@app.route("/register_project", methods=["POST"])
+def register_project():
+    connection_string = request.values["connection_string"]
+    base_path = request.values.get("basepath", manager.base_path)
+    new_manager = ApplicationManager(connection_string, base_path)
+    project_id = project_multiplexer.register_project(new_manager)
+    return jsonify(project_id=project_id)
+
+
+@app.route("/unregister_project", methods=["POST"])
+def unregister_project():
+    try:
+        project_id = int(request.values["project_id"])
+        project_multiplexer.unregister_project(project_id)
+        return jsonify(status='success', project_id=project_id)
+    except Exception:
+        project_id = (request.values.get("project_id"))
+        current_app.logger.error(
+            "An error occurred while unregistering project %r." % project_id, exc_info=True)
+
 
 # ----------------------------------------
 #
@@ -99,9 +129,19 @@ def show_cache():
     return Response("Printed")
 
 
-def connect_db():
-    g.manager = manager
-    g.db = manager.session
+def connect_db(project_id):
+    try:
+        manager = project_multiplexer.get_project(project_id)
+        g.manager = manager
+        g.db = manager.session
+    except UnknownProjectError:
+        current_app.logger.error("Unknown Project ID %d" % project_id)
+        g.manager = manager
+        g.db = manager.session
+    except ProjectIDAllocationError:
+        current_app.logger.error("ProjectIDAllocationError %d" % project_id)
+        g.manager = manager
+        g.db = manager.session
 
 
 @app.route("/")
@@ -111,7 +151,8 @@ def index():
 
 @app.before_request
 def before_request():
-    connect_db()
+    project_id = request.cookies.get("project_id", 0)
+    connect_db(project_id)
 
 
 @app.after_request
@@ -158,9 +199,11 @@ logging.getLogger("werkzeug").addFilter(RouteLoggingFilter())
 @click.option("-e", "--external", is_flag=True, help="Allow connections from non-local machines")
 @click.option("-p", "--port", default=8080, type=int, help="The port to listen on")
 def server(context, database_connection, base_path, external=False, port=None, no_execute_tasks=False):
-    global manager, SERVER
+    global manager, SERVER, project_multiplexer
+    project_multiplexer = ProjectMultiplexer()
     manager = ApplicationManager(database_connection, base_path)
-    print(manager.configuration)
+    project_multiplexer.register_project(manager)
+
     manager.configuration["allow_external_connections"] |= external
     host = None
     if manager.configuration["allow_external_connections"]:

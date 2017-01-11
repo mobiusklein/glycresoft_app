@@ -1,15 +1,10 @@
-import matplotlib
 import os
-import operator
-import time
 import urllib
 
 from glycopeptidepy import PeptideSequence
 from glypy.composition.glycan_composition import FrozenGlycanComposition
 
-from jinja2 import Environment, PackageLoader, Undefined, FileSystemLoader, escape
-from jinja2 import nodes
-from jinja2.ext import Extension
+from jinja2 import Environment, PackageLoader, FileSystemLoader, escape
 
 try:
     from cStringIO import StringIO
@@ -52,8 +47,8 @@ def render_plot(figure, **kwargs):
     if "width" in kwargs:
         figure.set_figwidth(kwargs['width'])
     if kwargs.get("bbox_inches") != 'tight' or kwargs.get("patchless"):
-        figure.patch.set_visible(False)
-        # figure.axes[0].patch.set_visible(False)
+        figure.patch.set_alpha(0)
+        figure.axes[0].patch.set_alpha(0)
     data_buffer = StringIO()
     figure.savefig(data_buffer, **kwargs)
     plt.close(figure)

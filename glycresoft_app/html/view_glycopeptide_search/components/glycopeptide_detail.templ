@@ -46,9 +46,34 @@
         <div class='col s6'>
             {{sequence_logo_plot}}
             <br>
-            {% for sm in glycopeptide.spectrum_matches  %}
-                {{scan_from_reference(sm).scan_time}} <br>
-            {% endfor %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Scan ID</th>
+                        <th>Scan Time</th>
+                        <th>Precursor Charge</th>
+                        <th>Precursor ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for scan in matched_scans|sort(attribute='scan_time')  %}
+                    <tr>
+                        {% if scan.id|length > 30 %}
+                            <td class='glycopeptide-detail-matched-scan-id'><small>{{scan.id}}</small></td>
+                        {% else %}
+                            <td class='glycopeptide-detail-matched-scan-id'>{{scan.id}}</td>
+                        {% endif %}
+                        <td class='glycopeptide-detail-matched-scan-time center-align'>{{scan.scan_time}}</td>
+                        <td class='glycopeptide-detail-matched-scan-charge center-align'>{{scan.precursor_information.charge}}</td>
+                        {% if scan.precursor_information.precursor_scan_id|length > 30 %}
+                            <td class='glycopeptide-detail-matched-precursor'><small>{{scan.precursor_information.precursor_scan_id}}</small></td>
+                        {% else %}
+                            <td class='glycopeptide-detail-matched-precursor'>{{scan.precursor_information.precursor_scan_id}}</td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}                    
+                </tbody>
+            </table>
         </div>
         <div class='col s3'>
             <h5>Fragment Matches</h5>

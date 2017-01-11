@@ -26,6 +26,7 @@ ActionBook =
         contentURLTemplate: "/view_hypothesis/{uuid}"
         method: "post"
 
+
 makeAPIGet = (url) -> (callback) -> $.get(url).success(callback)
 makeParameterizedAPIGet = (url) -> (params, callback) -> $.get(url.format(params)).success(callback)
 
@@ -41,3 +42,6 @@ Analysis =
 
 Task =
     all: makeAPIGet("/api/tasks")
+
+
+ErrorLogURL = "/log_js_error"

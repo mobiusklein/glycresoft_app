@@ -9,11 +9,11 @@ task_actions = register_service("task_management", __name__)
 @task_actions.route("/internal/log/<task_name>")
 def send_log(task_name):
     try:
-        return Response("<pre>%s</pre>" % open(
+        return Response("<pre class='log-display'>%s</pre>" % open(
             g.manager.get_task_path(task_name + '.log'), 'r').read().replace(
             ">", "&gt;").replace("<", "&lt;").decode('string_escape'),
             mimetype='application/text')
-    except KeyError:
+    except (KeyError, IOError):
         return Response("<span class='red-text'>There does not appear to be a log for this task</span>")
 
 

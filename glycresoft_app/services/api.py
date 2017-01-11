@@ -1,5 +1,4 @@
-from uuid import uuid4
-from flask import Blueprint, g, jsonify, current_app
+from flask import g, jsonify, current_app
 
 
 from glycresoft_app.utils import json_serializer
