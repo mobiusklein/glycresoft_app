@@ -46,6 +46,8 @@ from glycan_profiling.plotting.sequence_fragment_logo import glycopeptide_match_
 from glycan_profiling.plotting.entity_bar_chart import (
     AggregatedAbundanceArtist, BundledGlycanComposition)
 
+from glycan_profiling.task import log_handle
+
 app = view_glycopeptide_lcmsms_analysis = register_service("view_glycopeptide_lcmsms_analysis", __name__)
 
 
@@ -223,10 +225,10 @@ class GlycopeptideAnalysisView(object):
             if protein_id in self._snapshots:
                 snapshot = self._snapshots[protein_id]
                 if not snapshot.is_valid(self.score_threshold, self.monosaccharide_bounds):
-                    current_app.logger.info("Previous Snapshot Invalid, Rebuilding")
+                    log_handle.log("Previous Snapshot Invalid, Rebuilding")
                     snapshot = self._build_protein_snap_shot(protein_id)
             else:
-                current_app.logger.info("New Protein, Building Snapshot")
+                log_handle.log("New Protein, Building Snapshot")
                 snapshot = self._build_protein_snap_shot(protein_id)
             self._snapshots[protein_id] = snapshot
         return snapshot
@@ -243,7 +245,7 @@ class GlycopeptideAnalysisView(object):
             return inst
 
     def _build_protein_snap_shot(self, protein_id):
-        current_app.logger.info("Loading Glycopeptides")
+        log_handle.log("Loading Glycopeptides")
         gps = self.session.query(
             IdentifiedGlycopeptide,
             Glycopeptide.glycan_combination_id).join(IdentifiedGlycopeptide.structure).filter(
@@ -251,19 +253,19 @@ class GlycopeptideAnalysisView(object):
             Glycopeptide.protein_id == protein_id,
             IdentifiedGlycopeptide.ms2_score > self.score_threshold).all()
 
-        current_app.logger.info("Retrieving Valid Glycan Combinations")
+        log_handle.log("Retrieving Valid Glycan Combinations")
         valid_glycan_combinations = self.filter_glycan_combinations()
 
-        current_app.logger.info("Filtering Glycopeptides by Glycans")
+        log_handle.log("Filtering Glycopeptides by Glycans")
         keepers = []
         for gp, glycan_combination_id in gps:
             if glycan_combination_id in valid_glycan_combinations:
                 keepers.append(gp)
 
-        current_app.logger.info("Converting Kept Glycopeptides")
+        log_handle.log("Converting Kept Glycopeptides")
         keepers = [self.convert_glycopeptide(gp) for gp in keepers]
 
-        current_app.logger.info("Snapshot Complete")
+        log_handle.log("Snapshot Complete")
         snapshot = GlycopeptideSnapShot(protein_id, self.score_threshold, self.monosaccharide_bounds, keepers)
         return snapshot
 
@@ -275,7 +277,7 @@ class GlycopeptideAnalysisView(object):
         last_threshold = self.score_threshold
         self.score_threshold = score_threshold
         if last_threshold != score_threshold:
-            current_app.logger.info("Reindexing Proteins")
+            log_handle.log("Reindexing Proteins")
             self._build_protein_index()
         self.monosaccharide_bounds = monosaccharide_bounds
 
@@ -297,8 +299,8 @@ def get_view(analysis_id):
 def index(analysis_id):
     view = get_view(analysis_id)
     args, state = request_arguments_and_context()
-    current_app.logger.info("Loading Index")
-    current_app.logger.info("%s" % state.monosaccharide_filters)
+    log_handle.log("Loading Index")
+    log_handle.log("%s" % state.monosaccharide_filters)
     view.update_threshold(state.settings['minimum_ms2_score'], state.monosaccharide_filters)
     return render_template(
         "view_glycopeptide_search/overview.templ", analysis=view.analysis,
@@ -309,7 +311,7 @@ def index(analysis_id):
 def protein_view(analysis_id, protein_id):
     view = get_view(analysis_id)
     args, state = request_arguments_and_context()
-    current_app.logger.info("%s" % state.monosaccharide_filters)
+    log_handle.log("%s" % state.monosaccharide_filters)
     view.update_threshold(state.settings['minimum_ms2_score'], state.monosaccharide_filters)
     snapshot = view.get_items_for_display(protein_id)
     glycoprotein = snapshot.get_glycoprotein(g.manager.session)
@@ -384,6 +386,8 @@ def glycopeptide_detail(analysis_id, protein_id, glycopeptide_id):
         scan, gp.structure,
         error_tolerance=view.analysis.parameters["fragment_error_tolerance"])
 
+    max_peak = max([p.intensity for p in match.spectrum])
+
     ax = figax()
     art = SmoothingChromatogramArtist([gp], ax=ax, colorizer=lambda *a, **k: 'green').draw(
         label_function=lambda *a, **k: "", legend=False)
@@ -416,6 +420,7 @@ def glycopeptide_detail(analysis_id, protein_id, glycopeptide_id):
         spectrum_plot=report.svg_plot(spectrum_plot, bbox_inches='tight', height=3, width=10, patchless=True),
         sequence_logo_plot=report.svg_plot(sequence_logo_plot, bbox_inches='tight', height=2, width=7, patchless=True),
         matched_scans=matched_scans,
+        max_peak=max_peak,
     )
 
 

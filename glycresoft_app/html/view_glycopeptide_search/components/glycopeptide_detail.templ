@@ -75,15 +75,29 @@
                 </tbody>
             </table>
         </div>
-        <div class='col s3'>
+        <div class='col s4'>
             <h5>Fragment Matches</h5>
-            {% for pair in match.solution_map|sort(attribute='fragment.series.name') %}
-                <span class='fragment-match' style='padding: 5px;display: inline-block;word-break: none;'>
-                    <span class='fragment-name'>{{pair.fragment.name}}</span>
-                    &rarr;
-                    <span class='matched-peak'>{{(pair.peak.mz, pair.peak.intensity, pair.peak.charge)}}</span>
-                </span><br>
-            {% endfor %}            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fragment Name</th>
+                        <th class='center-align'>m/z</th>
+                        <th class='center-align'>Intensity</th>
+                        <th class='center-align'>Charge</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for pair in match.solution_map|sort(attribute='fragment.series.name') %}
+                    <tr>
+                        <td><b><span class='fragment-name'>{{pair.fragment.name}}</span></b></td>
+                        <td class='center-align'>{{"%0.3f" % pair.peak.mz}}</td>
+                        <td class='center-align'>{{"%0.3f" % pair.peak.intensity}} ({{"%0.2f%%" % (
+                            pair.peak.intensity * 100.0 / max_peak)}})</td>
+                        <td class='center-align'>{{pair.peak.charge}}</td>
+                    </tr>
+                {% endfor %}                    
+                </tbody>
+            </table>
         </div>
     </div>
     <div class='row'>

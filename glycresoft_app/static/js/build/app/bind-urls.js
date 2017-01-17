@@ -34,6 +34,10 @@ ActionBook = {
   viewHypothesis: {
     contentURLTemplate: "/view_hypothesis/{uuid}",
     method: "post"
+  },
+  viewSample: {
+    contentURLTemplate: "/view_sample/{sample_id}",
+    method: 'get'
   }
 };
 
