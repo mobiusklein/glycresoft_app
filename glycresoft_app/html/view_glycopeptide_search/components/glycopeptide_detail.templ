@@ -1,6 +1,6 @@
 <div class='glycopeptide-details-container'>
     <div class='row'>
-        <div class='col s6'>
+        <div class='col s6' data-coverage="{{match.compute_coverage()}}">
             <h6><b>Glycopeptide Sequence</b></h6>
             <div class='sequence-emphasis'>{{glycopeptide.structure|glycopeptide_string(long=True)}}</div>
             <b>Start Position</b>: {{glycopeptide.start_position}} <b>End Position</b>: {{glycopeptide.end_position}}
@@ -63,7 +63,7 @@
                         {% else %}
                             <td class='glycopeptide-detail-matched-scan-id'>{{scan.id}}</td>
                         {% endif %}
-                        <td class='glycopeptide-detail-matched-scan-time center-align'>{{scan.scan_time}}</td>
+                        <td class='glycopeptide-detail-matched-scan-time center-align'>{{"%0.2f minutes" % scan.scan_time}}</td>
                         <td class='glycopeptide-detail-matched-scan-charge center-align'>{{scan.precursor_information.charge}}</td>
                         {% if scan.precursor_information.precursor_scan_id|length > 30 %}
                             <td class='glycopeptide-detail-matched-precursor'><small>{{scan.precursor_information.precursor_scan_id}}</small></td>
@@ -87,11 +87,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                {% for pair in match.solution_map|sort(attribute='fragment.series.name') %}
+                {% for pair in match.solution_map|sort_peak_match_pairs %}
                     <tr>
                         <td><b><span class='fragment-name'>{{pair.fragment.name}}</span></b></td>
                         <td class='center-align'>{{"%0.3f" % pair.peak.mz}}</td>
-                        <td class='center-align'>{{"%0.3f" % pair.peak.intensity}} ({{"%0.2f%%" % (
+                        <td class='center-align' data-score="{{pair.peak.score}}">{{"%0.3f" % pair.peak.intensity}} ({{"%0.2f%%" % (
                             pair.peak.intensity * 100.0 / max_peak)}})</td>
                         <td class='center-align'>{{pair.peak.charge}}</td>
                     </tr>

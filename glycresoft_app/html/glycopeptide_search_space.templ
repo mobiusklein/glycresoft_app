@@ -88,12 +88,12 @@
                         <option selected="true"></option>
                         <optgroup label="Glycan Hypotheses">
                         {% for hypothesis in manager.glycan_hypotheses() %}
-                            <option value="Hypothesis,{{hypothesis.id}}">{{hypothesis.name}}</option>
+                            <option value="Hypothesis,{{hypothesis.uuid}}">{{hypothesis.name}}</option>
                         {% endfor %}
                         </optgroup>
                         <optgroup label="Glycan Analyses">
                         {% for result in manager.glycan_analyses() %}
-                            <option value="Analysis,{{result.id}}">{{result.name}}</option>
+                            <option value="Analysis,{{result.uuid}}">{{result.name}}</option>
                         {% endfor %}
                         </optgroup>
                     </select>

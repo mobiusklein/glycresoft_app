@@ -1,3 +1,4 @@
+from time import sleep
 import logging
 import os
 import pickle
@@ -12,6 +13,10 @@ from glycresoft_app.task.task_process import TaskManager
 from glycresoft_app.vendor import sqlitedict
 from glycresoft_app.config import get as config_from_path
 
+from glycresoft_app.project.sample import SampleManager
+from glycresoft_app.project.analysis import AnalysisManager
+from glycresoft_app.project.hypothesis import HypothesisManager
+
 
 class ApplicationManager(object):
     app_data_name = "app_data.db"
@@ -25,24 +30,44 @@ class ApplicationManager(object):
         self.base_path = os.path.abspath(base_path)
         self.configuration = dict()
         self.configuration.update(
-            config_from_path(self.configuration_path))
+            config_from_path(
+                self.configuration_path))
 
-        self.database_connection = DatabaseBoundOperation(database_connection)
+        self.database_connection = DatabaseBoundOperation(
+            database_connection)
 
-        self.sample_dir = path.join(base_path, 'sample_dir')
-        self.results_dir = path.join(base_path, 'results_dir')
-        self.temp_dir = path.join(base_path, 'temp_dir')
-        self.task_dir = path.join(base_path, 'task_dir')
+        self.sample_dir = path.join(
+            base_path, 'sample_dir')
+        self.results_dir = path.join(
+            base_path, 'results_dir')
+        self.hypothesis_dir = path.join(
+            base_path, "hypothesis_dir")
+        self.temp_dir = path.join(
+            base_path, 'temp_dir')
+        self.task_dir = path.join(
+            base_path, 'task_dir')
 
         self._ensure_paths_exist()
 
-        self._data_lock = RLock()
-        self.app_data = sqlitedict.SqliteDict(self.app_data_path, autocommit=True)
+        self.sample_manager = SampleManager(path.join(self.sample_dir, 'store.json'))
+        self.analysis_manager = AnalysisManager(path.join(self.results_dir, 'analysis.json'))
+        self.hypothesis_manager = HypothesisManager(path.join(self.hypothesis_dir, 'store.json'))
 
-        self.task_manager = TaskManager(self.task_dir)
+        self._data_lock = RLock()
+        self.app_data = sqlitedict.SqliteDict(
+            self.app_data_path, autocommit=True)
+
+        self.task_manager = TaskManager(
+            self.task_dir)
+
+        self.task_manager.register_event_handler("new-sample-run", self.handle_new_sample_run)
+        self.task_manager.register_event_handler("new-hypothesis", self.handle_new_hypothesis)
+        self.task_manager.register_event_handler("new-analysis", self.handle_new_analysis)
 
         logger = logging.getLogger()
-        logger.addHandler(logging.FileHandler(self.application_log_path, mode='a'))
+        logger.addHandler(
+            logging.FileHandler(
+                self.application_log_path, mode='a'))
 
     def __eq__(self, other):
         try:
@@ -53,13 +78,30 @@ class ApplicationManager(object):
     def __hash__(self):
         return hash(self.database_connection)
 
+    def handle_new_sample_run(self, message):
+        record = self.sample_manager.make_instance_record(message.message)
+        self.sample_manager.put(record)
+        self.sample_manager.dump()
+
+    def handle_new_hypothesis(self, message):
+        record = self.hypothesis_manager.make_instance_record(message.message)
+        self.hypothesis_manager.put(record)
+        self.hypothesis_manager.dump()
+
+    def handle_new_analysis(self, message):
+        record = self.analysis_manager.make_instance_record(message.message)
+        self.analysis_manager.put(record)
+        self.analysis_manager.dump()
+
     @property
     def application_log_path(self):
-        return os.path.join(self.base_path, "glycresoft-log")
+        return os.path.join(
+            self.base_path, "glycresoft-log")
 
     @property
     def configuration_path(self):
-        return os.path.join(self.base_path, self._config_file_name)
+        return os.path.join(
+            self.base_path, self._config_file_name)
 
     @property
     def halting(self):
@@ -112,6 +154,10 @@ class ApplicationManager(object):
             os.makedirs(self.task_dir)
         except:
             pass
+        try:
+            os.makedirs(self.hypothesis_dir)
+        except:
+            pass
 
     def get_sample_path(self, name):
         return path.join(self.sample_dir, name)
@@ -124,6 +170,9 @@ class ApplicationManager(object):
 
     def get_results_path(self, name):
         return path.join(self.results_dir, name)
+
+    def get_hypothesis_path(self, name):
+        return path.join(self.hypothesis_dir, name)
 
     def make_task_context(self, name):
         return {
@@ -151,23 +200,28 @@ class ApplicationManager(object):
         self.app_data[key] = value
 
     def samples(self, include_incomplete=True):
-        q = self.session.query(SampleRun)
-        if not include_incomplete:
-            q = q.filter(SampleRun.completed)
+        q = list(self.sample_manager)
         return q
 
     def glycan_hypotheses(self):
-        return self.session.query(GlycanHypothesis)
+        return [
+            hypothesis
+            for hypothesis in self.hypothesis_manager
+            if hypothesis.hypothesis_type == "glycan_composition"
+        ]
 
     def glycopeptide_hypotheses(self):
-        return self.session.query(GlycopeptideHypothesis)
+        return [
+            hypothesis
+            for hypothesis in self.hypothesis_manager
+            if hypothesis.hypothesis_type == "glycopeptide"
+        ]
 
     def analyses(self):
-        return self.session.query(Analysis)
+        return list(self.analysis_manager)
 
     def glycan_analyses(self):
-        return self.session.query(Analysis).filter(
-            Analysis.analysis_type == AnalysisTypeEnum.glycan_lc_ms.name)
+        return [a for a in (self.analysis_manager) if AnalysisTypeEnum.glycan_lc_ms == a.analysis_type]
 
     def get_next_job_number(self):
         with self._data_lock:

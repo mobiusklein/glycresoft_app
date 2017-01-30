@@ -2,7 +2,7 @@ samplePreprocessingPresets = [
     {
         name: "MS Glycomics Profiling"
         max_charge: 9
-        ms1_score_threshold: 15
+        ms1_score_threshold: 35
         ms1_averagine: "glycan"
         max_missing_peaks: 1
         msn_averagine: 'glycan'

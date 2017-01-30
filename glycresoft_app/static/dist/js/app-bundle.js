@@ -690,14 +690,14 @@ Application.prototype.renderAnalyses = function(container) {
     for (i = 0, len = ref.length; i < len; i++) {
       analysis = ref[i];
       analysis.name = analysis.name !== '' ? analysis.name : "Analysis:" + analysis.uuid;
-      row = $("<div data-id=" + analysis.id + " class='list-item clearfix' data-uuid='" + analysis.uuid + "'> <span class='handle user-provided-name'>" + (analysis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + analysisTypeDisplayMap[analysis.analysis_type] + " <a class='remove-analysis mdi-content-clear'></a> </small> </div>");
+      row = $("<div data-id=" + analysis.uuid + " class='list-item clearfix' data-uuid='" + analysis.uuid + "'> <span class='handle user-provided-name'>" + (analysis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + analysisTypeDisplayMap[analysis.analysis_type] + " <a class='remove-analysis mdi-content-clear'></a> </small> </div>");
       chunks.push(row);
       self = this;
       row.click(function(event) {
         var handle, id;
         GlycReSoft.invalidate();
         handle = $(this);
-        id = handle.attr('data-id');
+        id = handle.attr('data-uuid');
         self.addLayer(ActionBook.viewAnalysis, {
           analysis_id: id
         });
@@ -727,6 +727,13 @@ Application.initializers.push(function() {
 
 //# sourceMappingURL=home-analysis-list-ui.js.map
 
+var hypothesisTypeDisplayMap;
+
+hypothesisTypeDisplayMap = {
+  "glycan_composition": "Glycan Hypothesis",
+  "glycopeptide": "Glycopeptide Hypothesis"
+};
+
 Application.prototype.renderHypothesisListAt = function(container) {
   var chunks, hypothesis, i, j, len, ref, row, self, template;
   chunks = [];
@@ -738,7 +745,7 @@ Application.prototype.renderHypothesisListAt = function(container) {
   });
   for (j = 0, len = ref.length; j < len; j++) {
     hypothesis = ref[j];
-    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle user-provided-name'>" + (hypothesis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + (hypothesis.hypothesis_type != null ? hypothesis.hypothesis_type : '-') + " <a class='remove-hypothesis mdi mdi-close'></a> </small> </div>");
+    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle user-provided-name'>" + (hypothesis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + hypothesisTypeDisplayMap[hypothesis.hypothesis_type] + " <a class='remove-hypothesis mdi mdi-close'></a> </small> </div>");
     chunks.push(row);
     i += 1;
     row.click(function(event) {
@@ -979,7 +986,7 @@ samplePreprocessingPresets = [
   {
     name: "MS Glycomics Profiling",
     max_charge: 9,
-    ms1_score_threshold: 15,
+    ms1_score_threshold: 35,
     ms1_averagine: "glycan",
     max_missing_peaks: 1,
     msn_averagine: 'glycan'
@@ -1049,19 +1056,18 @@ Application.prototype.renderSampleListAt = function(container) {
   });
   for (i = 0, len = ref.length; i < len; i++) {
     sample = ref[i];
-    row = $("<div data-name=" + sample.name + " class='list-item sample-entry clearfix' data-uuid='" + sample.uuid + "' data-id='" + sample.id + "'> <span class='handle user-provided-name'>" + (sample.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + sample.sample_type + " <span class='status-indicator'></span> <a class='remove-sample mdi mdi-close'></a> </small> </div>");
+    row = $("<div data-name=" + sample.name + " class='list-item sample-entry clearfix' data-uuid='" + sample.uuid + "'> <span class='handle user-provided-name'>" + (sample.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + sample.sample_type + " <span class='status-indicator'></span> <a class='remove-sample mdi mdi-close'></a> </small> </div>");
     sampleStatusDisplay = row.find(".status-indicator");
     if (!sample.completed) {
       sampleStatusDisplay.html("<small class='yellow-text'>(Incomplete)</small>");
     }
     chunks.push(row);
     row.click(function(event) {
-      var handle, layer, sampleId, uuid;
+      var handle, layer, uuid;
       handle = $(this);
-      sampleId = handle.attr("data-id");
       uuid = handle.attr("data-uuid");
       self.addLayer(ActionBook.viewSample, {
-        "sample_id": sampleId
+        "sample_id": uuid
       });
       layer = self.lastAdded;
       return self.setShowingLayer(layer);

@@ -1,3 +1,10 @@
+var hypothesisTypeDisplayMap;
+
+hypothesisTypeDisplayMap = {
+  "glycan_composition": "Glycan Hypothesis",
+  "glycopeptide": "Glycopeptide Hypothesis"
+};
+
 Application.prototype.renderHypothesisListAt = function(container) {
   var chunks, hypothesis, i, j, len, ref, row, self, template;
   chunks = [];
@@ -9,7 +16,7 @@ Application.prototype.renderHypothesisListAt = function(container) {
   });
   for (j = 0, len = ref.length; j < len; j++) {
     hypothesis = ref[j];
-    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle user-provided-name'>" + (hypothesis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + (hypothesis.hypothesis_type != null ? hypothesis.hypothesis_type : '-') + " <a class='remove-hypothesis mdi mdi-close'></a> </small> </div>");
+    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle user-provided-name'>" + (hypothesis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + hypothesisTypeDisplayMap[hypothesis.hypothesis_type] + " <a class='remove-hypothesis mdi mdi-close'></a> </small> </div>");
     chunks.push(row);
     i += 1;
     row.click(function(event) {

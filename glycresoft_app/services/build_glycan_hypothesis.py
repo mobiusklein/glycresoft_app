@@ -1,7 +1,8 @@
+import re
 from flask import Response, g, request, render_template
 from werkzeug import secure_filename
 
-from .form_cleaners import remove_empty_rows, intify
+from .form_cleaners import remove_empty_rows, intify, make_unique_name, touch_file
 from .service_module import register_service
 
 try:
@@ -48,9 +49,12 @@ def build_glycan_search_space_process():
     reduction_type = data.get("reduction-type")
     derivatization_type = data.get("derivatization-type")
 
-    hypothesis_name = data.get("hypothesis-name", "")
-    if hypothesis_name.strip() == "":
-        hypothesis_name = None
+    hypothesis_name = data.get("hypothesis-name")
+
+    secure_name = secure_filename(hypothesis_name if hypothesis_name is not None else "glycan_database")
+    storage_path = g.manager.get_hypothesis_path(re.sub(r"[\s\(\)]", "_", secure_name)) + '_glycan_%s.database'
+    storage_path = make_unique_name(storage_path)
+    touch_file(storage_path)
 
     if reduction_type in ("", "native"):
         reduction_type = None
@@ -77,7 +81,7 @@ def build_glycan_search_space_process():
         rules_buffer = _serialize_rules_to_buffer(rules, constraints, "generated")
 
         task = BuildCombinatorialGlycanHypothesis(
-            rules_buffer, g.manager.connection_bridge,
+            rules_buffer, storage_path,
             reduction=custom_reduction_type if has_custom_reduction else reduction_type,
             derivatization=custom_derivatization_type if has_custom_derivatization else derivatization_type,
             name=hypothesis_name,
@@ -90,17 +94,17 @@ def build_glycan_search_space_process():
         glycan_list_file.save(secure_glycan_list_file)
         task = BuildTextFileGlycanHypothesis(
             secure_glycan_list_file,
-            g.manager.connection_bridge,
+            storage_path,
             reduction=custom_reduction_type if has_custom_reduction else reduction_type,
             derivatization=custom_derivatization_type if has_custom_derivatization else derivatization_type,
             name=hypothesis_name,
             callback=lambda: 0)
         g.manager.add_task(task)
     elif selected_method == "pregenerated":
-        include_human_n_glycan = data.get("glycomedb-human-n-glycan")
-        include_human_o_glycan = data.get("glycomedb-human-o-glycan")
-        include_mammalian_n_glycan = data.get("glycomedb-mammlian-n-glycan")
-        include_mammalian_o_glycan = data.get("glycomedb-mammlian-o-glycan")
+        # include_human_n_glycan = data.get("glycomedb-human-n-glycan")
+        # include_human_o_glycan = data.get("glycomedb-human-o-glycan")
+        # include_mammalian_n_glycan = data.get("glycomedb-mammlian-n-glycan")
+        # include_mammalian_o_glycan = data.get("glycomedb-mammlian-o-glycan")
 
         g.manager.add_message(Message("This method is not enabled at this time", 'update'))
         return Response("Task Not Scheduled")

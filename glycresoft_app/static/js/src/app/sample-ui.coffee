@@ -3,7 +3,7 @@ Application::renderSampleListAt = (container)->
     self = @
     for sample in _.sortBy(_.values(@samples), (o) -> o.id)
         row = $("
-    <div data-name=#{sample.name} class='list-item sample-entry clearfix' data-uuid='#{sample.uuid}' data-id='#{sample.id}'>
+    <div data-name=#{sample.name} class='list-item sample-entry clearfix' data-uuid='#{sample.uuid}'>
         <span class='handle user-provided-name'>#{sample.name.replace(/_/g, ' ')}</span>
         <small class='right' style='display:inherit'>
             #{sample.sample_type} <span class='status-indicator'></span>
@@ -17,9 +17,8 @@ Application::renderSampleListAt = (container)->
         chunks.push row
         row.click (event) ->
             handle = $ @
-            sampleId = handle.attr("data-id")
             uuid = handle.attr("data-uuid")
-            self.addLayer ActionBook.viewSample, {"sample_id": sampleId}
+            self.addLayer ActionBook.viewSample, {"sample_id": uuid}
             layer = self.lastAdded
             self.setShowingLayer layer
         row.find(".remove-sample").click (event) -> 

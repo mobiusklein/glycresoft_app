@@ -7,19 +7,18 @@ Application.prototype.renderSampleListAt = function(container) {
   });
   for (i = 0, len = ref.length; i < len; i++) {
     sample = ref[i];
-    row = $("<div data-name=" + sample.name + " class='list-item sample-entry clearfix' data-uuid='" + sample.uuid + "' data-id='" + sample.id + "'> <span class='handle user-provided-name'>" + (sample.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + sample.sample_type + " <span class='status-indicator'></span> <a class='remove-sample mdi mdi-close'></a> </small> </div>");
+    row = $("<div data-name=" + sample.name + " class='list-item sample-entry clearfix' data-uuid='" + sample.uuid + "'> <span class='handle user-provided-name'>" + (sample.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + sample.sample_type + " <span class='status-indicator'></span> <a class='remove-sample mdi mdi-close'></a> </small> </div>");
     sampleStatusDisplay = row.find(".status-indicator");
     if (!sample.completed) {
       sampleStatusDisplay.html("<small class='yellow-text'>(Incomplete)</small>");
     }
     chunks.push(row);
     row.click(function(event) {
-      var handle, layer, sampleId, uuid;
+      var handle, layer, uuid;
       handle = $(this);
-      sampleId = handle.attr("data-id");
       uuid = handle.attr("data-uuid");
       self.addLayer(ActionBook.viewSample, {
-        "sample_id": sampleId
+        "sample_id": uuid
       });
       layer = self.lastAdded;
       return self.setShowingLayer(layer);

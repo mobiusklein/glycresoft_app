@@ -11,8 +11,8 @@
             <th class='narrow'>Protein<br>Coordinates</th>
             <th class='narrow'>Tandem<br>Scans</th>
             <th class='narrow'>Start Time</th>
-            <th class='narrow'>End Time</th>
             <th class='narrow'>Apex Time</th>
+            <th class='narrow'>End Time</th>
         </tr>
     </thead>
     <tbody class='glycopeptide-match-table-body' style='height:450px;'>
@@ -29,8 +29,8 @@
             </td>
             <td class='narrow'>{{gpm.spectrum_matches|length}}</td>
             <td class='narrow'>{{gpm.chromatogram.start_time}}</td>
-            <td class='narrow'>{{gpm.chromatogram.end_time}}</td>
             <td class='narrow'>{{gpm.chromatogram.apex_time}}</td>
+            <td class='narrow'>{{gpm.chromatogram.end_time}}</td>
         </tr>
     {% endfor %}
     </tbody>

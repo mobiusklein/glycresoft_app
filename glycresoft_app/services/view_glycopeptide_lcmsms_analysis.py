@@ -1,7 +1,10 @@
+import os
 from weakref import WeakValueDictionary
 from collections import OrderedDict
 
 from flask import Response, g, request, render_template, jsonify, current_app
+
+from .collection_view import CollectionViewBase
 from .service_module import register_service
 
 from threading import RLock
@@ -47,6 +50,8 @@ from glycan_profiling.plotting.entity_bar_chart import (
     AggregatedAbundanceArtist, BundledGlycanComposition)
 
 from glycan_profiling.task import log_handle
+
+from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
 
 app = view_glycopeptide_lcmsms_analysis = register_service("view_glycopeptide_lcmsms_analysis", __name__)
 
@@ -118,10 +123,11 @@ class GlycopeptideSnapShot(object):
             return axes
 
 
-class GlycopeptideAnalysisView(object):
-    def __init__(self, session, analysis_id):
+class GlycopeptideAnalysisView(CollectionViewBase):
+    def __init__(self, storage_record, analysis_id):
+        CollectionViewBase.__init__(self, storage_record)
         self.analysis_id = analysis_id
-        self.session = session
+
         self.protein_index = None
         self.glycan_composition_filter = None
         self.monosaccharide_bounds = FilterSpecificationSet()
@@ -129,14 +135,36 @@ class GlycopeptideAnalysisView(object):
         self.analysis = None
         self.hypothesis = None
 
-        self._converted_cache = WeakValueDictionary()
-
-        self._resolve_sources()
-        self._build_protein_index()
-        self._build_glycan_filter()
-
+        self._peak_loader = None
         self._snapshots_lock = RLock()
         self._snapshots = dict()
+
+        self._converted_cache = WeakValueDictionary()
+
+        with self:
+            self._resolve_sources()
+            self._build_protein_index()
+            self._build_glycan_filter()
+
+    @property
+    def peak_loader(self):
+        if self._peak_loader is None:
+            try:
+                if os.path.exists(self.analysis.parameters['sample_path']):
+                    self._peak_loader = ProcessedMzMLDeserializer(self.analysis.parameters['sample_path'])
+                elif os.path.exists(
+                        os.path.join(
+                            g.manager.base_path, self.analysis.parameters['sample_path'])):
+                    self._peak_loader = ProcessedMzMLDeserializer(
+                        os.path.join(
+                            g.manager.base_path, self.analysis.parameters['sample_path']))
+                else:
+                    raise IOError("Could not locate file")
+            except KeyError:
+                pass
+            except AttributeError:
+                pass
+        return self._peak_loader
 
     def _snapshot_size(self):
         return sum(map(len, self._snapshots.values()))
@@ -269,9 +297,8 @@ class GlycopeptideAnalysisView(object):
         snapshot = GlycopeptideSnapShot(protein_id, self.score_threshold, self.monosaccharide_bounds, keepers)
         return snapshot
 
-    def update_connection(self, session):
-        self.session = session
-        self._resolve_sources()
+    def update_connection(self):
+        pass
 
     def update_threshold(self, score_threshold, monosaccharide_bounds):
         last_threshold = self.score_threshold
@@ -285,159 +312,187 @@ class GlycopeptideAnalysisView(object):
         return self.get_items_for_display(protein_id).paginate(page, per_page)
 
 
-def get_view(analysis_id):
-    if analysis_id in VIEW_CACHE:
-        view = VIEW_CACHE[analysis_id]
+def get_view(analysis_uuid):
+    if analysis_uuid in VIEW_CACHE:
+        view = VIEW_CACHE[analysis_uuid]
+        view.update_connection()
     else:
-        view = GlycopeptideAnalysisView(g.manager.session, analysis_id)
-        VIEW_CACHE[analysis_id] = view
-    view.update_connection(g.manager.session)
+        record = g.manager.analysis_manager.get(analysis_uuid)
+        view = GlycopeptideAnalysisView(record, record.id)
+        VIEW_CACHE[analysis_uuid] = view
     return view
 
 
-@app.route("/view_glycopeptide_lcmsms_analysis/<int:analysis_id>")
-def index(analysis_id):
-    view = get_view(analysis_id)
-    args, state = request_arguments_and_context()
-    log_handle.log("Loading Index")
-    log_handle.log("%s" % state.monosaccharide_filters)
-    view.update_threshold(state.settings['minimum_ms2_score'], state.monosaccharide_filters)
-    return render_template(
-        "view_glycopeptide_search/overview.templ", analysis=view.analysis,
-        protein_table=view.protein_index)
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>")
+def index(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        args, state = request_arguments_and_context()
+        log_handle.log("Loading Index")
+        log_handle.log("%s" % state.monosaccharide_filters)
+        view.update_threshold(state.settings['minimum_ms2_score'], state.monosaccharide_filters)
+        return render_template(
+            "view_glycopeptide_search/overview.templ", analysis=view.analysis,
+            protein_table=view.protein_index)
 
 
-@app.route("/view_glycopeptide_lcmsms_analysis/<int:analysis_id>/<int:protein_id>/overview", methods=['POST'])
-def protein_view(analysis_id, protein_id):
-    view = get_view(analysis_id)
-    args, state = request_arguments_and_context()
-    log_handle.log("%s" % state.monosaccharide_filters)
-    view.update_threshold(state.settings['minimum_ms2_score'], state.monosaccharide_filters)
-    snapshot = view.get_items_for_display(protein_id)
-    glycoprotein = snapshot.get_glycoprotein(g.manager.session)
-    return render_template(
-        "view_glycopeptide_search/components/protein_view.templ",
-        glycoprotein=glycoprotein)
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/<int:protein_id>/overview", methods=['POST'])
+def protein_view(analysis_uuid, protein_id):
+    view = get_view(analysis_uuid)
+    with view:
+        args, state = request_arguments_and_context()
+        log_handle.log("%s" % state.monosaccharide_filters)
+        view.update_threshold(state.settings['minimum_ms2_score'], state.monosaccharide_filters)
+        snapshot = view.get_items_for_display(protein_id)
+        glycoprotein = snapshot.get_glycoprotein(view.session)
+        return render_template(
+            "view_glycopeptide_search/components/protein_view.templ",
+            glycoprotein=glycoprotein)
 
 
-@app.route("/view_glycopeptide_lcmsms_analysis/<int:analysis_id>/<int:protein_id>/page/<int:page>", methods=['POST'])
-def page(analysis_id, protein_id, page):
-    view = get_view(analysis_id)
-    snapshot = view.get_items_for_display(protein_id)
-    paginator = snapshot.paginate(page, 25)
-    return render_template("view_glycopeptide_search/components/glycopeptide_match_table.templ", paginator=paginator)
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/<int:protein_id>/page/<int:page>", methods=['POST'])
+def page(analysis_uuid, protein_id, page):
+    view = get_view(analysis_uuid)
+    with view:
+        snapshot = view.get_items_for_display(protein_id)
+        paginator = snapshot.paginate(page, 25)
+        return render_template(
+            "view_glycopeptide_search/components/glycopeptide_match_table.templ", paginator=paginator)
 
 
-@app.route("/view_glycopeptide_lcmsms_analysis/<int:analysis_id>/<int:protein_id>/plot_glycoforms", methods=['POST'])
-def plot_glycoforms(analysis_id, protein_id):
-    view = get_view(analysis_id)
-    snapshot = view.get_items_for_display(protein_id)
-    svg = snapshot.plot_glycoforms(g.manager.session)
-    return svg
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/<int:protein_id>/plot_glycoforms", methods=['POST'])
+def plot_glycoforms(analysis_uuid, protein_id):
+    view = get_view(analysis_uuid)
+    with view:
+        snapshot = view.get_items_for_display(protein_id)
+        svg = snapshot.plot_glycoforms(view.session)
+        return svg
 
 
-@app.route("/view_glycopeptide_lcmsms_analysis/<int:analysis_id>/<int:protein_id>/site_specific_glycosylation",
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/<int:protein_id>/site_specific_glycosylation",
            methods=['POST'])
-def site_specific_glycosylation(analysis_id, protein_id):
-    view = get_view(analysis_id)
-    snapshot = view.get_items_for_display(protein_id)
-    axes_map = snapshot.site_specific_glycosylation(g.manager.session)
-    glycoprotein = snapshot.get_glycoprotein(g.manager.session)
-    return render_template(
-        "/view_glycopeptide_search/components/site_specific_glycosylation.templ",
-        axes_map=axes_map, glycoprotein=glycoprotein)
+def site_specific_glycosylation(analysis_uuid, protein_id):
+    view = get_view(analysis_uuid)
+    with view:
+        snapshot = view.get_items_for_display(protein_id)
+        axes_map = snapshot.site_specific_glycosylation(view.session)
+        glycoprotein = snapshot.get_glycoprotein(view.session)
+        return render_template(
+            "/view_glycopeptide_search/components/site_specific_glycosylation.templ",
+            axes_map=axes_map, glycoprotein=glycoprotein)
 
 
-@app.route("/view_glycopeptide_lcmsms_analysis/<int:analysis_id>/search_by_scan/<scan_id>")
-def search_by_scan(analysis_id, scan_id):
-    view = get_view(analysis_id)
-    return view.search_by_scan(scan_id)
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/search_by_scan/<scan_id>")
+def search_by_scan(analysis_uuid, scan_id):
+    view = get_view(analysis_uuid)
+    with view:
+        return view.search_by_scan(scan_id)
 
 
 @app.route(
-    "/view_glycopeptide_lcmsms_analysis/<int:analysis_id>/<int:protein_id>/details_for/<int:glycopeptide_id>",
+    "/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/<int:protein_id>/details_for/<int:glycopeptide_id>",
     methods=['POST'])
-def glycopeptide_detail(analysis_id, protein_id, glycopeptide_id):
-    view = get_view(analysis_id)
-    snapshot = view.get_items_for_display(protein_id)
-    session = g.manager.session
-    try:
-        gp = snapshot[glycopeptide_id]
-    except:
-        gp = view.get_glycopeptide(glycopeptide_id)
+def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id):
+    view = get_view(analysis_uuid)
+    with view:
+        snapshot = view.get_items_for_display(protein_id)
+        session = view.session
+        try:
+            gp = snapshot[glycopeptide_id]
+        except:
+            gp = view.get_glycopeptide(glycopeptide_id)
 
-    matched_scans = []
-    for solution_set in gp.spectrum_matches:
-        psm = solution_set[0]
-        if isinstance(psm.scan, SpectrumReference):
-            scan = session.query(MSScan).filter(
-                MSScan.scan_id == psm.scan.id,
-                MSScan.sample_run_id == view.analysis.sample_run_id).first().convert()
-        else:
-            scan = psm.scan
-        matched_scans.append(scan)
+        matched_scans = []
+        for solution_set in gp.spectrum_matches:
+            psm = solution_set[0]
+            if isinstance(psm.scan, SpectrumReference):
+                scan = session.query(MSScan).filter(
+                    MSScan.scan_id == psm.scan.id,
+                    MSScan.sample_run_id == view.analysis.sample_run_id).first().convert()
+            else:
+                scan = psm.scan
+            matched_scans.append(scan)
 
-    spectrum_match_ref = max(gp.spectrum_matches, key=lambda x: x.score)
+        spectrum_match_ref = max(gp.spectrum_matches, key=lambda x: x.score)
 
-    scan = session.query(MSScan).filter(
-        MSScan.scan_id == spectrum_match_ref.scan.id,
-        MSScan.sample_run_id == view.analysis.sample_run_id).first().convert()
-    match = CoverageWeightedBinomialScorer.evaluate(
-        scan, gp.structure,
-        error_tolerance=view.analysis.parameters["fragment_error_tolerance"])
+        # scan = session.query(MSScan).filter(
+        #     MSScan.scan_id == spectrum_match_ref.scan.id,
+        #     MSScan.sample_run_id == view.analysis.sample_run_id).first().convert()
+        scan = view.peak_loader.get_scan_by_id(spectrum_match_ref.scan.id)
 
-    max_peak = max([p.intensity for p in match.spectrum])
+        match = CoverageWeightedBinomialScorer.evaluate(
+            scan, gp.structure,
+            error_tolerance=view.analysis.parameters["fragment_error_tolerance"])
 
-    ax = figax()
-    art = SmoothingChromatogramArtist([gp], ax=ax, colorizer=lambda *a, **k: 'green').draw(
-        label_function=lambda *a, **k: "", legend=False)
-    lo, hi = ax.get_xlim()
-    lo -= 0.5
-    hi += 0.5
-    yl = ax.get_ylabel()
-    ax.set_ylabel(yl, fontsize=16)
-    ax.set_xlabel(ax.get_xlabel(), fontsize=16)
-    ax.set_xlim(lo, hi)
-    ax.get_xaxis().get_major_formatter().set_useOffset(False)
-    labels = [tl for tl in ax.get_xticklabels()]
-    for label in labels:
-        label.set(fontsize=12)
-    for label in ax.get_yticklabels():
-        label.set(fontsize=12)
+        max_peak = max([p.intensity for p in match.spectrum])
 
-    spectrum_plot = match.annotate(ax=figax(), pretty=True)
-    spectrum_plot.set_title("%s\n" % (scan.id,), fontsize=18)
-    spectrum_plot.set_ylabel(spectrum_plot.get_ylabel(), fontsize=16)
-    spectrum_plot.set_xlabel(spectrum_plot.get_xlabel(), fontsize=16)
+        ax = figax()
+        art = SmoothingChromatogramArtist([gp], ax=ax, colorizer=lambda *a, **k: 'green').draw(
+            label_function=lambda *a, **k: "", legend=False)
+        lo, hi = ax.get_xlim()
+        lo -= 0.5
+        hi += 0.5
+        yl = ax.get_ylabel()
+        ax.set_ylabel(yl, fontsize=16)
+        ax.set_xlabel(ax.get_xlabel(), fontsize=16)
+        ax.set_xlim(lo, hi)
+        ax.get_xaxis().get_major_formatter().set_useOffset(False)
+        labels = [tl for tl in ax.get_xticklabels()]
+        for label in labels:
+            label.set(fontsize=12)
+        for label in ax.get_yticklabels():
+            label.set(fontsize=12)
 
-    sequence_logo_plot = glycopeptide_match_logo(match, ax=figax())
+        spectrum_plot = match.annotate(ax=figax(), pretty=True)
+        spectrum_plot.set_title("%s\n" % (scan.id,), fontsize=18)
+        spectrum_plot.set_ylabel(spectrum_plot.get_ylabel(), fontsize=16)
+        spectrum_plot.set_xlabel(spectrum_plot.get_xlabel(), fontsize=16)
 
-    return render_template(
-        "/view_glycopeptide_search/components/glycopeptide_detail.templ",
-        glycopeptide=gp,
-        match=match,
-        chromatogram_plot=report.svg_plot(ax, bbox_inches='tight', height=3, width=7, patchless=True),
-        spectrum_plot=report.svg_plot(spectrum_plot, bbox_inches='tight', height=3, width=10, patchless=True),
-        sequence_logo_plot=report.svg_plot(sequence_logo_plot, bbox_inches='tight', height=2, width=7, patchless=True),
-        matched_scans=matched_scans,
-        max_peak=max_peak,
-    )
+        sequence_logo_plot = glycopeptide_match_logo(match, ax=figax())
+
+        return render_template(
+            "/view_glycopeptide_search/components/glycopeptide_detail.templ",
+            glycopeptide=gp,
+            match=match,
+            chromatogram_plot=report.svg_plot(ax, bbox_inches='tight', height=3, width=7, patchless=True),
+            spectrum_plot=report.svg_plot(spectrum_plot, bbox_inches='tight', height=3, width=10, patchless=True),
+            sequence_logo_plot=report.svg_plot(sequence_logo_plot, bbox_inches='tight', height=2, width=7, patchless=True),
+            matched_scans=matched_scans,
+            max_peak=max_peak,
+        )
 
 
-@app.route("/view_glycopeptide_lcmsms_analysis/<int:analysis_id>/to-csv")
-def to_csv(analysis_id):
-    view = get_view(analysis_id)
-    g.manager.add_message(Message("Building CSV Export", "update"))
-    protein_name_resolver = {entry['protein_id']: entry['protein_name'] for entry in view.protein_index}
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/to-csv")
+def to_csv(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        g.manager.add_message(Message("Building CSV Export", "update"))
+        protein_name_resolver = {entry['protein_id']: entry['protein_name'] for entry in view.protein_index}
 
-    file_name = "%s-glycopeptides.csv" % (view.analysis.name)
-    path = g.manager.get_temp_path(file_name)
+        file_name = "%s-glycopeptides.csv" % (view.analysis.name)
+        path = g.manager.get_temp_path(file_name)
 
-    gen = (
-        gp for protein_id in protein_name_resolver for gp in
-        view.get_items_for_display(protein_id).members)
+        gen = (
+            gp for protein_id in protein_name_resolver for gp in
+            view.get_items_for_display(protein_id).members)
 
-    GlycopeptideLCMSMSAnalysisCSVSerializer(
-        open(path, 'wb'), gen,
-        protein_name_resolver).start()
+        GlycopeptideLCMSMSAnalysisCSVSerializer(
+            open(path, 'wb'), gen,
+            protein_name_resolver).start()
     return jsonify(filename=file_name)
+
+
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/<int:protein_id>/chromatogram_group", methods=["POST"])
+def chromatogram_group_plot(analysis_uuid, protein_id):
+    view = get_view(analysis_uuid)
+    with view:
+        snapshot = view.get_items_for_display(protein_id)
+        graph = chromatogram_graph.GlycopeptideChromatogramGraph([
+            gp.chromatogram for gp in snapshot
+        ])
+        graph.build()
+        bunch = graph.sequence_map[request.values['backbone']]
+        chroma = [node.chromatogram for node in bunch]
+        ax = figax()
+        art = SmoothingChromatogramArtist(chroma, ax=ax, colorizer=lambda *a, **k: 'green').draw(legend=False)
+    return Response(report.svg_plot(ax, bbox_inches='tight', height=5, width=12, patchless=True))

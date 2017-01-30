@@ -12,6 +12,13 @@ def find_index_by_name(table, index_name):
 
 index_updates = [(Glycopeptide.__table__, "ix_Glycopeptide_mass_search_index")]
 
+target_queries = [
+    """
+    SELECT * FROM Glycopeptide gp JOIN Peptide pep ON gp.peptide_id = pep.id
+    WHERE gp.calculated_mass BETWEEN 3000 AND 31000 AND pep.hypothesis_id = 1;
+    """,
+]
+
 
 def index_database(database_connection, channel):
     try:
@@ -31,6 +38,11 @@ def index_database(database_connection, channel):
             session.commit()
 
         handle._analyze_database()
+        session = handle.session()
+        for query in target_queries:
+            result = session.execute("EXPLAIN QUERY PLAN " + query)
+            channel.log("%s:\n\t%r" % (query, ' '.join(map(str, result))))
+
         channel.send(Message("Indexing Complete", 'update'))
     except:
         channel.send(Message.traceback())

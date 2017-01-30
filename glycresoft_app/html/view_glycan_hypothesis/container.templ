@@ -1,7 +1,7 @@
 <div class='row'>
     <div class='col s6'>
         <h4>{{hypothesis.name}}</h4>
-        <span>ID: {{hypothesis.id}}</span>
+        <span>ID: {{hypothesis.uuid}}:{{hypothesis.id}}</span>
     </div>
     {% include "components/mass_search.templ" %}
 </div>
@@ -9,5 +9,5 @@
 
 </div>
 <script>
-viewGlycanCompositionHypothesis({{hypothesis.id}})
+viewGlycanCompositionHypothesis("{{hypothesis.uuid}}")
 </script>

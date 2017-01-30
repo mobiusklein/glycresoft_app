@@ -6,8 +6,8 @@ from glycan_profiling.cli.build_db import (
 
 from glycan_profiling.cli.validators import validate_database_unlocked
 
-from glycresoft_app.utils import json_serializer
-from .task_process import Task, Message, null_user
+from glycresoft_app.project import hypothesis as project_hypothesis
+from .task_process import Task, Message
 
 
 def build_text_file_hypothesis(text_file, database_connection, reduction, derivatization, name,
@@ -39,7 +39,17 @@ def build_text_file_hypothesis(text_file, database_connection, reduction, deriva
             derivatization=derivatization,
             hypothesis_name=name)
         builder.start()
-        channel.send(Message(json_serializer.handle_glycan_hypothesis(builder.hypothesis), "new-hypothesis"))
+        record = project_hypothesis.HypothesisRecordSet(database_connection)
+        hypothesis_record = None
+
+        for item in record:
+            if item.uuid == builder.hypothesis.uuid:
+                hypothesis_record = item
+                channel.send(Message(hypothesis_record.to_json(), "new-hypothesis"))
+                break
+        else:
+            channel.send(Message("Something went wrong (%r)" % (list(record),)))
+
     except:
         channel.send(Message.traceback())
 

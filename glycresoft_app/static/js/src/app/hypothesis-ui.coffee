@@ -1,3 +1,8 @@
+hypothesisTypeDisplayMap = {
+    "glycan_composition": "Glycan Hypothesis"
+    "glycopeptide": "Glycopeptide Hypothesis"
+}
+
 Application::renderHypothesisListAt = (container)->
     chunks = []
     template = ''
@@ -8,7 +13,7 @@ Application::renderHypothesisListAt = (container)->
     <div data-id=#{hypothesis.id} data-uuid=#{hypothesis.uuid} class='list-item clearfix'>
         <span class='handle user-provided-name'>#{hypothesis.name.replace(/_/g, ' ')}</span>
         <small class='right' style='display:inherit'>
-            #{if hypothesis.hypothesis_type? then hypothesis.hypothesis_type else '-' }
+            #{hypothesisTypeDisplayMap[hypothesis.hypothesis_type]}
             <a class='remove-hypothesis mdi mdi-close'></a>
         </small>
     </div>

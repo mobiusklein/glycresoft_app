@@ -1,0 +1,31 @@
+<div class='row'>
+    <div class='col s8'>
+        <h5>{{sample_run.name}}</h5>
+        <b>ID: {{sample_run.id}}</b>
+    </div>
+</div>
+<div id='sample-metadata-container'>
+    <div class='row'>
+        <div class='col s4'>
+            <b>Scan Counts:</b>
+            <div>
+                {% for ms_level, count in scan_levels.items()|sort %}
+                    <div class='ms-level-tiny-display' style='pad-left: 15px;'>
+                        <b>MS<sup>{{ms_level}}</sup>:</b> {{count}}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class='col s4'>
+            &nbsp;
+        </div>
+        <div class='col s4'>
+            &nbsp;
+        </div>
+    </div>
+</div>
+<div class='row'>
+    <div class='col s10' id='tic-container'>
+        {{chromatograms}}
+    </div>
+</div>

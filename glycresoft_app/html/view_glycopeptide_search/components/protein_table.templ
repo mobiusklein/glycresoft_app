@@ -10,9 +10,6 @@
         <th>
             Glycosylation<br>Site Count
         </th>
-        <th>
-            Glycopeptides<br>Searched
-        </th>
         </tr>
     </thead>
     <tbody class='protein-match-table-body' style='max-height:150px;'>
@@ -26,9 +23,6 @@
             </td>
             <td>
                 {{protein_row.protein.glycosylation_sites|length}}
-            </td>
-            <td>
-                {{protein_row.theoretical_count}}
             </td>
         </tr>
     {% endfor %}

@@ -9,7 +9,7 @@ Application::renderAnalyses = (container)->
     for analysis in _.sortBy(_.values(@analyses), (o) -> o.id)
         analysis.name = if analysis.name != '' then analysis.name else "Analysis:#{analysis.uuid}"
         row = $("
-    <div data-id=#{analysis.id} class='list-item clearfix' data-uuid='#{analysis.uuid}'>
+    <div data-id=#{analysis.uuid} class='list-item clearfix' data-uuid='#{analysis.uuid}'>
         <span class='handle user-provided-name'>#{analysis.name.replace(/_/g, ' ')}</span>
         <small class='right' style='display:inherit'>
             #{analysisTypeDisplayMap[analysis.analysis_type]}
@@ -22,7 +22,7 @@ Application::renderAnalyses = (container)->
         row.click (event) ->
             GlycReSoft.invalidate()
             handle = $(@)
-            id = handle.attr('data-id')
+            id = handle.attr('data-uuid')
             self.addLayer ActionBook.viewAnalysis, {analysis_id: id}
             console.log self.layers
             console.log self.lastAdded

@@ -2,6 +2,7 @@ import os
 import urllib
 
 from glycopeptidepy import PeptideSequence
+from glycopeptidepy.utils.collectiontools import groupby
 from glypy.composition.glycan_composition import FrozenGlycanComposition
 
 from jinja2 import Environment, PackageLoader, FileSystemLoader, escape
@@ -57,6 +58,19 @@ def render_plot(figure, **kwargs):
 
 def rgbpack(color):
     return "rgba(%d,%d,%d,0.5)" % tuple(i * 255 for i in color)
+
+
+def sort_peak_match_pairs(pairs):
+    series = groupby(pairs, key_fn=lambda x: x.fragment.series)
+    segments = []
+    for key in sorted(series):
+        segment = series[key]
+        if hasattr(segment[0].fragment, "position"):
+            segment.sort(key=lambda x: x.fragment.position)
+        else:
+            segment.sort(key=lambda x: x.fragment.mass)
+        segments.extend(segment)
+    return segments
 
 
 def glycopeptide_string(sequence, long=False, include_glycan=True):
@@ -155,4 +169,5 @@ def prepare_environment(env=None):
     env.filters['glycopeptide_string'] = glycopeptide_string
     env.filters['glycan_composition_string'] = glycan_composition_string
     env.filters["formula"] = formula
+    env.filters["sort_peak_match_pairs"] = sort_peak_match_pairs
     return env

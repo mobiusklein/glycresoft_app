@@ -1,9 +1,12 @@
-from datetime import datetime
 import logging
 import traceback
+import multiprocessing
+
 from os import path
 from uuid import uuid4
-import multiprocessing
+from collections import defaultdict
+from datetime import datetime
+
 from multiprocessing import Process, Pipe, Event as IPCEvent, Manager as _IPCManager
 
 from threading import Event, Thread, RLock
@@ -16,7 +19,7 @@ except:
 import psutil
 
 
-from glycan_profiling.task import TaskBase
+from glycan_profiling.task import TaskBase, log_handle
 
 from glycresoft_app.utils.message_queue import identity_provider, make_message_queue
 
@@ -143,6 +146,9 @@ class TaskControlContext(object):
         self.stop_event = stop_event
         self.user = user
         self.context = context
+
+    def log(self, message):
+        log_handle.log(message)
 
     def abort(self, message, exc_type=Exception):
         self.send(Message(message, 'error'))
@@ -378,7 +384,6 @@ class TaskManager(object):
             task_dir = "./"
         self.task_dir = task_dir
         self.tasks = {}
-        # self.read_tasks()
         self.n_running = 0
         self.max_running = max_running
         self.task_queue = Queue()
@@ -389,6 +394,10 @@ class TaskManager(object):
         self.messages = make_message_queue()
         self.running_lock = RLock()
         self.halting = False
+        self.event_handlers = defaultdict(set)
+
+    def register_event_handler(self, event_type, handler):
+        self.event_handlers[event_type].add(handler)
 
     def add_task(self, task):
         """Add a `Task` object to the set of all tasks being managed
@@ -402,7 +411,7 @@ class TaskManager(object):
             The task to be scheduled
         """
         self.tasks[task.id] = task
-        self.messages.put(Message({
+        self.add_message(Message({
             "id": task.id, "name": task.name, "created_at": task.created_at}, "task-queued"))
 
     def cancel_task(self, task_id):
@@ -421,6 +430,7 @@ class TaskManager(object):
     def terminate(self):
         self.stoploop()
         # Clean up here
+        self.cancel_all_tasks()
 
     def tick(self):
         """Check each managed task for status updates, schedule new tasks
@@ -448,7 +458,7 @@ class TaskManager(object):
             running = task.update()
             logger.debug("Checking %r", task)
             for message in task.messages():
-                self.messages.put(message)
+                self.add_message(message)
 
             if task.state == NEW:
                 self.task_queue.put(task)
@@ -458,7 +468,7 @@ class TaskManager(object):
                     self.tasks.pop(task.id)
                     self.n_running -= 1
                     task.callback()
-                    self.messages.put(Message(
+                    self.add_message(Message(
                         {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-complete"))
                     self.running_lock.release()
                     self.completed_tasks.add(task.id)
@@ -466,7 +476,7 @@ class TaskManager(object):
                 if task.id in self.currently_running:
                     if self.running_lock.acquire(0):
                         self.currently_running.pop(task.id)
-                        self.messages.put(Message(
+                        self.add_message(Message(
                             {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-error"))
                         self.tasks.pop(task.id)
                         self.n_running -= 1
@@ -475,7 +485,7 @@ class TaskManager(object):
                 if task.id in self.currently_running:
                     if self.running_lock.acquire(0):
                         self.currently_running.pop(task.id)
-                        self.messages.put(Message(
+                        self.add_message(Message(
                             {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-stopped"))
                         self.tasks.pop(task.id)
                         self.n_running -= 1
@@ -484,26 +494,7 @@ class TaskManager(object):
                 if running:
                     continue
                 else:
-                    print task.id, running
-
-        # for task_id, task in list(self.currently_running.items()):
-        #     running = task.update()
-        #     logger.debug("Checking %r", task)
-        #     for message in task.messages():
-        #         self.messages.put(message)
-
-        #     if task.state == FINISHED:
-        #         self.currently_running.pop(task.id)
-        #         self.completed_tasks.add(task.id)
-        #         try:
-        #             self.tasks.pop(task.id)
-        #         except KeyError:
-        #             pass
-        #         self.n_running -= 1
-        #         task.callback()
-        #         self.messages.put(Message({"id": task.id, "name": task.name}, "task-complete"))
-        #     elif not running:
-        #         print task.id, "not running", task.state
+                    print(task.id, running)
 
     def launch_new_tasks(self):
         while((self.n_running < self.max_running) and (self.task_queue.qsize() > 0)):
@@ -533,6 +524,8 @@ class TaskManager(object):
     def add_message(self, message):
         if message.user is None:
             message.user = null_user
+        for handler in self.event_handlers[message.type]:
+            handler(message)
         self.messages.put(message)
 
     def task_list(self):

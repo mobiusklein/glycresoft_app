@@ -2,6 +2,7 @@ from weakref import WeakValueDictionary
 
 from flask import Response, g, request, render_template, jsonify
 from .service_module import register_service
+from .collection_view import CollectionViewBase
 
 from threading import RLock
 from glycresoft_app.utils.state_transfer import request_arguments_and_context, FilterSpecificationSet
@@ -10,7 +11,9 @@ from glycresoft_app.utils.pagination import SequencePagination
 from glycresoft_app.task import Message
 
 from glycan_profiling.serialize import (
-    Analysis, GlycanComposition, GlycanHypothesis, GlycanCompositionChromatogram,
+    DatabaseBoundOperation,
+    Analysis, GlycanComposition, GlycanHypothesis,
+    GlycanCompositionChromatogram,
     UnidentifiedChromatogram, func)
 
 from glycan_profiling.chromatogram_tree import ChromatogramFilter
@@ -79,10 +82,11 @@ class GlycanChromatographySnapShot(object):
         return self.member_id_map[i]
 
 
-class GlycanChromatographyAnalysisView(object):
-    def __init__(self, session, analysis_id):
+class GlycanChromatographyAnalysisView(CollectionViewBase):
+    def __init__(self, storage_record, analysis_id):
+        CollectionViewBase.__init__(self, storage_record)
         self.analysis_id = analysis_id
-        self.session = session
+
         self.glycan_composition_filter = None
         self.monosaccharide_bounds = FilterSpecificationSet()
         self.score_threshold = 0.4
@@ -91,11 +95,11 @@ class GlycanChromatographyAnalysisView(object):
 
         self._converted_cache = WeakValueDictionary()
 
-        self._resolve_sources()
-        self._build_glycan_filter()
-
         self._snapshot_lock = RLock()
         self._snapshot = None
+
+        with self:
+            self._build_glycan_filter()
 
     def _resolve_sources(self):
         self.analysis = self.session.query(Analysis).get(self.analysis_id)
@@ -151,79 +155,85 @@ class GlycanChromatographyAnalysisView(object):
     def paginate(self, page, per_page=25):
         return self.get_items_for_display().paginate(page, per_page)
 
-    def update_connection(self, session):
-        self.session = session
-        self._resolve_sources()
+    def update_connection(self):
+        self.connect()
 
     def update_threshold(self, score_threshold, monosaccharide_bounds):
         self.score_threshold = score_threshold
         self.monosaccharide_bounds = monosaccharide_bounds
 
 
-def get_view(analysis_id):
-    if analysis_id in VIEW_CACHE:
-        view = VIEW_CACHE[analysis_id]
-        view.update_connection(g.manager.session)
+def get_view(analysis_uuid):
+    if analysis_uuid in VIEW_CACHE:
+        view = VIEW_CACHE[analysis_uuid]
+        view.update_connection()
     else:
-        view = GlycanChromatographyAnalysisView(g.manager.session, analysis_id)
-        VIEW_CACHE[analysis_id] = view
+        record = g.manager.analysis_manager.get(analysis_uuid)
+        view = GlycanChromatographyAnalysisView(record, record.id)
+        VIEW_CACHE[analysis_uuid] = view
     return view
 
 
-@app.route("/view_glycan_lcms_analysis/<int:analysis_id>")
-def index(analysis_id):
-    view = get_view(analysis_id)
-    args, state = request_arguments_and_context()
-    view.update_threshold(state.settings['minimum_ms1_score'], state.monosaccharide_filters)
-    return render_template("/view_glycan_search/overview.templ", analysis=view.analysis)
+@app.route("/view_glycan_lcms_analysis/<analysis_uuid>")
+def index(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        args, state = request_arguments_and_context()
+        view.update_threshold(state.settings['minimum_ms1_score'], state.monosaccharide_filters)
+        return render_template("/view_glycan_search/overview.templ", analysis=view.analysis)
 
 
-@app.route("/view_glycan_lcms_analysis/<int:analysis_id>/content", methods=['POST'])
-def initialize_content(analysis_id):
+@app.route("/view_glycan_lcms_analysis/<analysis_uuid>/content", methods=['POST'])
+def initialize_content(analysis_uuid):
     return render_template("/view_glycan_search/content.templ")
 
 
-@app.route("/view_glycan_lcms_analysis/<int:analysis_id>/chromatograms_chart")
-def chromatograms_chart(analysis_id):
-    view = get_view(analysis_id)
-    snapshot = view.get_items_for_display()
-    return report.svg_plot(snapshot.chromatograms_chart().ax, bbox_inches='tight')
+@app.route("/view_glycan_lcms_analysis/<analysis_uuid>/chromatograms_chart")
+def chromatograms_chart(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        snapshot = view.get_items_for_display()
+        return report.svg_plot(snapshot.chromatograms_chart().ax, bbox_inches='tight')
 
 
-@app.route("/view_glycan_lcms_analysis/<int:analysis_id>/page/<int:page>", methods=['POST'])
-def page(analysis_id, page):
-    view = get_view(analysis_id)
-    paginator = view.paginate(page, per_page=25)
-    return render_template("/view_glycan_search/table.templ", paginator=paginator)
+@app.route("/view_glycan_lcms_analysis/<analysis_uuid>/page/<int:page>", methods=['POST'])
+def page(analysis_uuid, page):
+    view = get_view(analysis_uuid)
+    with view:
+        paginator = view.paginate(page, per_page=25)
+        return render_template("/view_glycan_search/table.templ", paginator=paginator)
 
 
-@app.route("/view_glycan_lcms_analysis/<int:analysis_id>/abundance_bar_chart")
-def abundance_bar_chart(analysis_id):
-    view = get_view(analysis_id)
-    snapshot = view.get_items_for_display()
-    return report.svg_plot(snapshot.abundance_bar_chart().ax, bbox_inches='tight',
-                           width=12, height=6)
+@app.route("/view_glycan_lcms_analysis/<analysis_uuid>/abundance_bar_chart")
+def abundance_bar_chart(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        snapshot = view.get_items_for_display()
+        return report.svg_plot(snapshot.abundance_bar_chart().ax, bbox_inches='tight',
+                               width=12, height=6)
 
 
-@app.route("/view_glycan_lcms_analysis/<int:analysis_id>/details_for/<int:chromatogram_id>")
-def details_for(analysis_id, chromatogram_id):
-    view = get_view(analysis_id)
-    snapshot = view.get_items_for_display()
-    chroma = snapshot[chromatogram_id]
-    plot = SmoothingChromatogramArtist([chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
-        label_function=lambda *a, **k: "", legend=False).ax
-    chroma_svg = report.svg_plot(plot, bbox_inches='tight', height=5, width=9)
-    return render_template(
-        "/view_glycan_search/detail_modal.templ", chromatogram=chroma,
-        chromatogram_svg=chroma_svg)
+@app.route("/view_glycan_lcms_analysis/<analysis_uuid>/details_for/<int:chromatogram_id>")
+def details_for(analysis_uuid, chromatogram_id):
+    view = get_view(analysis_uuid)
+    with view:
+        snapshot = view.get_items_for_display()
+        chroma = snapshot[chromatogram_id]
+        plot = SmoothingChromatogramArtist([chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
+            label_function=lambda *a, **k: "", legend=False).ax
+        chroma_svg = report.svg_plot(plot, bbox_inches='tight', height=5, width=9)
+        return render_template(
+            "/view_glycan_search/detail_modal.templ", chromatogram=chroma,
+            chromatogram_svg=chroma_svg)
 
 
-@app.route("/view_glycan_lcms_analysis/<int:analysis_id>/to-csv")
-def to_csv(analysis_id):
-    view = get_view(analysis_id)
-    g.manager.add_message(Message("Building CSV Export", "update"))
-    snapshot = view.get_items_for_display()
-    file_name = "%s-glycan-chromatograms.csv" % (view.analysis.name)
-    path = g.manager.get_temp_path(file_name)
-    GlycanLCMSAnalysisCSVSerializer(open(path, 'wb'), snapshot.glycan_chromatograms).start()
-    return jsonify(filename=file_name)
+@app.route("/view_glycan_lcms_analysis/<analysis_uuid>/to-csv")
+def to_csv(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        g.manager.add_message(Message("Building CSV Export", "update"))
+        snapshot = view.get_items_for_display()
+        file_name = "%s-glycan-chromatograms.csv" % (view.analysis.name)
+        path = g.manager.get_temp_path(file_name)
+        GlycanLCMSAnalysisCSVSerializer(open(path, 'wb'), snapshot.glycan_chromatograms).start()
+        return jsonify(filename=file_name)
