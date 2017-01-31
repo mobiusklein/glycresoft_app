@@ -168,14 +168,31 @@ Application = (function(superClass) {
     };
     self = this;
     viewLog = function(event) {
-      var createdAt, handle, id, name;
+      var completer, createdAt, handle, id, modal, name, state, updateWrapper;
       handle = $(this);
       id = handle.attr('data-id');
       name = handle.attr("data-name");
       createdAt = handle.attr("data-created_at");
+      state = {};
+      modal = $("#message-modal");
+      updateWrapper = function() {
+        var updater;
+        updater = function() {
+          return $.get("/internal/log/" + name + "-" + createdAt).success(function(message) {
+            return modal.find(".modal-content").html(message);
+          });
+        };
+        return state.intervalId = setInterval(updater, 5000);
+      };
+      completer = function() {
+        return clearInterval(state.intervalId);
+      };
       return $.get("/internal/log/" + name + "-" + createdAt).success((function(_this) {
         return function(message) {
-          return self.displayMessageModal(message);
+          return self.displayMessageModal(message, {
+            "ready": updateWrapper,
+            "complete": completer
+          });
         };
       })(this)).error((function(_this) {
         return function(err) {
@@ -319,11 +336,11 @@ Application = (function(superClass) {
     return window.location = "/internal/file_download/" + btoa(filePath);
   };
 
-  Application.prototype.displayMessageModal = function(message) {
+  Application.prototype.displayMessageModal = function(message, modalArgs) {
     var container;
     container = $("#message-modal");
     container.find('.modal-content').html(message);
-    return container.openModal();
+    return container.openModal(modalArgs);
   };
 
   Application.prototype.ajaxWithContext = function(url, options) {

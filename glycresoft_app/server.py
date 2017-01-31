@@ -186,7 +186,13 @@ def inject_config():
 
 class RouteLoggingFilter(logging.Filter):
     def filter(self, record):
-        return "GET /api/tasks " not in record.getMessage()
+        msg = record.getMessage()
+        is_task_api = "GET /api/tasks " not in msg
+        is_task_log = "GET /internal/log/" not in msg
+        if is_task_api and is_task_log:
+            return True
+        else:
+            return False
 
 
 logging.getLogger("werkzeug").addFilter(RouteLoggingFilter())

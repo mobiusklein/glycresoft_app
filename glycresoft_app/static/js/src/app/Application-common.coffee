@@ -114,8 +114,21 @@ class Application extends ActionLayerManager
             id = handle.attr('data-id')
             name = handle.attr("data-name")
             createdAt = handle.attr("data-created_at")
+            state = {}
+            modal = $("#message-modal")
+            updateWrapper = () ->
+                updater = ->
+                    $.get("/internal/log/#{name}-#{createdAt}").success(
+                        (message) ->
+                            modal.find(".modal-content").html message
+                        )
+                state.intervalId = setInterval(updater, 5000)
+            completer = ->
+                clearInterval(state.intervalId)
+
             $.get("/internal/log/#{name}-#{createdAt}").success(
-                (message) => self.displayMessageModal(message)).error(
+                (message) => self.displayMessageModal(message, {
+                    "ready": updateWrapper, "complete": completer})).error(
                 (err) => alert("An error occurred during retrieval. #{err.toString()}"))
 
         cancelTask = (event) ->
@@ -205,10 +218,10 @@ class Application extends ActionLayerManager
     downloadFile: (filePath) ->
         window.location = "/internal/file_download/" + btoa(filePath)
 
-    displayMessageModal: (message) ->
+    displayMessageModal: (message, modalArgs) ->
         container = $("#message-modal")
         container.find('.modal-content').html message
-        container.openModal()
+        container.openModal(modalArgs)
 
     ajaxWithContext: (url, options) ->
         if !options?
