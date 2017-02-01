@@ -343,6 +343,12 @@ Application = (function(superClass) {
     return container.openModal(modalArgs);
   };
 
+  Application.prototype.closeMessageModal = function() {
+    var container;
+    container = $("#message-modal");
+    return container.closeModal();
+  };
+
   Application.prototype.ajaxWithContext = function(url, options) {
     var data;
     if (options == null) {
@@ -1006,15 +1012,18 @@ samplePreprocessingPresets = [
     ms1_score_threshold: 35,
     ms1_averagine: "glycan",
     max_missing_peaks: 1,
-    msn_averagine: 'glycan'
+    msn_score_threshold: 10,
+    msn_averagine: 'glycan',
+    fit_only_msn: false
   }, {
     name: "LC-MS/MS Glycoproteomics",
     max_charge: 12,
     max_missing_peaks: 1,
     ms1_score_threshold: 35,
     ms1_averagine: "glycopeptide",
-    msn_score_threshold: 5,
-    msn_averagine: 'peptide'
+    msn_score_threshold: 10,
+    msn_averagine: 'peptide',
+    fit_only_msn: true
   }
 ];
 
@@ -1042,7 +1051,10 @@ setSamplePreprocessingConfiguration = function(name) {
     form.find('#msn-minimum-isotopic-score').val(config.msn_score_threshold);
   }
   if (config.msn_averagine != null) {
-    return form.find('#msn-averagine').val(config.msn_averagine);
+    form.find('#msn-averagine').val(config.msn_averagine);
+  }
+  if (config.fit_only_msn != null) {
+    return form.find("#msms-features-only").prop("checked", config.fit_only_msn);
   }
 };
 
@@ -1804,6 +1816,7 @@ GlycopeptideLCMSMSSearchController = (function() {
     this.hypothesisUUID = hypothesisUUID;
     this.proteinId = proteinId1;
     this.proteinChoiceHandler = bind(this.proteinChoiceHandler, this);
+    this.showExportMenu = bind(this.showExportMenu, this);
     this.handle = $(this.containerSelector);
     this.paginator = new GlycopeptideLCMSMSSearchPaginator(this.analysisId, this.handle, this);
     this.plotGlycoforms = new PlotGlycoformsManager(this.handle, this);
@@ -1834,14 +1847,8 @@ GlycopeptideLCMSMSSearchController = (function() {
     this.handle.find(".tooltipped").tooltip();
     console.log("Setting up Save Buttons");
     this.handle.find("#save-csv-btn").click(function(event) {
-      var url;
       console.log("Clicked Save Button");
-      url = self.saveCSVURL.format({
-        analysisId: self.analysisId
-      });
-      return $.get(url).success(function(info) {
-        return GlycReSoft.downloadFile(info.filename);
-      });
+      return self.showExportMenu();
     });
     proteinRowHandle.click(function(event) {
       return self.proteinChoiceHandler(this);
@@ -1859,6 +1866,14 @@ GlycopeptideLCMSMSSearchController = (function() {
     } else {
       return this.noResultsHandler();
     }
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.showExportMenu = function() {
+    return $.get("/view_glycopeptide_lcmsms_analysis/" + this.analysisId + "/export").success((function(_this) {
+      return function(formContent) {
+        return GlycReSoft.displayMessageModal(formContent);
+      };
+    })(this));
   };
 
   GlycopeptideLCMSMSSearchController.prototype.getLastProteinViewed = function() {

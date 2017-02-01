@@ -223,6 +223,10 @@ class Application extends ActionLayerManager
         container.find('.modal-content').html message
         container.openModal(modalArgs)
 
+    closeMessageModal: ->
+        container = $("#message-modal")
+        container.closeModal()
+
     ajaxWithContext: (url, options) ->
         if !options?
             options = {data:{}}

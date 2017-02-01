@@ -1,0 +1,24 @@
+<div class='export-container row'>
+    <form id="export-form" action='/view_glycopeptide_lcmsms_analysis/{{analysis_id}}/export'
+          method="post" accept-charset="utf-8" class="col s12">
+        {% for option in export_type_list %}
+            <p>
+                <input type="checkbox" id="{{option}}" name="{{option}}">
+                <label for="{{option}}">{{option}}</label>
+            </p>
+        {% endfor %}
+        <input type='submit' class='btn'>
+        </input>
+    </form>
+    <script>
+materialRefresh()
+ajaxForm("#export-form", function (payload) {
+    for(var i = 0; i < payload.filenames.length; i++){
+        var name = payload.filenames[i]
+        console.log(name)
+        GlycReSoft.downloadFile(name)
+    }
+    GlycReSoft.closeMessageModal()
+})
+    </script>
+</div>

@@ -163,9 +163,10 @@ class GlycopeptideLCMSMSSearchController
         console.log("Setting up Save Buttons")
         @handle.find("#save-csv-btn").click (event) ->
             console.log("Clicked Save Button")
-            url = self.saveCSVURL.format({analysisId: self.analysisId})
-            $.get(url).success (info) ->
-                GlycReSoft.downloadFile info.filename
+            self.showExportMenu()
+            # url = self.saveCSVURL.format({analysisId: self.analysisId})
+            # $.get(url).success (info) ->
+            #     GlycReSoft.downloadFile info.filename
         proteinRowHandle.click (event) ->
             self.proteinChoiceHandler @
         console.log("setup complete")
@@ -177,6 +178,12 @@ class GlycopeptideLCMSMSSearchController
             @proteinChoiceHandler proteinRowHandle[0]
         else
             @noResultsHandler()
+
+    showExportMenu: =>
+        $.get("/view_glycopeptide_lcmsms_analysis/#{@analysisId}/export").success(
+            (formContent) =>
+                GlycReSoft.displayMessageModal(formContent)
+        )
 
 
     getLastProteinViewed: ->

@@ -5,7 +5,9 @@ samplePreprocessingPresets = [
         ms1_score_threshold: 35
         ms1_averagine: "glycan"
         max_missing_peaks: 1
+        msn_score_threshold: 10
         msn_averagine: 'glycan'
+        fit_only_msn: false
     }
     {
         name: "LC-MS/MS Glycoproteomics"
@@ -13,8 +15,9 @@ samplePreprocessingPresets = [
         max_missing_peaks: 1
         ms1_score_threshold: 35
         ms1_averagine: "glycopeptide"
-        msn_score_threshold: 5
+        msn_score_threshold: 10
         msn_averagine: 'peptide'
+        fit_only_msn: true
     }
 ]
 
@@ -37,6 +40,9 @@ setSamplePreprocessingConfiguration = (name) ->
         form.find('#msn-minimum-isotopic-score').val(config.msn_score_threshold)
     if config.msn_averagine?
         form.find('#msn-averagine').val(config.msn_averagine)
+    if config.fit_only_msn?
+        form.find("#msms-features-only").prop("checked", config.fit_only_msn)
+
 
 makePresetSelector = (container) ->
     label = $("<label for='preset-configuration'>Preset Configurations</label>")

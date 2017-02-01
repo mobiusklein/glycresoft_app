@@ -10,8 +10,8 @@ class CollectionViewBase(object):
         self._instance_lock = RLock()
 
     def connect(self):
-        connection = DatabaseBoundOperation(self.storage_record.path)
-        self.session = connection.session
+        self.connection = DatabaseBoundOperation(self.storage_record.path)
+        self.session = self.connection.session
 
     def close(self):
         self.session.close()

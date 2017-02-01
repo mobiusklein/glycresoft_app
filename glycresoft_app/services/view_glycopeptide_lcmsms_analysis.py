@@ -41,7 +41,8 @@ from glycan_profiling.tandem.glycopeptide import chromatogram_graph
 
 from glycan_profiling.output import (
     GlycopeptideLCMSMSAnalysisCSVSerializer,
-    GlycopeptideSpectrumMatchAnalysisCSVSerializer)
+    GlycopeptideSpectrumMatchAnalysisCSVSerializer,
+    MzIdentMLSerializer)
 
 from glycan_profiling.plotting.plot_glycoforms import plot_glycoforms_svg
 from glycan_profiling.plotting.sequence_fragment_logo import glycopeptide_match_logo
@@ -462,8 +463,7 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id):
         )
 
 
-@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/to-csv")
-def to_csv(analysis_uuid):
+def _export_csv(analysis_uuid):
     view = get_view(analysis_uuid)
     with view:
         g.manager.add_message(Message("Building CSV Export", "update"))
@@ -479,6 +479,48 @@ def to_csv(analysis_uuid):
         GlycopeptideLCMSMSAnalysisCSVSerializer(
             open(path, 'wb'), gen,
             protein_name_resolver).start()
+    return file_name
+
+
+def _export_spectrum_match_csv(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        g.manager.add_message(Message("Building CSV Export", "update"))
+        protein_name_resolver = {entry['protein_id']: entry['protein_name'] for entry in view.protein_index}
+
+        file_name = "%s-glycopeptide-spectrum-matches.csv" % (view.analysis.name)
+        path = g.manager.get_temp_path(file_name)
+
+        gen = (
+            sm for protein_id in protein_name_resolver for gp in
+            view.get_items_for_display(protein_id).members
+            for ss in gp.spectrum_matches
+            for sm in ss
+            if sm.target.protein_relation.protein_id in protein_name_resolver)
+        GlycopeptideSpectrumMatchAnalysisCSVSerializer(
+            open(path, 'wb'), gen, protein_name_resolver).start()
+    return file_name
+
+
+def _export_mzid(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        g.manager.add_message(Message("Building mzIdentML Export", "update"))
+        protein_name_resolver = {entry['protein_id']: entry['protein_name'] for entry in view.protein_index}
+        file_name = "%s.mzid" % (view.analysis.name,)
+        path = g.manager.get_temp_path(file_name)
+        glycopeptides = [
+            gp for protein_id in protein_name_resolver for gp in
+            view.get_items_for_display(protein_id).members
+        ]
+        MzIdentMLSerializer(
+            open(path, 'wb'), glycopeptides, view.analysis, view.connection).start()
+    return file_name
+
+
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/to-csv")
+def to_csv(analysis_uuid):
+    file_name = _export_csv(analysis_uuid)
     return jsonify(filename=file_name)
 
 
@@ -494,5 +536,37 @@ def chromatogram_group_plot(analysis_uuid, protein_id):
         bunch = graph.sequence_map[request.values['backbone']]
         chroma = [node.chromatogram for node in bunch]
         ax = figax()
-        art = SmoothingChromatogramArtist(chroma, ax=ax, colorizer=lambda *a, **k: 'green').draw(legend=False)
+        SmoothingChromatogramArtist(
+            chroma, ax=ax, colorizer=lambda *a, **k: 'green').draw(
+            legend=False)
     return Response(report.svg_plot(ax, bbox_inches='tight', height=5, width=12, patchless=True))
+
+
+serialization_formats = {
+    "glycopeptides (csv)": _export_csv,
+    "glycopeptide spectrum matches (csv)": _export_spectrum_match_csv,
+    "mzIdentML (mzid 1.1.0)": _export_mzid
+}
+
+
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/export")
+def export_menu(analysis_uuid):
+    options = [
+        "glycopeptides (csv)",
+        "glycopeptide spectrum matches (csv)",
+        "mzIdentML (mzid 1.1.0)"
+    ]
+    return render_template(
+        "/view_glycopeptide_search/components/export_formats.templ",
+        analysis_id=analysis_uuid, export_type_list=options)
+
+
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/export", methods=["POST"])
+def export_data(analysis_uuid):
+    file_names = []
+    for format_key in request.values:
+        if format_key in serialization_formats:
+            work_task = serialization_formats[format_key]
+            file_names.append(
+                work_task(analysis_uuid))
+    return jsonify(status='success', filenames=file_names)
