@@ -51,6 +51,16 @@ class PlotManagerBase
         console.log "Setup Interaction Callback"
 
 
+class PlotChromatogramGroupManager extends PlotManagerBase
+    plotUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/chromatogram_group"
+
+    constructor: (handle @controller) ->
+        super(handle)
+
+    getPlotUrl: ->
+        @plotUrl.format({"analysisId": @controller.analysisId, "proteinId": @controller.proteinId})
+
+
 class PlotGlycoformsManager extends PlotManagerBase
     plotUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/plot_glycoforms"
     plotContainerSelector: "#protein-overview"
@@ -161,12 +171,10 @@ class GlycopeptideLCMSMSSearchController
         self = @
         @handle.find(".tooltipped").tooltip()
         console.log("Setting up Save Buttons")
-        @handle.find("#save-csv-btn").click (event) ->
+        @handle.find("#save-result-btn").click (event) ->
             console.log("Clicked Save Button")
             self.showExportMenu()
-            # url = self.saveCSVURL.format({analysisId: self.analysisId})
-            # $.get(url).success (info) ->
-            #     GlycReSoft.downloadFile info.filename
+
         proteinRowHandle.click (event) ->
             self.proteinChoiceHandler @
         console.log("setup complete")

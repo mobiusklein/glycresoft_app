@@ -198,12 +198,35 @@ class RouteLoggingFilter(logging.Filter):
 logging.getLogger("werkzeug").addFilter(RouteLoggingFilter())
 
 
-@cli.command()
-@click.pass_context
-@click.argument("database-connection")
-@click.option("-b", "--base-path", default=None, help='Location to store application instance information')
-@click.option("-e", "--external", is_flag=True, help="Allow connections from non-local machines")
-@click.option("-p", "--port", default=8080, type=int, help="The port to listen on")
+def _setup_win32_keyboard_interrupt_handler(server, manager):
+    import os
+    from scipy import stats
+    import thread
+    import threading
+    import win32api
+    import IPython
+
+    def handler(dwCtrlType, hook_sigint=thread.interrupt_main):
+        if dwCtrlType == 0:
+            manager.halting = True
+            manager.stoploop()
+            manager.cancel_all_tasks()
+            hook_sigint()
+            print("Keyboard Interrupt Queued", threading.current_thread(), len(threading.enumerate()))
+            # server.shutdown_server()
+            # IPython.embed()
+            return 1
+        return 0
+
+    win32api.SetConsoleCtrlHandler(handler, 1)
+
+
+# @cli.command()
+# @click.pass_context
+# @click.argument("database-connection")
+# @click.option("-b", "--base-path", default=None, help='Location to store application instance information')
+# @click.option("-e", "--external", is_flag=True, help="Allow connections from non-local machines")
+# @click.option("-p", "--port", default=8080, type=int, help="The port to listen on")
 def server(context, database_connection, base_path, external=False, port=None, no_execute_tasks=False):
     global manager, SERVER, project_multiplexer
     project_multiplexer = ProjectMultiplexer()
@@ -217,4 +240,8 @@ def server(context, database_connection, base_path, external=False, port=None, n
     app.debug = DEBUG
     app.secret_key = SECRETKEY
     SERVER = ApplicationServerManager.werkzeug_server()
+    try:
+        _setup_win32_keyboard_interrupt_handler(SERVER, manager)
+    except ImportError:
+        pass
     app.run(host=host, use_reloader=False, threaded=True, debug=DEBUG, port=port, passthrough_errors=True)

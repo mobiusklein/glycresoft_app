@@ -67,6 +67,7 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel):
     logger.setLevel("DEBUG")
     logger.propagate = False
     current_process = multiprocessing.current_process()
+
     logger.info("Task Running on PID %r", current_process.pid)
 
     try:
@@ -75,6 +76,10 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel):
     except:
         channel.send(Message.traceback())
         import sys
+        proc_handle = psutil.Process(current_process.pid)
+        with proc_handle.oneshot():
+            for child in proc_handle.children(True):
+                child.kill()
         sys.exit(1)
 
 

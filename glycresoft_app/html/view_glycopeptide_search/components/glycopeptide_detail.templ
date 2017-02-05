@@ -75,7 +75,7 @@
                 </tbody>
             </table>
         </div>
-        <div class='col s4'>
+        <div class='col s5'>
             <h5>Fragment Matches</h5>
             <table>
                 <thead>
@@ -89,8 +89,13 @@
                 <tbody>
                 {% for pair in match.solution_map|sort_peak_match_pairs %}
                     <tr>
-                        <td><b><span class='fragment-name'>{{pair.fragment.name}}</span></b></td>
-                        <td class='center-align'>{{"%0.3f" % pair.peak.mz}}</td>
+                        {% if pair.fragment.name | length < 25 %}
+                            <td><b><span class='fragment-name'>{{pair.fragment.name}}</span></b></td>
+                        {% else %}
+                            <td><b><span class='fragment-name'><small>{{pair.fragment.name}}</small></span></b></td>
+                        {% endif %}
+                        <td class='center-align'>{{"%0.3f" % pair.peak.mz}} ({{"%0.2e" % (
+                            (pair.peak.neutral_mass - pair.fragment.mass) / pair.fragment.mass)}})</td>
                         <td class='center-align' data-score="{{pair.peak.score}}">{{"%0.3f" % pair.peak.intensity}} ({{"%0.2f%%" % (
                             pair.peak.intensity * 100.0 / max_peak)}})</td>
                         <td class='center-align'>{{pair.peak.charge}}</td>

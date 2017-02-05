@@ -136,6 +136,8 @@ class GlycopeptideAnalysisView(CollectionViewBase):
         self.analysis = None
         self.hypothesis = None
 
+        self.parameters = None
+
         self._peak_loader = None
         self._snapshots_lock = RLock()
         self._snapshots = dict()
@@ -192,6 +194,7 @@ class GlycopeptideAnalysisView(CollectionViewBase):
     def _resolve_sources(self):
         self.analysis = self.session.query(Analysis).get(self.analysis_id)
         self.hypothesis = self.analysis.hypothesis
+        self.parameters = self.analysis.parameters
 
     def _build_protein_index(self):
         theoretical_counts = self.session.query(Protein.name, Protein.id, func.count(Glycopeptide.id)).join(
@@ -415,10 +418,6 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id):
             matched_scans.append(scan)
 
         spectrum_match_ref = max(gp.spectrum_matches, key=lambda x: x.score)
-
-        # scan = session.query(MSScan).filter(
-        #     MSScan.scan_id == spectrum_match_ref.scan.id,
-        #     MSScan.sample_run_id == view.analysis.sample_run_id).first().convert()
         scan = view.peak_loader.get_scan_by_id(spectrum_match_ref.scan.id)
 
         match = CoverageWeightedBinomialScorer.evaluate(
