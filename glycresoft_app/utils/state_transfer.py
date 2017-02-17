@@ -75,26 +75,26 @@ class MonosaccharideFilterSpecification(object):
             self.monosaccharide, self.minimum, self.maximum, self.include)
 
 
-def typify(s):
+def literal_typecast(s):
     if isinstance(s, list):
-        return typify_list(s)
+        return literal_typecast_list(s)
     elif isinstance(s, dict):
-        return typify_dict(s)
+        return literal_typecast_dict(s)
     try:
         return float(s)
     except ValueError:
         return str(s)
 
 
-def typify_list(d):
-    return [typify(v) for v in d]
+def literal_typecast_list(d):
+    return [literal_typecast(v) for v in d]
 
 
-def typify_dict(d):
+def literal_typecast_dict(d):
     if d is None:
         return None
     return {
-        k: typify(v) for k, v in d.items()
+        k: literal_typecast(v) for k, v in d.items()
     }
 
 
@@ -102,8 +102,8 @@ def request_arguments_and_context():
     parameters = request.get_json()
     if parameters is None:
         return (), ApplicationState(dict(), dict(), FilterSpecificationSet.fromdict({}))
-    context = typify_dict(parameters.get("context", {}))
-    settings = typify_dict(parameters.get("settings", {}))
+    context = literal_typecast_dict(parameters.get("context", {}))
+    settings = literal_typecast_dict(parameters.get("settings", {}))
     arguments = {k: v for k, v in parameters.items() if k not in ("context", "settings")}
 
     monosaccharide_filters = settings.pop("monosaccharide_filters", {})

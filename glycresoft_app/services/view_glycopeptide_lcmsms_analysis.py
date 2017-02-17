@@ -2,9 +2,9 @@ import os
 from weakref import WeakValueDictionary
 from collections import OrderedDict
 
-from flask import Response, g, request, render_template, jsonify, current_app
+from flask import Response, g, request, render_template, jsonify
 
-from .collection_view import CollectionViewBase
+from .collection_view import CollectionViewBase, ViewCache
 from .service_module import register_service
 
 from threading import RLock
@@ -30,7 +30,6 @@ from glycan_profiling.serialize.hypothesis.glycan import GlycanCombinationGlycan
 from glycan_profiling.database.glycan_composition_filter import (
     GlycanCompositionFilter, InclusionFilter)
 
-from glycan_profiling.plotting.chromatogram_artist import ChromatogramArtist
 from glycan_profiling.plotting.summaries import (
     SmoothingChromatogramArtist,
     figax)
@@ -57,7 +56,7 @@ from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
 app = view_glycopeptide_lcmsms_analysis = register_service("view_glycopeptide_lcmsms_analysis", __name__)
 
 
-VIEW_CACHE = dict()
+VIEW_CACHE = ViewCache()
 
 
 class GlycopeptideSnapShot(object):
@@ -415,6 +414,7 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id):
                     MSScan.sample_run_id == view.analysis.sample_run_id).first().convert()
             else:
                 scan = psm.scan
+            scan.score = psm.score
             matched_scans.append(scan)
 
         spectrum_match_ref = max(gp.spectrum_matches, key=lambda x: x.score)
@@ -465,7 +465,7 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id):
 def _export_csv(analysis_uuid):
     view = get_view(analysis_uuid)
     with view:
-        g.manager.add_message(Message("Building CSV Export", "update"))
+        g.add_message(Message("Building CSV Export", "update"))
         protein_name_resolver = {entry['protein_id']: entry['protein_name'] for entry in view.protein_index}
 
         file_name = "%s-glycopeptides.csv" % (view.analysis.name)
@@ -484,7 +484,7 @@ def _export_csv(analysis_uuid):
 def _export_spectrum_match_csv(analysis_uuid):
     view = get_view(analysis_uuid)
     with view:
-        g.manager.add_message(Message("Building CSV Export", "update"))
+        g.add_message(Message("Building CSV Export", "update"))
         protein_name_resolver = {entry['protein_id']: entry['protein_name'] for entry in view.protein_index}
 
         file_name = "%s-glycopeptide-spectrum-matches.csv" % (view.analysis.name)
@@ -504,7 +504,7 @@ def _export_spectrum_match_csv(analysis_uuid):
 def _export_mzid(analysis_uuid):
     view = get_view(analysis_uuid)
     with view:
-        g.manager.add_message(Message("Building mzIdentML Export", "update"))
+        g.add_message(Message("Building mzIdentML Export", "update"))
         protein_name_resolver = {entry['protein_id']: entry['protein_name'] for entry in view.protein_index}
         file_name = "%s.mzid" % (view.analysis.name,)
         path = g.manager.get_temp_path(file_name)

@@ -27,6 +27,8 @@ def build_glycopeptide_search_space_post():
         enzyme = enzyme[0]
     hypothesis_name = values.get("hypothesis_name")
 
+    hypothesis_name = g.manager.make_unique_hypothesis_name(hypothesis_name)
+
     secure_name = secure_filename(hypothesis_name if hypothesis_name is not None else "glycopeptde_database")
     storage_path = g.manager.get_hypothesis_path(re.sub(r"[\s\(\)]", "_", secure_name)) + '_glycopeptde_%s.database'
     storage_path = make_unique_name(storage_path)
@@ -78,7 +80,7 @@ def build_glycopeptide_search_space_post():
             glycan_source=glycan_options["glycomics_source"],
             glycan_source_type=glycan_options["glycan_source_type"],
             glycan_source_identifier=glycan_options["glycan_source_identifier"])
-        g.manager.add_task(task)
+        g.add_task(task)
     elif protein_list_type == 'mzIdentML':
         protein_names = values.get("protein_names").split(",")
         task = BuildGlycopeptideHypothesisMzId(
@@ -87,7 +89,7 @@ def build_glycopeptide_search_space_post():
             processes=4, glycan_source=glycan_options['glycomics_source'],
             glycan_source_type=glycan_options['glycan_source_type'],
             glycan_source_identifier=glycan_options["glycan_source_identifier"])
-        g.manager.add_task(task)
+        g.add_task(task)
     else:
         abort(405)
     return Response("Task Scheduled")

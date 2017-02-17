@@ -25,7 +25,7 @@ def get_glycopeptide_match_api(id):
 
 @api.route("/api/tasks")
 def api_tasks():
-    return jsonify(**{t.id: t.to_json() for t in g.manager.tasks.values()})
+    return jsonify(**{t.id: t.to_json() for t in g.manager.tasks().values()})
 
 
 @api.route("/api/colors")
@@ -35,7 +35,7 @@ def api_colors():
 
 @api.route("/api/samples")
 def api_samples():
-    samples = g.manager.samples()
+    samples = g.manager.samples(g.user)
     d = {}
     for h in samples:
         try:
@@ -48,13 +48,13 @@ def api_samples():
 @api.route("/api/hypotheses")
 def api_hypotheses():
     d = {}
-    for hypothesis in g.manager.glycan_hypotheses():
+    for hypothesis in g.manager.glycan_hypotheses(g.user):
         try:
             dump = hypothesis.to_json()
             d[hypothesis.uuid] = dump
         except:
             current_app.logger.exception("Error occurred in api_hypotheses", exc_info=True)
-    for hypothesis in g.manager.glycopeptide_hypotheses():
+    for hypothesis in g.manager.glycopeptide_hypotheses(g.user):
         try:
             dump = hypothesis.to_json()
             d[hypothesis.uuid] = dump
@@ -72,10 +72,10 @@ def get_hypothesis(uuid):
 @api.route("/api/analyses")
 def api_analyses():
     d = {}
-    for analysis in g.manager.analyses():
+    for analysis in g.manager.analyses(g.user):
         try:
             dump = analysis.to_json()
             d[analysis.uuid] = dump
         except Exception:
-            current_app.logger.exception("Error occurred in api_analyses", exc_info=True)
+            current_app.logger.exception("Error occurred in api_analyses for %r", analysis, exc_info=True)
     return jsonify(**d)

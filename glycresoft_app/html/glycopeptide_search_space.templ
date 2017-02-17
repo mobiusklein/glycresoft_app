@@ -87,14 +87,14 @@
                     <select id="glycan-database-source" name="glycan-database-source" class='browser-default'>
                         <option selected="true"></option>
                         <optgroup label="Glycan Hypotheses">
-                        {% for hypothesis in manager.glycan_hypotheses() %}
+                        {% for hypothesis in manager.glycan_hypotheses(user) %}
                             <option value="Hypothesis,{{hypothesis.uuid}}">{{hypothesis.name}}</option>
                         {% endfor %}
                         </optgroup>
-                        <optgroup label="Glycan Analyses">
-                        {% for result in manager.glycan_analyses() %}
+{#                         <optgroup label="Glycan Analyses">
+                        {% for result in manager.glycan_analyses(user) %}
                             <option value="Analysis,{{result.uuid}}">{{result.name}}</option>
-                        {% endfor %}
+                        {% endfor %} #}
                         </optgroup>
                     </select>
                 </div>

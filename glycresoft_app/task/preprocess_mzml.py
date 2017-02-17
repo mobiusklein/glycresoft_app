@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 def preprocess(mzml_file, database_connection, averagine=None, start_time=None, end_time=None,
                maximum_charge=None, name=None, msn_averagine=None, score_threshold=35.,
                msn_score_threshold=5., missed_peaks=1, n_processes=5, storage_path=None,
-               extract_only_tandem_envelopes=False,
+               extract_only_tandem_envelopes=False, ms1_background_reduction=5.,
                channel=None):
 
     minimum_charge = 1 if maximum_charge > 0 else -1
@@ -65,14 +65,16 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
     if is_profile:
         ms1_peak_picking_args = {
             "transforms": [
-                ms_peak_picker.scan_filter.FTICRBaselineRemoval(scale=5., window_length=2.),
+                ms_peak_picker.scan_filter.FTICRBaselineRemoval(
+                    scale=ms1_background_reduction, window_length=2.),
                 ms_peak_picker.scan_filter.SavitskyGolayFilter()
             ]
         }
     else:
         ms1_peak_picking_args = {
             "transforms": [
-                ms_peak_picker.scan_filter.FTICRBaselineRemoval(scale=5., window_length=2.),
+                ms_peak_picker.scan_filter.FTICRBaselineRemoval(
+                    scale=ms1_background_reduction, window_length=2.),
             ]
         }
     ms1_deconvolution_args = {
@@ -118,7 +120,8 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
             uuid=sample_run_data.uuid,
             completed=True,
             path=storage_path,
-            sample_type=sample_type)
+            sample_type=sample_type,
+            user_id=channel.user.id)
         channel.send(Message(sample_run.to_json(), "new-sample-run"))
     except:
         channel.send(Message.traceback())
@@ -128,11 +131,11 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
 class PreprocessMSTask(Task):
     def __init__(self, mzml_file, database_connection, averagine, start_time, end_time, maximum_charge,
                  name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, n_processes,
-                 storage_path, extract_only_tandem_envelopes, callback,
+                 storage_path, extract_only_tandem_envelopes, ms1_background_reduction, callback,
                  **kwargs):
         args = (mzml_file, database_connection, averagine, start_time, end_time, maximum_charge,
                 name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, n_processes,
-                storage_path, extract_only_tandem_envelopes)
+                storage_path, extract_only_tandem_envelopes, ms1_background_reduction)
         job_name = "Preprocess MS %s" % (name,)
         kwargs.setdefault('name', job_name)
         Task.__init__(self, preprocess, args, callback, **kwargs)

@@ -63,7 +63,7 @@ MonosaccharideFilterState = (function() {
     console.log(hypothesisUUID, this.hypothesisUUID);
     if (hypothesisUUID !== this.hypothesisUUID) {
       console.log("Is New Hypothesis");
-      return Hypothesis.get(hypothesisUUID, (function(_this) {
+      return HypothesisAPI.get(hypothesisUUID, (function(_this) {
         return function(result) {
           var hypothesis;
           hypothesis = result.hypothesis;

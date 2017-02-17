@@ -33,7 +33,7 @@ def message_queue_stream(manager, user):
         payload = 'id: {id}\nevent: {event_name}\ndata: {data}\n\n'
         i = 0
         yield payload.format(id=i, event_name='begin-stream', data=json.dumps('Starting Stream'))
-        yield payload.format(id=i - 1, event_name='update', data=json.dumps('Initialized'))
+        yield payload.format(id=i - 1, event_name='log', data=json.dumps('Initialized'))
         i += 1
         session_identity = identity_provider.new_session(user)
         queue = manager.messages.get_session(session_identity)
@@ -66,12 +66,15 @@ def message_queue_stream(manager, user):
 
 @server_sent_events.route('/stream')
 def message_stream():
-    return Response(message_queue_stream(g.manager, null_user),
+    return Response(message_queue_stream(g.manager, g.user),
                     mimetype="text/event-stream")
 
 
 @server_sent_events.route("/internal/chat", methods=["POST"])
 def echo_message():
     message = request.values['message']
-    g.manager.add_message(Message(message, type='update', user=null_user))
+    user = g.user
+    if request.values.get('recipient'):
+        user = identity_provider.new_user(request.values.get('recipient'))
+    g.manager.add_message(Message(message, type='update', user=user))
     return Response("Done")

@@ -1,26 +1,141 @@
 import datetime
-import logging
 from uuid import uuid4
-
-from threading import Thread
-
 from collections import defaultdict, namedtuple
 
 try:
-    from Queue import Queue, Empty as QueueEmptyException
+    from Queue import Queue
 except:
-    from queue import Queue, Empty as QueueEmptyException
+    from queue import Queue
+
+from glycresoft_app.utils.base import SyncableStore
 
 
 SessionIdentity = namedtuple("SessionIdentity", ["user_id", "session_id"])
-UserIdentity = namedtuple("UserIdentity", ["id"])
+_UserIdentity = namedtuple("UserIdentity", ["id", "info"])
+
+
+class UserIdentity(_UserIdentity):
+    def has_access(self, record):
+        permission = (
+            (record.user_id == self.id) or
+            (record.user_id == null_user.id) or
+            (self.id == super_user.id) or
+            (self.id is None)
+        )
+        return permission
+
+    @property
+    def name(self):
+        display_name = self.info.get("display_name")
+        if display_name:
+            return display_name
+        name = self.info.get("name")
+        if name:
+            return name
+        email = self.info.get("email")
+        if email:
+            return email
+
+        return self.id
+
+
+class UserMetadataBundle(object):
+    def __init__(self, arg=None, **kwargs):
+        self.data = kwargs
+        if arg is not None:
+            self.data.update(arg)
+
+    def get(self, key):
+        return self.data.get(key)
+
+    def set(self, key, value):
+        self.data[key] = value
+
+    def __getattr__(self, key):
+        return self.get(key)
+
+    def __getstate__(self):
+        return self.data
+
+    def __setstate__(self, data):
+        self.data = data
+
+    def __reduce__(self):
+        return self.__class__, (self.data,)
+
+    def __eq__(self, other):
+        if isinstance(other, UserMetadataBundle):
+            return True
+        else:
+            return NotImplemented
+
+    def __hash__(self):
+        return hash("User Metadata Bundle Constant Function")
+
+    def __ne__(self, other):
+        if isinstance(other, UserMetadataBundle):
+            return False
+        else:
+            return NotImplemented
+
+    def __repr__(self):
+        return "UserMetadataBundle(%r)" % {k: v for k, v in self.data.items()
+                                           if not k.startswith("_")}
+
+    def to_json(self):
+        return self.data
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __getitem__(self, key):
+        return self.get(key)
+
+
+def structure(*args, **kwargs):
+    fields = args[1]
+
+    if "to_json" not in kwargs:
+        def to_json(self):
+            return self._asdict()
+    else:
+        to_json = kwargs.pop("to_json")
+
+    new_type = namedtuple(*args, **kwargs)
+
+    derived_type = type(args[0], (new_type,), {"to_json": to_json})
+    derived_type.__new__.__defaults__ = ((None,) * (len(fields)))
+    return derived_type
+
+
+UserRecord = structure("UserRecord", ["user_id", "metadata", "authentication"])
+
+
+class UserManager(SyncableStore):
+    record_type = UserRecord
+
+    @classmethod
+    def make_instance_record(cls, entry):
+        user_record = UserRecord(
+            entry['user_id'],
+            UserMetadataBundle(entry['metadata']),
+            entry.get("authentiation", None))
+        return user_record
+
+    @staticmethod
+    def store_record(store, record):
+        store[record.user_id] = record
+
+    @staticmethod
+    def list_files():
+        return []
 
 
 class IdentityProvider(object):
     """Centralizes the minting of new UserIdentity and SessionIdentity
     objects, and tracks the relationship between user ids and session ids,
     though this behavior is also available through the SessionManager.
-    
+
     Attributes
     ----------
     store : defaultdict(set)
@@ -32,31 +147,36 @@ class IdentityProvider(object):
         if syncfile is not None:
             pass
 
-
     def new_session(self, user):
         new_id = str(uuid4())
         ses = SessionIdentity(user.id, new_id)
         self.store[user.id].add(ses.session_id)
         return ses
 
-    def new_user(self, new_id=None):
+    def new_user(self, new_id=None, **kwargs):
         if new_id is None:
             new_id = str(uuid4())
-        return UserIdentity(new_id)
+        else:
+            new_id = str(new_id)
+        return UserIdentity(new_id, UserMetadataBundle(kwargs))
 
     def sync(self):
         pass
 
 
 # Common IdentityProvider for all applications.
-# In the future, this will be made a member of the ApplicationManager
 identity_provider = IdentityProvider()
+
+# Everyone has access to the Null User's project objects
+null_user = identity_provider.new_user(0)
+# The Super User has access to everyone's project objects
+super_user = identity_provider.new_user(-1)
 
 
 class SessionManager(object):
     """Handles the tracking of UserIdentity to MessageQueueSessions,
     and as a wrapper around the underlying MessageQueueManager.
-    
+
     Attributes
     ----------
     message_queue_manager : MessageQueueManagerBase
@@ -95,6 +215,19 @@ class SessionManager(object):
             return new_session
 
     def user_sessions(self, user_id):
+        """Return an iteratable over all message
+        queue sessions owned by the user designated by
+        `user_id`
+
+        Parameters
+        ----------
+        user_id : str
+            A unique identifier for a user
+
+        Returns
+        -------
+        Iterable
+        """
         sessions_for_user = self.session_map[user_id]
         return sessions_for_user.values()
 
@@ -155,7 +288,7 @@ class MessageQueueManagerBase(object):
 
 class MemoryMessageQueueManager(MessageQueueManagerBase):
     """A simple MessageQueueManager that holds all message queues in memory.
-    
+
     Attributes
     ----------
     storage : defaultdict(Queue)
@@ -184,7 +317,7 @@ class MessageQueueSession(object):
     """A read-only endpoint for a MessageQueue which can deliver messages to
     a single location. Associated with a SessionIdentity, and should only be
     created through a SessionManager's :meth:`create_new_session` method.
-    
+
     Attributes
     ----------
     connected_at : datetime.datetime

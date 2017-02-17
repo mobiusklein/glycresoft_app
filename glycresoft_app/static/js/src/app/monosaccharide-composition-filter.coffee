@@ -41,7 +41,7 @@ class MonosaccharideFilterState
         console.log hypothesisUUID, @hypothesisUUID
         if hypothesisUUID != @hypothesisUUID
             console.log("Is New Hypothesis")
-            Hypothesis.get hypothesisUUID, (result) =>
+            HypothesisAPI.get hypothesisUUID, (result) =>
                 hypothesis = result.hypothesis
                 @setHypothesis(hypothesis)
                 @setApplicationFilter()

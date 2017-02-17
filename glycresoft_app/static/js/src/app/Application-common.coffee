@@ -21,12 +21,17 @@ class Application extends ActionLayerManager
         
         @connectEventSource()
         
+
+        @handleMessage "log", (data) =>
+            console.log(data)
+            return
+
         @handleMessage 'update', (data) =>
             Materialize.toast data.replace(/"/g, ''), 4000
             return
 
         @handleMessage 'task-queued', (data) =>
-            self.tasks[data.id] =
+            self.tasks[data.id] = Task.create
                 'id': data.id
                 'name': data.name
                 "created_at": data.created_at
@@ -34,7 +39,7 @@ class Application extends ActionLayerManager
             self.updateTaskList()
             return
         @handleMessage 'task-start', (data) =>
-            self.tasks[data.id] =
+            self.tasks[data.id] = Task.create
                 'id': data.id
                 'name': data.name
                 "created_at": data.created_at
@@ -50,7 +55,7 @@ class Application extends ActionLayerManager
             try
                 self.tasks[data.id].status = 'finished'
             catch err
-                self.tasks[data.id] =
+                self.tasks[data.id] = Task.create
                     'id': data.id
                     'name': data.name
                     "created_at": data.created_at
@@ -61,7 +66,7 @@ class Application extends ActionLayerManager
             try
                 self.tasks[data.id].status = 'stopped'
             catch err
-                self.tasks[data.id] =
+                self.tasks[data.id] = Task.create
                     'id': data.id
                     'name': data.name
                     'status': 'stopped'
@@ -74,11 +79,24 @@ class Application extends ActionLayerManager
             @hypotheses[data.uuid] = data
             @emit "render-hypotheses"
         @handleMessage 'new-analysis', (data) =>
-            @analyses[data.id] = data
+            @analyses[data.uuid] = data
             @emit "render-analyses"
 
         @on "layer-change", (data) =>
             @colors.update()
+
+    setUser: (userId, callback) ->
+        User.set(userId, (userId) =>
+            @eventStream.close()
+            @connectEventSource()
+            @loadData()
+            Materialize.toast("Logged in as #{userId.user_id}")
+        )
+        if callback?
+            callback()
+
+    getUser: (callback) ->
+        User.get((userId) -> callback(userId.user_id))
 
     connectEventSource: ->
         @eventStream = new EventSource('/stream')
@@ -113,20 +131,22 @@ class Application extends ActionLayerManager
             handle = $(this)    
             id = handle.attr('data-id')
             name = handle.attr("data-name")
-            createdAt = handle.attr("data-created_at")
+            created_at = handle.attr("data-created-at")
             state = {}
             modal = $("#message-modal")
             updateWrapper = () ->
                 updater = ->
-                    $.get("/internal/log/#{name}-#{createdAt}").success(
-                        (message) ->
-                            modal.find(".modal-content").html message
-                        )
+                    status = taskListContainer.find("li[data-id='#{id}']").attr('data-status')
+                    if status == "running"
+                        $.get("/internal/log/#{name}-#{created_at}").success(
+                            (message) ->
+                                modal.find(".modal-content").html message
+                            )
                 state.intervalId = setInterval(updater, 5000)
             completer = ->
                 clearInterval(state.intervalId)
 
-            $.get("/internal/log/#{name}-#{createdAt}").success(
+            $.get("/internal/log/#{name}-#{created_at}").success(
                 (message) => self.displayMessageModal(message, {
                     "ready": updateWrapper, "complete": completer})).error(
                 (err) => alert("An error occurred during retrieval. #{err.toString()}"))
@@ -139,7 +159,8 @@ class Application extends ActionLayerManager
                 $.get "/internal/cancel_task/" + id
 
         taskListContainer.html("")
-        taskListContainer.append(_.map(@tasks, renderTask))
+        taskListContainer.append(_.map(
+            _.sortBy(Object.values(@tasks), ["createdAt"]), renderTask))
         taskListContainer.find('li').map (i, li) -> contextMenu li, {
             "View Log": viewLog
             "Cancel Task": cancelTask
@@ -192,7 +213,7 @@ class Application extends ActionLayerManager
             setInterval(@_upkeepIntervalCallback, @options.upkeepInterval || 10000)
 
             refreshTasks = =>
-                Task.all (d) =>
+                TaskAPI.all (d) =>
                     for key, task of d
                         @tasks[key] = task
                     @updateTaskList()
@@ -201,16 +222,18 @@ class Application extends ActionLayerManager
     ]
 
     loadData: ->
-        Hypothesis.all (d) => 
+        HypothesisAPI.all (d) => 
             @hypotheses = d
             @emit "render-hypotheses"
-        Sample.all (d) =>
+        SampleAPI.all (d) =>
             @samples = d
             @emit "render-samples"
-        Analysis.all (d) =>
+        AnalysisAPI.all (d) =>
             @analyses = d
             @emit "render-analyses"
-        Task.all (d) =>
+        TaskAPI.all (d) =>
+            for key, data of d
+                d[key] = Task.create(data)
             @tasks = d
             @updateTaskList()
         @colors.update()
@@ -254,12 +277,40 @@ class Application extends ActionLayerManager
         console.log("Invalidated")
 
 
+composeSampleAnalysisTree = (bundle) ->
+    samples = bundle.samples
+    analyses = bundle.analyses
+
+    sampleMap = {}
+    for id, analysis of analyses
+        sampleName = analysis.sample_name
+        if !sampleMap[sampleName]?
+            sampleMap[sampleName] = []
+
+        sampleMap[sampleName].push(analysis)
+
+    return sampleMap
+
+
+createdAtParser = /(\d{4})-(\d{2})-(\d{2})\s(\d+)-(\d+)-(\d+(?:\.\d*)?)/
+
+
+class Task
+    @create: (obj) ->
+        return new Task(obj.id, obj.status, obj.name, obj.created_at)
+
+    constructor: (@id, @status, @name, @created_at) ->
+        [_, year, month, day, hour, minute, seconds] = @created_at.match(createdAtParser)
+        @createdAt = new Date(year, month, day, hour, minute, seconds)
+
+
+
 renderTask = (task) ->
     name = task.name
     status = task.status
     id = task.id
     created_at = task.created_at
-    element = $("<li data-id=\'#{id}\' data-status=\'#{status}\' data-name=\'#{name}\' data-created_at=\'#{created_at}\'><b>#{name}</b> (#{status})</li>")
+    element = $("<li data-id=\'#{id}\' data-status=\'#{status}\' data-name=\'#{name}\' data-created-at=\'#{created_at}\'><b>#{name}</b> (#{status})</li>")
     element.attr("data-name", name)
     element
 

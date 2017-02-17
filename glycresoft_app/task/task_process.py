@@ -2,12 +2,14 @@ import logging
 import traceback
 import multiprocessing
 
+from multiprocessing.forking import ForkingPickler
+
 from os import path
 from uuid import uuid4
 from collections import defaultdict
 from datetime import datetime
 
-from multiprocessing import Process, Pipe, Event as IPCEvent, Manager as _IPCManager
+from multiprocessing import Process, Pipe, Event as IPCEvent, Manager as _IPCManager, get_logger as mp_get_logger
 
 from threading import Event, Thread, RLock
 try:
@@ -21,21 +23,18 @@ import psutil
 
 from glycan_profiling.task import TaskBase, log_handle
 
-from glycresoft_app.utils.message_queue import identity_provider, make_message_queue
+from glycresoft_app.utils.message_queue import identity_provider, make_message_queue, null_user
 
 TaskBase.display_fields = True
 
 logger = logging.getLogger("task_process")
 logger.setLevel("ERROR")
 
-NEW = 'new'
+QUEUED = 'queued'
 RUNNING = 'running'
 ERROR = 'error'
 STOPPED = "stopped"
 FINISHED = 'finished'
-
-
-null_user = identity_provider.new_user(0)
 
 
 def noop():
@@ -59,6 +58,10 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel):
         "%H:%M:%S")
     handler.setFormatter(formatter)
     logging.captureWarnings(True)
+
+    # mp_logger = mp_get_logger()
+    # mp_logger.addHandler(handler)
+
     warner = logging.getLogger('py.warnings')
     warner.setLevel("CRITICAL")
 
@@ -160,6 +163,8 @@ class TaskControlContext(object):
         raise exc_type(message)
 
     def send(self, message):
+        if message.user == null_user:
+            message.user = self.user
         self.pipe.send(message)
 
     def recv(self):
@@ -217,7 +222,7 @@ class Task(object):
         control_context = TaskControlContext(child_conn, user=user, context=context)
         self.control_context = control_context
         self.stop_event = control_context.stop_event
-        self.state = NEW
+        self.state = QUEUED
         self.process = None
         self.args = list(args)
         self.args.append(control_context)
@@ -225,7 +230,21 @@ class Task(object):
         self.name = kwargs.get('name', self.id)
         self.log_file_path = kwargs.get("log_file_path", "%s-%s.log" % (self.name, self.created_at))
         self.message_buffer = []
+        self._user = None
         self.user = user
+
+    @property
+    def user(self):
+        return self._user
+
+    @property
+    def user_id(self):
+        return self.user.id
+
+    @user.setter
+    def user(self, value):
+        self._user = value
+        self.control_context.user = value
 
     def update_control_context(self, context):
         self.control_context.update(context)
@@ -258,7 +277,7 @@ class Task(object):
 
     def add_message(self, message):
         if isinstance(message, basestring):
-            message = Message(message, "update")
+            message = Message(message, "update", user=self.user)
         self.message_buffer.append(message)
 
     def update(self):
@@ -416,6 +435,7 @@ class TaskManager(object):
             The task to be scheduled
         """
         self.tasks[task.id] = task
+        self.task_queue.put(task)
         self.add_message(Message({
             "id": task.id, "name": task.name, "created_at": task.created_at}, "task-queued"))
 
@@ -465,16 +485,17 @@ class TaskManager(object):
             for message in task.messages():
                 self.add_message(message)
 
-            if task.state == NEW:
-                self.task_queue.put(task)
+            if task.state == QUEUED:
+                pass
             elif task.state == FINISHED:
                 if self.running_lock.acquire(0):
                     self.currently_running.pop(task.id)
                     self.tasks.pop(task.id)
                     self.n_running -= 1
-                    task.callback()
+                    task.on_complete()
                     self.add_message(Message(
-                        {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-complete"))
+                        {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-complete",
+                        user=task.user))
                     self.running_lock.release()
                     self.completed_tasks.add(task.id)
             elif task.state == ERROR:
@@ -482,7 +503,8 @@ class TaskManager(object):
                     if self.running_lock.acquire(0):
                         self.currently_running.pop(task.id)
                         self.add_message(Message(
-                            {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-error"))
+                            {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-error",
+                            user=task.user))
                         self.tasks.pop(task.id)
                         self.n_running -= 1
                         self.running_lock.release()
@@ -491,7 +513,8 @@ class TaskManager(object):
                     if self.running_lock.acquire(0):
                         self.currently_running.pop(task.id)
                         self.add_message(Message(
-                            {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-stopped"))
+                            {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-stopped",
+                            user=task.user))
                         self.tasks.pop(task.id)
                         self.n_running -= 1
                         self.running_lock.release()
@@ -505,7 +528,7 @@ class TaskManager(object):
         while((self.n_running < self.max_running) and (self.task_queue.qsize() > 0)):
             try:
                 task = self.task_queue.get(False)
-                if task.state != NEW or task.id in self.completed_tasks:
+                if task.state != QUEUED or task.id in self.completed_tasks:
                     continue
                 self.run_task(task)
             except QueueEmptyException:
@@ -524,7 +547,9 @@ class TaskManager(object):
             task.log_file_path = self.get_task_log_path(task)
             self.n_running += 1
             task.start()
-            self.add_message(Message({"id": task.id, "name": task.name, "created_at": task.created_at}, 'task-start'))
+            self.add_message(
+                Message({"id": task.id, "name": task.name, "created_at": task.created_at}, 'task-start',
+                        user=task.user))
 
     def add_message(self, message):
         if message.user is None:
@@ -532,13 +557,3 @@ class TaskManager(object):
         for handler in self.event_handlers[message.type]:
             handler(message)
         self.messages.put(message)
-
-    def task_list(self):
-        tasks = []
-        for t_id, task in self.tasks.items():
-            tasks.append({
-                "name": task.name,
-                "id": task.id,
-                "status": task.state
-            })
-        return tasks

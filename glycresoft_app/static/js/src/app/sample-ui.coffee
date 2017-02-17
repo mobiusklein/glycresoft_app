@@ -1,13 +1,13 @@
 Application::renderSampleListAt = (container)->
     chunks = []
     self = @
-    for sample in _.sortBy(_.values(@samples), (o) -> o.id)
+    for sample in _.sortBy(_.values(@samples), (o) -> o.name)
         row = $("
     <div data-name=#{sample.name} class='list-item sample-entry clearfix' data-uuid='#{sample.uuid}'>
         <span class='handle user-provided-name'>#{sample.name.replace(/_/g, ' ')}</span>
         <small class='right' style='display:inherit'>
             #{sample.sample_type} <span class='status-indicator'></span>
-            <a class='remove-sample mdi mdi-close'></a>
+            <!-- <a class='remove-sample mdi mdi-close'></a> -->
         </small>
     </div>
     ")

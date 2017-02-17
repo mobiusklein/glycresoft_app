@@ -2,7 +2,7 @@ from weakref import WeakValueDictionary
 
 from flask import Response, g, request, render_template, jsonify
 from .service_module import register_service
-from .collection_view import CollectionViewBase
+from .collection_view import CollectionViewBase, ViewCache
 
 from threading import RLock
 from glycresoft_app.utils.state_transfer import request_arguments_and_context, FilterSpecificationSet
@@ -30,7 +30,7 @@ from glycan_profiling.output import GlycanLCMSAnalysisCSVSerializer
 app = view_glycan_lcms_analysis = register_service("view_glycan_lcms_analysis", __name__)
 
 
-VIEW_CACHE = dict()
+VIEW_CACHE = ViewCache()
 
 
 class GlycanChromatographySnapShot(object):
@@ -44,7 +44,7 @@ class GlycanChromatographySnapShot(object):
         self.figure_axes = {}
         self._make_summary_graphics()
         self.member_id_map = {
-            x.id: x for x in self.glycan_chromatograms + self.unidentified_chromatograms
+            x.id: x for x in self.glycan_chromatograms
         }
 
     def is_valid(self, score_threshold, glycan_filters):
@@ -221,17 +221,36 @@ def details_for(analysis_uuid, chromatogram_id):
         chroma = snapshot[chromatogram_id]
         plot = SmoothingChromatogramArtist([chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
             label_function=lambda *a, **k: "", legend=False).ax
+        plot.set_title("Aggregated\nExtracted Ion Chromatogram", fontsize=24)
         chroma_svg = report.svg_plot(plot, bbox_inches='tight', height=5, width=9)
+
+        adduct_separation = ""
+        if len(chroma.adducts) > 1:
+            adducts = list(chroma.adducts)
+            labels = {}
+            rest = chroma
+            for adduct in adducts:
+                with_adduct, rest = rest.bisect_adduct(adduct)
+                labels[adduct] = with_adduct
+                adduct_plot = SmoothingChromatogramArtist(
+                    labels.values(),
+                    colorizer=lambda *a, **k: 'green', ax=figax()).draw(
+                    label_function=lambda *a, **k: tuple(a[0].adducts)[0].name,
+                    legend=False).ax
+                adduct_plot.set_title(
+                    "Adduct-Separated\nExtracted Ion Chromatogram", fontsize=24)
+                adduct_separation = report.svg_plot(adduct_plot, bbox_inches='tight', height=5, width=9)
+
         return render_template(
             "/view_glycan_search/detail_modal.templ", chromatogram=chroma,
-            chromatogram_svg=chroma_svg)
+            chromatogram_svg=chroma_svg, adduct_separation_svg=adduct_separation)
 
 
 @app.route("/view_glycan_lcms_analysis/<analysis_uuid>/to-csv")
 def to_csv(analysis_uuid):
     view = get_view(analysis_uuid)
     with view:
-        g.manager.add_message(Message("Building CSV Export", "update"))
+        g.add_message(Message("Building CSV Export", "update"))
         snapshot = view.get_items_for_display()
         file_name = "%s-glycan-chromatograms.csv" % (view.analysis.name)
         path = g.manager.get_temp_path(file_name)

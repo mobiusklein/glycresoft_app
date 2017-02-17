@@ -37,6 +37,33 @@ def _make_parser_with_defaults():
     return parser
 
 
+def write(config_dict, path):
+    converted = {
+        "WebServer": {
+            "AllowExternalConnections": str(config_dict['allow_external_connections']),
+            "HealthCheckInterval": str(config_dict['upkeep_interval']),
+        },
+        "TaskHandling": {
+            "RefreshTaskInterval": str(config_dict["refresh_task_interval"]),
+        },
+        "Performance": {
+            "PreprocessorWorkerCount": str(config_dict['preprocessor_worker_count']),
+            "DatabaseBuildWorkerCount": str(config_dict['database_build_worker_count']),
+            "DatabaseSearchWorkerCount": str(config_dict['database_search_worker_count'])
+        }
+    }
+    parser = ConfigParser()
+    for section, options in converted.items():
+        parser.add_section(section)
+        for name, value in options.items():
+            # If a value is missing from the file and
+            # must be parsed from the defaults, the
+            # value must be stored as a string for the
+            # type parsing facilities to not error out.
+            parser.set(section, name, str(value))
+    parser.write(open(path, 'w'))
+
+
 def get(path):
     parser = _make_parser_with_defaults()
     if os.path.exists(path):

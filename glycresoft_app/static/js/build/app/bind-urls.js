@@ -1,4 +1,4 @@
-var ActionBook, Analysis, ErrorLogURL, Hypothesis, Sample, Task, makeAPIGet, makeParameterizedAPIGet;
+var ActionBook, AnalysisAPI, ErrorLogURL, HypothesisAPI, SampleAPI, TaskAPI, User, makeAPIGet, makeParameterizedAPIGet;
 
 ActionBook = {
   home: {
@@ -53,23 +53,32 @@ makeParameterizedAPIGet = function(url) {
   };
 };
 
-Hypothesis = {
+HypothesisAPI = {
   all: makeAPIGet("/api/hypotheses"),
   get: makeParameterizedAPIGet("/api/hypotheses/{}")
 };
 
-Sample = {
+SampleAPI = {
   all: makeAPIGet("/api/samples")
 };
 
-Analysis = {
+AnalysisAPI = {
   all: makeAPIGet("/api/analyses")
 };
 
-Task = {
+TaskAPI = {
   all: makeAPIGet("/api/tasks")
 };
 
 ErrorLogURL = "/log_js_error";
+
+User = {
+  get: makeAPIGet("/users/current_user"),
+  set: function(user_id, callback) {
+    return $.post("/users/login", {
+      "user_id": user_id
+    }).success(callback);
+  }
+};
 
 //# sourceMappingURL=bind-urls.js.map

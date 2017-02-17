@@ -1,4 +1,4 @@
-var Application, renderTask,
+var Application, Task, composeSampleAnalysisTree, createdAtParser, renderTask,
   bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
@@ -23,6 +23,11 @@ Application = (function(superClass) {
     self.monosaccharideFilterState = new MonosaccharideFilterState(self, null);
     this.messageHandlers = {};
     this.connectEventSource();
+    this.handleMessage("log", (function(_this) {
+      return function(data) {
+        console.log(data);
+      };
+    })(this));
     this.handleMessage('update', (function(_this) {
       return function(data) {
         Materialize.toast(data.replace(/"/g, ''), 4000);
@@ -30,23 +35,23 @@ Application = (function(superClass) {
     })(this));
     this.handleMessage('task-queued', (function(_this) {
       return function(data) {
-        self.tasks[data.id] = {
+        self.tasks[data.id] = Task.create({
           'id': data.id,
           'name': data.name,
           "created_at": data.created_at,
           'status': 'queued'
-        };
+        });
         self.updateTaskList();
       };
     })(this));
     this.handleMessage('task-start', (function(_this) {
       return function(data) {
-        self.tasks[data.id] = {
+        self.tasks[data.id] = Task.create({
           'id': data.id,
           'name': data.name,
           "created_at": data.created_at,
           'status': 'running'
-        };
+        });
         self.updateTaskList();
       };
     })(this));
@@ -65,12 +70,12 @@ Application = (function(superClass) {
           self.tasks[data.id].status = 'finished';
         } catch (_error) {
           err = _error;
-          self.tasks[data.id] = {
+          self.tasks[data.id] = Task.create({
             'id': data.id,
             'name': data.name,
             "created_at": data.created_at,
             'status': 'finished'
-          };
+          });
         }
         self.updateTaskList();
       };
@@ -82,11 +87,11 @@ Application = (function(superClass) {
           self.tasks[data.id].status = 'stopped';
         } catch (_error) {
           err = _error;
-          self.tasks[data.id] = {
+          self.tasks[data.id] = Task.create({
             'id': data.id,
             'name': data.name,
             'status': 'stopped'
-          };
+          });
         }
         self.updateTaskList();
       };
@@ -105,7 +110,7 @@ Application = (function(superClass) {
     })(this));
     this.handleMessage('new-analysis', (function(_this) {
       return function(data) {
-        _this.analyses[data.id] = data;
+        _this.analyses[data.uuid] = data;
         return _this.emit("render-analyses");
       };
     })(this));
@@ -115,6 +120,26 @@ Application = (function(superClass) {
       };
     })(this));
   }
+
+  Application.prototype.setUser = function(userId, callback) {
+    User.set(userId, (function(_this) {
+      return function(userId) {
+        _this.eventStream.close();
+        _this.connectEventSource();
+        _this.loadData();
+        return Materialize.toast("Logged in as " + userId.user_id);
+      };
+    })(this));
+    if (callback != null) {
+      return callback();
+    }
+  };
+
+  Application.prototype.getUser = function(callback) {
+    return User.get(function(userId) {
+      return callback(userId.user_id);
+    });
+  };
 
   Application.prototype.connectEventSource = function() {
     return this.eventStream = new EventSource('/stream');
@@ -168,26 +193,30 @@ Application = (function(superClass) {
     };
     self = this;
     viewLog = function(event) {
-      var completer, createdAt, handle, id, modal, name, state, updateWrapper;
+      var completer, created_at, handle, id, modal, name, state, updateWrapper;
       handle = $(this);
       id = handle.attr('data-id');
       name = handle.attr("data-name");
-      createdAt = handle.attr("data-created_at");
+      created_at = handle.attr("data-created-at");
       state = {};
       modal = $("#message-modal");
       updateWrapper = function() {
         var updater;
         updater = function() {
-          return $.get("/internal/log/" + name + "-" + createdAt).success(function(message) {
-            return modal.find(".modal-content").html(message);
-          });
+          var status;
+          status = taskListContainer.find("li[data-id='" + id + "']").attr('data-status');
+          if (status === "running") {
+            return $.get("/internal/log/" + name + "-" + created_at).success(function(message) {
+              return modal.find(".modal-content").html(message);
+            });
+          }
         };
         return state.intervalId = setInterval(updater, 5000);
       };
       completer = function() {
         return clearInterval(state.intervalId);
       };
-      return $.get("/internal/log/" + name + "-" + createdAt).success((function(_this) {
+      return $.get("/internal/log/" + name + "-" + created_at).success((function(_this) {
         return function(message) {
           return self.displayMessageModal(message, {
             "ready": updateWrapper,
@@ -210,7 +239,7 @@ Application = (function(superClass) {
       }
     };
     taskListContainer.html("");
-    taskListContainer.append(_.map(this.tasks, renderTask));
+    taskListContainer.append(_.map(_.sortBy(Object.values(this.tasks), ["createdAt"]), renderTask));
     taskListContainer.find('li').map(function(i, li) {
       return contextMenu(li, {
         "View Log": viewLog,
@@ -290,7 +319,7 @@ Application = (function(superClass) {
       setInterval(this._upkeepIntervalCallback, this.options.upkeepInterval || 10000);
       refreshTasks = (function(_this) {
         return function() {
-          return Task.all(function(d) {
+          return TaskAPI.all(function(d) {
             var key, task;
             for (key in d) {
               task = d[key];
@@ -305,26 +334,31 @@ Application = (function(superClass) {
   ];
 
   Application.prototype.loadData = function() {
-    Hypothesis.all((function(_this) {
+    HypothesisAPI.all((function(_this) {
       return function(d) {
         _this.hypotheses = d;
         return _this.emit("render-hypotheses");
       };
     })(this));
-    Sample.all((function(_this) {
+    SampleAPI.all((function(_this) {
       return function(d) {
         _this.samples = d;
         return _this.emit("render-samples");
       };
     })(this));
-    Analysis.all((function(_this) {
+    AnalysisAPI.all((function(_this) {
       return function(d) {
         _this.analyses = d;
         return _this.emit("render-analyses");
       };
     })(this));
-    Task.all((function(_this) {
+    TaskAPI.all((function(_this) {
       return function(d) {
+        var data, key;
+        for (key in d) {
+          data = d[key];
+          d[key] = Task.create(data);
+        }
         _this.tasks = d;
         return _this.updateTaskList();
       };
@@ -392,13 +426,50 @@ Application = (function(superClass) {
 
 })(ActionLayerManager);
 
+composeSampleAnalysisTree = function(bundle) {
+  var analyses, analysis, id, sampleMap, sampleName, samples;
+  samples = bundle.samples;
+  analyses = bundle.analyses;
+  sampleMap = {};
+  for (id in analyses) {
+    analysis = analyses[id];
+    sampleName = analysis.sample_name;
+    if (sampleMap[sampleName] == null) {
+      sampleMap[sampleName] = [];
+    }
+    sampleMap[sampleName].push(analysis);
+  }
+  return sampleMap;
+};
+
+createdAtParser = /(\d{4})-(\d{2})-(\d{2})\s(\d+)-(\d+)-(\d+(?:\.\d*)?)/;
+
+Task = (function() {
+  Task.create = function(obj) {
+    return new Task(obj.id, obj.status, obj.name, obj.created_at);
+  };
+
+  function Task(id1, status1, name1, created_at1) {
+    var _, day, hour, minute, month, ref, seconds, year;
+    this.id = id1;
+    this.status = status1;
+    this.name = name1;
+    this.created_at = created_at1;
+    ref = this.created_at.match(createdAtParser), _ = ref[0], year = ref[1], month = ref[2], day = ref[3], hour = ref[4], minute = ref[5], seconds = ref[6];
+    this.createdAt = new Date(year, month, day, hour, minute, seconds);
+  }
+
+  return Task;
+
+})();
+
 renderTask = function(task) {
   var created_at, element, id, name, status;
   name = task.name;
   status = task.status;
   id = task.id;
   created_at = task.created_at;
-  element = $("<li data-id=\'" + id + "\' data-status=\'" + status + "\' data-name=\'" + name + "\' data-created_at=\'" + created_at + "\'><b>" + name + "</b> (" + status + ")</li>");
+  element = $("<li data-id=\'" + id + "\' data-status=\'" + status + "\' data-name=\'" + name + "\' data-created-at=\'" + created_at + "\'><b>" + name + "</b> (" + status + ")</li>");
   element.attr("data-name", name);
   return element;
 };
@@ -430,7 +501,7 @@ $(function() {
 
 //# sourceMappingURL=Application-common.js.map
 
-var ActionBook, Analysis, ErrorLogURL, Hypothesis, Sample, Task, makeAPIGet, makeParameterizedAPIGet;
+var ActionBook, AnalysisAPI, ErrorLogURL, HypothesisAPI, SampleAPI, TaskAPI, User, makeAPIGet, makeParameterizedAPIGet;
 
 ActionBook = {
   home: {
@@ -485,24 +556,33 @@ makeParameterizedAPIGet = function(url) {
   };
 };
 
-Hypothesis = {
+HypothesisAPI = {
   all: makeAPIGet("/api/hypotheses"),
   get: makeParameterizedAPIGet("/api/hypotheses/{}")
 };
 
-Sample = {
+SampleAPI = {
   all: makeAPIGet("/api/samples")
 };
 
-Analysis = {
+AnalysisAPI = {
   all: makeAPIGet("/api/analyses")
 };
 
-Task = {
+TaskAPI = {
   all: makeAPIGet("/api/tasks")
 };
 
 ErrorLogURL = "/log_js_error";
+
+User = {
+  get: makeAPIGet("/users/current_user"),
+  set: function(user_id, callback) {
+    return $.post("/users/login", {
+      "user_id": user_id
+    }).success(callback);
+  }
+};
 
 //# sourceMappingURL=bind-urls.js.map
 
@@ -707,13 +787,21 @@ Application.prototype.renderAnalyses = function(container) {
   template = (function() {
     var i, len, ref, results;
     ref = _.sortBy(_.values(this.analyses), function(o) {
-      return o.id;
+      var counter, index, parts;
+      parts = o.name.split(" ");
+      counter = parts[parts.length - 1];
+      if (counter.startsWith("(") && counter.endsWith(")")) {
+        index = parseInt(counter.slice(1, -1));
+      } else {
+        index = Infinity;
+      }
+      return index;
     });
     results = [];
     for (i = 0, len = ref.length; i < len; i++) {
       analysis = ref[i];
       analysis.name = analysis.name !== '' ? analysis.name : "Analysis:" + analysis.uuid;
-      row = $("<div data-id=" + analysis.uuid + " class='list-item clearfix' data-uuid='" + analysis.uuid + "'> <span class='handle user-provided-name'>" + (analysis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + analysisTypeDisplayMap[analysis.analysis_type] + " <a class='remove-analysis mdi-content-clear'></a> </small> </div>");
+      row = $("<div data-id=" + analysis.uuid + " class='list-item clearfix' data-uuid='" + analysis.uuid + "'> <span class='handle user-provided-name'>" + (analysis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + analysisTypeDisplayMap[analysis.analysis_type] + " <!-- <a class='remove-analysis mdi-content-clear'></a> --> </small> </div>");
       chunks.push(row);
       self = this;
       row.click(function(event) {
@@ -764,11 +852,11 @@ Application.prototype.renderHypothesisListAt = function(container) {
   self = this;
   i = 0;
   ref = _.sortBy(_.values(this.hypotheses), function(o) {
-    return o.id;
+    return o.name;
   });
   for (j = 0, len = ref.length; j < len; j++) {
     hypothesis = ref[j];
-    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle user-provided-name'>" + (hypothesis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + hypothesisTypeDisplayMap[hypothesis.hypothesis_type] + " <a class='remove-hypothesis mdi mdi-close'></a> </small> </div>");
+    row = $("<div data-id=" + hypothesis.id + " data-uuid=" + hypothesis.uuid + " class='list-item clearfix'> <span class='handle user-provided-name'>" + (hypothesis.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + hypothesisTypeDisplayMap[hypothesis.hypothesis_type] + " <!-- <a class='remove-hypothesis mdi mdi-close'></a> --> </small> </div>");
     chunks.push(row);
     i += 1;
     row.click(function(event) {
@@ -898,7 +986,7 @@ MonosaccharideFilterState = (function() {
     console.log(hypothesisUUID, this.hypothesisUUID);
     if (hypothesisUUID !== this.hypothesisUUID) {
       console.log("Is New Hypothesis");
-      return Hypothesis.get(hypothesisUUID, (function(_this) {
+      return HypothesisAPI.get(hypothesisUUID, (function(_this) {
         return function(result) {
           var hypothesis;
           hypothesis = result.hypothesis;
@@ -1081,11 +1169,11 @@ Application.prototype.renderSampleListAt = function(container) {
   chunks = [];
   self = this;
   ref = _.sortBy(_.values(this.samples), function(o) {
-    return o.id;
+    return o.name;
   });
   for (i = 0, len = ref.length; i < len; i++) {
     sample = ref[i];
-    row = $("<div data-name=" + sample.name + " class='list-item sample-entry clearfix' data-uuid='" + sample.uuid + "'> <span class='handle user-provided-name'>" + (sample.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + sample.sample_type + " <span class='status-indicator'></span> <a class='remove-sample mdi mdi-close'></a> </small> </div>");
+    row = $("<div data-name=" + sample.name + " class='list-item sample-entry clearfix' data-uuid='" + sample.uuid + "'> <span class='handle user-provided-name'>" + (sample.name.replace(/_/g, ' ')) + "</span> <small class='right' style='display:inherit'> " + sample.sample_type + " <span class='status-indicator'></span> <!-- <a class='remove-sample mdi mdi-close'></a> --> </small> </div>");
     sampleStatusDisplay = row.find(".status-indicator");
     if (!sample.completed) {
       sampleStatusDisplay.html("<small class='yellow-text'>(Incomplete)</small>");
@@ -1582,7 +1670,7 @@ viewGlycopeptideHypothesis = function(hypothesisId) {
 
 //# sourceMappingURL=view-glycopeptide-hypothesis.js.map
 
-var GlycopeptideLCMSMSSearchController, GlycopeptideLCMSMSSearchPaginator, GlycopeptideLCMSMSSearchTabView, PlotGlycoformsManager, PlotManagerBase, SiteSpecificGlycosylationPlotManager,
+var GlycopeptideLCMSMSSearchController, GlycopeptideLCMSMSSearchPaginator, GlycopeptideLCMSMSSearchTabView, PlotChromatogramGroupManager, PlotGlycoformsManager, PlotManagerBase, SiteSpecificGlycosylationPlotManager,
   bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
@@ -1690,6 +1778,27 @@ PlotManagerBase = (function() {
   return PlotManagerBase;
 
 })();
+
+PlotChromatogramGroupManager = (function(superClass) {
+  extend(PlotChromatogramGroupManager, superClass);
+
+  PlotChromatogramGroupManager.prototype.plotUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/chromatogram_group";
+
+  function PlotChromatogramGroupManager(handle, controller) {
+    this.controller = controller;
+    PlotChromatogramGroupManager.__super__.constructor.call(this, handle);
+  }
+
+  PlotChromatogramGroupManager.prototype.getPlotUrl = function() {
+    return this.plotUrl.format({
+      "analysisId": this.controller.analysisId,
+      "proteinId": this.controller.proteinId
+    });
+  };
+
+  return PlotChromatogramGroupManager;
+
+})(PlotManagerBase);
 
 PlotGlycoformsManager = (function(superClass) {
   extend(PlotGlycoformsManager, superClass);
@@ -1846,7 +1955,7 @@ GlycopeptideLCMSMSSearchController = (function() {
     self = this;
     this.handle.find(".tooltipped").tooltip();
     console.log("Setting up Save Buttons");
-    this.handle.find("#save-csv-btn").click(function(event) {
+    this.handle.find("#save-result-btn").click(function(event) {
       console.log("Clicked Save Button");
       return self.showExportMenu();
     });

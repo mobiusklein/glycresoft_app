@@ -50,6 +50,7 @@ def build_glycan_search_space_process():
     derivatization_type = data.get("derivatization-type")
 
     hypothesis_name = data.get("hypothesis-name")
+    hypothesis_name = g.manager.make_unique_hypothesis_name(hypothesis_name)
 
     secure_name = secure_filename(hypothesis_name if hypothesis_name is not None else "glycan_database")
     storage_path = g.manager.get_hypothesis_path(re.sub(r"[\s\(\)]", "_", secure_name)) + '_glycan_%s.database'
@@ -63,6 +64,9 @@ def build_glycan_search_space_process():
 
     selected_method = data.get("selected-method", 'combinatorial')
 
+    # Construct the argument set for a BuildCombinatorialGlycanHypothesis Task.
+    # This involves building a StringIO object buffer which contains the user's
+    # specified rules.
     if selected_method == "combinatorial":
         comb_monosaccharide_name = data.getlist('monosaccharide_name')[:-1]
         comb_lower_bound = map(intify, data.getlist('monosaccharide_lower_bound')[:-1])
@@ -85,9 +89,10 @@ def build_glycan_search_space_process():
             reduction=custom_reduction_type if has_custom_reduction else reduction_type,
             derivatization=custom_derivatization_type if has_custom_derivatization else derivatization_type,
             name=hypothesis_name,
-            callback=lambda: 0
+            callback=lambda: 0, user=g.user
         )
-        g.manager.add_task(task)
+        g.add_task(task)
+    # Construct the argument set for a BuildTextFileGlycanHypothesis Task.
     elif selected_method == "text-file":
         glycan_list_file = request.files["glycan-list-file"]
         secure_glycan_list_file = g.manager.get_temp_path(secure_filename(glycan_list_file.filename))
@@ -98,8 +103,8 @@ def build_glycan_search_space_process():
             reduction=custom_reduction_type if has_custom_reduction else reduction_type,
             derivatization=custom_derivatization_type if has_custom_derivatization else derivatization_type,
             name=hypothesis_name,
-            callback=lambda: 0)
-        g.manager.add_task(task)
+            callback=lambda: 0, user=g.user)
+        g.add_task(task)
     elif selected_method == "pregenerated":
         # include_human_n_glycan = data.get("glycomedb-human-n-glycan")
         # include_human_o_glycan = data.get("glycomedb-human-o-glycan")
@@ -108,20 +113,22 @@ def build_glycan_search_space_process():
 
         g.manager.add_message(Message("This method is not enabled at this time", 'update'))
         return Response("Task Not Scheduled")
+    # Not yet implemented
     elif selected_method == "merge-hypotheses":
         id_1 = int(data.get("merged-hypothesis-1", 0))
         id_2 = int(data.get("merged-hypothesis-2", 0))
 
         if id_1 == 0 or id_2 == 0 or id_1 == id_2:
-            g.manager.add_message(Message("Two different hypotheses must be selected to merge."))
+            g.add_message(Message("Two different hypotheses must be selected to merge."))
             return Response("Task Not Scheduled")
-
+        g.add_message(Message("Not yet implemented."))
+        return Response("Task Not Scheduled")
         task = MergeGlycanHypotheses(
             g.manager.connection_bridge, [id_1, id_2], name=hypothesis_name,
-            callback=lambda: 0)
-        g.manager.add_task(task)
+            callback=lambda: 0, user=g.user)
+        g.add_task(task)
     else:
-        g.manager.add_message(Message("This method is not recognized: \"%s\"" % (selected_method,), 'update'))
+        g.add_message(Message("This method is not recognized: \"%s\"" % (selected_method,), 'update'))
         return Response("Task Not Scheduled")
 
     return Response("Task Scheduled")

@@ -55,5 +55,5 @@ def run_search_post():
             mass_error_tolerance=matching_tolerance,
             msn_mass_error_tolerance=ms2_matching_tolerance, psm_fdr_threshold=psm_fdr_threshold,
             job_name_part=job_number)
-        g.manager.add_task(task)
+        g.add_task(task)
     return Response("Tasks Scheduled")

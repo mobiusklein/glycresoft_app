@@ -49,6 +49,7 @@ def mzid_glycopeptide(database_connection, mzid_file, name, occupied_glycosites,
         for item in record:
             if item.uuid == builder.hypothesis.uuid:
                 hypothesis_record = item
+                hypothesis_record = hypothesis_record._replace(user_id=channel.user.id)
                 channel.send(Message(hypothesis_record.to_json(), "new-hypothesis"))
                 break
         else:

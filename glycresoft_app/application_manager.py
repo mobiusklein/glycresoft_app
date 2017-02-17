@@ -17,6 +17,15 @@ from glycresoft_app.project.sample import SampleManager
 from glycresoft_app.project.analysis import AnalysisManager
 from glycresoft_app.project.hypothesis import HypothesisManager
 
+from glycresoft_app.utils.message_queue import null_user
+
+
+def has_access(record, user):
+    if user is None:
+        return True
+    else:
+        return user.has_access(record)
+
 
 class ApplicationManager(object):
     app_data_name = "app_data.db"
@@ -79,19 +88,44 @@ class ApplicationManager(object):
         return hash(self.database_connection)
 
     def handle_new_sample_run(self, message):
-        record = self.sample_manager.make_instance_record(message.message)
-        self.sample_manager.put(record)
-        self.sample_manager.dump()
+        with self._data_lock:
+            record = self.sample_manager.make_instance_record(message.message)
+            self.sample_manager.put(record)
+            self.sample_manager.dump()
 
     def handle_new_hypothesis(self, message):
-        record = self.hypothesis_manager.make_instance_record(message.message)
-        self.hypothesis_manager.put(record)
-        self.hypothesis_manager.dump()
+        with self._data_lock:
+            record = self.hypothesis_manager.make_instance_record(message.message)
+            self.hypothesis_manager.put(record)
+            self.hypothesis_manager.dump()
 
     def handle_new_analysis(self, message):
-        record = self.analysis_manager.make_instance_record(message.message)
-        self.analysis_manager.put(record)
-        self.analysis_manager.dump()
+        with self._data_lock:
+            record = self.analysis_manager.make_instance_record(message.message)
+            self.analysis_manager.put(record)
+            self.analysis_manager.dump()
+
+    def make_unique_sample_name(self, sample_name):
+        base_name = sample_name
+        current_name = base_name
+        i = 0
+        existing_names = {s.name for s in self.samples()}
+        with self._data_lock:
+            while current_name in existing_names:
+                i += 1
+                current_name = "%s (%d)" % (base_name, i)
+        return current_name
+
+    def make_unique_hypothesis_name(self, hypothesis_name):
+        base_name = hypothesis_name
+        current_name = base_name
+        i = 0
+        existing_names = {s.name for s in self.hypotheses()}
+        with self._data_lock:
+            while current_name in existing_names:
+                i += 1
+                current_name = "%s (%d)" % (base_name, i)
+        return current_name
 
     @property
     def application_log_path(self):
@@ -115,9 +149,12 @@ class ApplicationManager(object):
     def messages(self):
         return self.task_manager.messages
 
-    @property
-    def tasks(self):
-        return self.task_manager.tasks
+    def tasks(self, user_id=None):
+        tasks_dict = self.task_manager.tasks
+        return {
+            key: task for key, task in tasks_dict.items()
+            if has_access(task, user_id)
+        }
 
     def stoploop(self):
         return self.task_manager.stoploop()
@@ -194,34 +231,67 @@ class ApplicationManager(object):
         self.task_manager.cancel_all_tasks()
 
     def __getitem__(self, key):
+        if key == "preferences":
+            raise RuntimeError()
         return self.app_data[key]
+
+    def preferences(self, user_id=None):
+        if user_id is None:
+            user_id = null_user.id
+        try:
+            return self[user_id]['preferences']
+        except KeyError:
+            return {}
+
+    def set_preferences(self, user_id=None, preferences=None):
+        if preferences is None:
+            return
+        if user_id is None:
+            user_id = null_user.id
+        self.app_data.setdefault(user_id, {})
+        user_data = self[user_id]
+        user_data['preferences'] = preferences
+        self[user_id] = user_data
 
     def __setitem__(self, key, value):
         self.app_data[key] = value
 
-    def samples(self, include_incomplete=True):
-        q = list(self.sample_manager)
+    def samples(self, user_id=None):
+        q = [sample for sample in self.sample_manager
+             if has_access(sample, user_id)]
         return q
 
-    def glycan_hypotheses(self):
+    def hypotheses(self, user=None):
         return [
             hypothesis
             for hypothesis in self.hypothesis_manager
-            if hypothesis.hypothesis_type == "glycan_composition"
+            if has_access(hypothesis, user)
         ]
 
-    def glycopeptide_hypotheses(self):
+    def glycan_hypotheses(self, user=None):
         return [
             hypothesis
             for hypothesis in self.hypothesis_manager
-            if hypothesis.hypothesis_type == "glycopeptide"
+            if hypothesis.hypothesis_type == "glycan_composition" and
+            has_access(hypothesis, user)
         ]
 
-    def analyses(self):
-        return list(self.analysis_manager)
+    def glycopeptide_hypotheses(self, user=None):
+        return [
+            hypothesis
+            for hypothesis in self.hypothesis_manager
+            if hypothesis.hypothesis_type == "glycopeptide" and
+            has_access(hypothesis, user)
+        ]
 
-    def glycan_analyses(self):
-        return [a for a in (self.analysis_manager) if AnalysisTypeEnum.glycan_lc_ms == a.analysis_type]
+    def analyses(self, user=None):
+        return [analysis for analysis in self.analysis_manager
+                if has_access(analysis, user)]
+
+    def glycan_analyses(self, user=None):
+        return [analysis for analysis in (self.analysis_manager)
+                if AnalysisTypeEnum.glycan_lc_ms == analysis.analysis_type and
+                has_access(analysis, user)]
 
     def get_next_job_number(self):
         with self._data_lock:
@@ -231,6 +301,14 @@ class ApplicationManager(object):
                 job_count = 0
             self.app_data['_job_count'] = job_count + 1
         return job_count
+
+    @property
+    def max_running_tasks(self):
+        return self.task_manager.max_running
+
+    @max_running_tasks.setter
+    def max_running_tasks(self, count):
+        self.task_manager.max_running = count
 
 
 class UnknownProjectError(Exception):

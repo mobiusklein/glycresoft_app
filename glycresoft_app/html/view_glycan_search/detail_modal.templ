@@ -21,13 +21,23 @@
             <ul style='margin-top: 1px;'>
                 {% for facet_score, value in chromatogram.score_components()._asdict().items() %}
                     <li>{{facet_score.replace("_", " ").title()}}: {{"%0.4f" % value}} </li>
-                {% endfor %}                
+                {% endfor %}
             </ul>
+        </div>
+        <div class='col s4'>
         </div>
     </div>
     <div class='row'>
-        <div class='col s10'>
+        <div class='col s6'>
             {{chromatogram_svg}}
         </div>
+        <div class='col s6'>
+            {% if chromatogram.adducts|length > 1 %}
+                {{adduct_separation_svg}}
+            {% endif %}
+        </div>
+    </div>
+    <div class='row'>
+        
     </div>
 </div>

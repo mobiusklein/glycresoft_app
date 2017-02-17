@@ -54,7 +54,7 @@ class PlotManagerBase
 class PlotChromatogramGroupManager extends PlotManagerBase
     plotUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/chromatogram_group"
 
-    constructor: (handle @controller) ->
+    constructor: (handle, @controller) ->
         super(handle)
 
     getPlotUrl: ->

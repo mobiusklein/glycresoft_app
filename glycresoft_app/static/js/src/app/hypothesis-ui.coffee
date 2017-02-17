@@ -8,13 +8,13 @@ Application::renderHypothesisListAt = (container)->
     template = ''
     self = @
     i = 0
-    for hypothesis in _.sortBy(_.values(@hypotheses), (o) -> o.id)
+    for hypothesis in _.sortBy(_.values(@hypotheses), (o) -> o.name)
         row = $("
     <div data-id=#{hypothesis.id} data-uuid=#{hypothesis.uuid} class='list-item clearfix'>
         <span class='handle user-provided-name'>#{hypothesis.name.replace(/_/g, ' ')}</span>
         <small class='right' style='display:inherit'>
             #{hypothesisTypeDisplayMap[hypothesis.hypothesis_type]}
-            <a class='remove-hypothesis mdi mdi-close'></a>
+            <!-- <a class='remove-hypothesis mdi mdi-close'></a> -->
         </small>
     </div>
     ")

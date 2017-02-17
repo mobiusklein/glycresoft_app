@@ -1,42 +1,26 @@
 from __future__ import print_function
 import logging
-from glycan_profiling.cli.base import cli
 
 from flask import (
     Flask, request, session, g, redirect, url_for,
     abort, render_template, flash, Markup, make_response, jsonify,
     Response, current_app)
 
-import click
-from werkzeug.wsgi import LimitedStream
 
 from glycresoft_app import report
-# Set up json serialization methods
-from glycresoft_app.utils import json_serializer
 from glycresoft_app.application_manager import (
     ApplicationManager, ProjectMultiplexer, ProjectIDAllocationError,
     UnknownProjectError)
+
+from glycresoft_app.application_server import (
+    ApplicationServerManager,
+    StreamConsumingMiddleware)
+
+
 from glycresoft_app.services import (
     service_module)
 
-
-class StreamConsumingMiddleware(object):
-
-    def __init__(self, app):
-        self.app = app
-
-    def __call__(self, environ, start_response):
-        stream = LimitedStream(environ['wsgi.input'],
-                               int(environ['CONTENT_LENGTH'] or 0))
-        environ['wsgi.input'] = stream
-        app_iter = self.app(environ, start_response)
-        try:
-            stream.exhaust()
-            for event in app_iter:
-                yield event
-        finally:
-            if hasattr(app_iter, 'close'):
-                app_iter.close()
+from glycresoft_app.utils import message_queue
 
 
 app = Flask(__name__)
@@ -49,35 +33,13 @@ SECRETKEY = 'TG9yZW0gaXBzdW0gZG90dW0'
 SERVER = None
 manager = None
 project_multiplexer = None
+MULTIUSER_MODE = False
+
+identity_provider = message_queue.identity_provider
+null_user = message_queue.null_user
 
 service_module.load_all_services(app)
 
-
-class ApplicationServerManager(object):
-    def __init__(self, state=None):
-        if state is None:
-            state = dict()
-        self.state = state
-
-    @property
-    def shutdown_server(self):
-        return self.state["shutdown_server"]
-
-    @shutdown_server.setter
-    def shutdown_server(self, value):
-        self.state["shutdown_server"] = value
-
-    @classmethod
-    def werkzeug_server(cls):
-        def shutdown_func():
-            func = request.environ.get('werkzeug.server.shutdown')
-            if func is None:
-                raise RuntimeError('Not running with the Werkzeug Server')
-
-            func()
-        inst = cls()
-        inst.shutdown_server = shutdown_func
-        return inst
 
 # ----------------------------------------
 # Server Shutdown
@@ -86,12 +48,28 @@ class ApplicationServerManager(object):
 
 @app.route('/internal/shutdown', methods=['POST'])
 def shutdown():
-    g.manager.halting = True
-    g.manager.stoploop()
-    g.manager.cancel_all_tasks()
+    for project_id, project_manager in project_multiplexer:
+        try:
+            project_manager.halting = True
+            project_manager.stoploop()
+            project_manager.cancel_all_tasks()
+        except Exception:
+            current_app.logger.error(
+                "An error occurred while shutting down project %r" % project_id, excinfo=True)
     SERVER.shutdown_server()
     return Response("Should be dead")
 
+
+@app.route('/internal/end_tasks', methods=['POST'])
+def close_project():
+    try:
+        g.manager.halting = True
+        g.manager.stoploop()
+        g.manager.cancel_all_tasks()
+    except Exception:
+        current_app.logger.error(
+            "An error occurred while shutting down project", excinfo=True)
+    return Response(str(g.manager.project_id))
 # ----------------------------------------
 #
 # ----------------------------------------
@@ -129,37 +107,84 @@ def show_cache():
     return Response("Printed")
 
 
-def connect_db(project_id):
+def associate_project_context(project_id):
+    g.project_id = project_id
     try:
         manager = project_multiplexer.get_project(project_id)
         g.manager = manager
         g.db = manager.session
     except UnknownProjectError:
-        current_app.logger.error("Unknown Project ID %d" % project_id)
+        current_app.logger.error("Unknown Project ID %r" % project_id)
         g.manager = manager
         g.db = manager.session
     except ProjectIDAllocationError:
-        current_app.logger.error("ProjectIDAllocationError %d" % project_id)
+        current_app.logger.error("ProjectIDAllocationError %r" % project_id)
         g.manager = manager
         g.db = manager.session
 
 
 @app.route("/")
 def index():
+    if not session.get("has_logged_in", False):
+        return redirect("/login")
     return render_template("index.templ")
+
+
+@app.route("/login")
+def login_page():
+    return render_template("login.templ")
+
+
+@app.route("/login", methods=["POST"])
+def login_action():
+    user_id = request.values['user-identity']
+    session["user_id"] = user_id
+    session['has_logged_in'] = True
+    return redirect("/")
+
+
+@app.route("/logout")
+def logout_action():
+    session.pop("user_id", 0)
+    session['has_logged_in'] = False
+    return redirect("/")
+
+
+@app.route("/users/login", methods=["POST"])
+def set_user_id():
+    user_id = request.values.get("user_id", null_user.id)
+    session["user_id"] = user_id
+    return jsonify(user_id=user_id)
+
+
+@app.route("/users/current_user")
+def get_current_user_id():
+    print(g.user)
+    return jsonify(user_id=g.user.id)
 
 
 @app.before_request
 def before_request():
-    project_id = request.cookies.get("project_id", 0)
-    connect_db(project_id)
+    user_id = session.get("user_id", null_user.id)
+    g.user = identity_provider.new_user(user_id)
+    project_id = int(request.cookies.get("project_id", 0))
+    if project_id == "":
+        project_id = 0
+    associate_project_context(project_id)
 
+    # Context Sensitive wrappers for ApplicationManager methods
+    def add_message(message):
+        if message.user is None:
+            message.user = g.user
+        g.manager.add_message(message)
 
-@app.after_request
-def per_request_callbacks(response):
-    for func in getattr(g, 'call_after_request', ()):
-        response = func(response)
-    return response
+    def add_task(task):
+        if task.user == null_user and g.user != null_user:
+            task.user = g.user
+        g.manager.add_task(task)
+
+    g.add_message = add_message
+    g.add_task = add_task
 
 
 @app.teardown_request
@@ -169,18 +194,26 @@ def teardown_request(exception):
         db.close()
 
 
+def is_logged_in():
+    return g.get("user", null_user) != null_user
+
+
 @app.context_processor
 def inject_info():
     from glycresoft_app.version import version
     return {
-        "application_version": version
+        "application_version": version,
+        "user": g.get("user", null_user),
+        "null_user": null_user,
+        "is_logged_in": is_logged_in
     }
 
 
 @app.context_processor
 def inject_config():
     return {
-        "configuration": g.manager.configuration
+        "configuration": g.manager.configuration,
+        "multiuser": MULTIUSER_MODE
     }
 
 
@@ -199,12 +232,11 @@ logging.getLogger("werkzeug").addFilter(RouteLoggingFilter())
 
 
 def _setup_win32_keyboard_interrupt_handler(server, manager):
-    import os
+    # Ensure FORTRAN handler is registered before registering
+    # this handler
     from scipy import stats
     import thread
-    import threading
     import win32api
-    import IPython
 
     def handler(dwCtrlType, hook_sigint=thread.interrupt_main):
         if dwCtrlType == 0:
@@ -212,36 +244,33 @@ def _setup_win32_keyboard_interrupt_handler(server, manager):
             manager.stoploop()
             manager.cancel_all_tasks()
             hook_sigint()
-            print("Keyboard Interrupt Queued", threading.current_thread(), len(threading.enumerate()))
-            # server.shutdown_server()
-            # IPython.embed()
+            print("Keyboard Interrupt Received. Shutting Down Task Queue and Scheduling Interrupt.")
             return 1
         return 0
 
     win32api.SetConsoleCtrlHandler(handler, 1)
 
 
-# @cli.command()
-# @click.pass_context
-# @click.argument("database-connection")
-# @click.option("-b", "--base-path", default=None, help='Location to store application instance information')
-# @click.option("-e", "--external", is_flag=True, help="Allow connections from non-local machines")
-# @click.option("-p", "--port", default=8080, type=int, help="The port to listen on")
-def server(context, database_connection, base_path, external=False, port=None, no_execute_tasks=False):
-    global manager, SERVER, project_multiplexer
+def server(context, database_connection, base_path, external=False, port=None, no_execute_tasks=False,
+           multi_user=False, max_tasks=1):
+    global manager, SERVER, project_multiplexer, MULTIUSER_MODE
+    MULTIUSER_MODE = multi_user
     project_multiplexer = ProjectMultiplexer()
     manager = ApplicationManager(database_connection, base_path)
     project_multiplexer.register_project(manager)
 
     manager.configuration["allow_external_connections"] |= external
-    host = None
+    manager.max_running_tasks = max_tasks
+
+    host = "127.0.0.1"
     if manager.configuration["allow_external_connections"]:
+        print("Allowing Public Access")
         host = "0.0.0.0"
     app.debug = DEBUG
     app.secret_key = SECRETKEY
-    SERVER = ApplicationServerManager.werkzeug_server()
     try:
         _setup_win32_keyboard_interrupt_handler(SERVER, manager)
     except ImportError:
         pass
-    app.run(host=host, use_reloader=False, threaded=True, debug=DEBUG, port=port, passthrough_errors=True)
+    SERVER = ApplicationServerManager.werkzeug_server(app, port, host, DEBUG)
+    SERVER.run()

@@ -21,6 +21,7 @@ def merge_glycan_hypothesis(database_connection, hypothesis_ids, name, channel):
             for item in record:
                 if item.uuid == task.hypothesis.uuid:
                     hypothesis_record = item
+                    hypothesis_record = hypothesis_record._replace(user_id=channel.user.id)
                     channel.send(Message(hypothesis_record.to_json(), "new-hypothesis"))
                     break
             else:

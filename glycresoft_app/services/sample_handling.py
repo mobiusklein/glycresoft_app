@@ -10,6 +10,7 @@ from werkzeug import secure_filename
 from flask import Response, g, request, render_template, redirect, abort, current_app
 from .service_module import register_service
 from .form_cleaners import make_unique_name, touch_file
+from .collection_view import ViewCache
 
 from glycresoft_app.utils.state_transfer import request_arguments_and_context
 from glycresoft_app.task.preprocess_mzml import PreprocessMSTask
@@ -30,7 +31,7 @@ from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
 app = sample_management = register_service("sample_management", __name__)
 
 
-VIEW_CACHE = dict()
+VIEW_CACHE = ViewCache()
 
 
 class SampleView(object):
@@ -108,6 +109,7 @@ class SampleView(object):
         #         "Oxonium Ions", rt, intens, 'green')
         fig = chromatogram_artist.ax.get_figure()
         fig.set_figwidth(10)
+        fig.set_figheight(5)
         return svg_plot(ax, patchless=True, bbox_inches='tight')
 
     def build_chromatograms(self):
@@ -147,6 +149,10 @@ def post_add_sample():
     if sample_name == "":
         current_app.logger.info("No sample name could be extracted. %r", request.values)
         return abort(400)
+
+    sample_name = g.manager.make_unique_sample_name(
+        sample_name)
+
     secure_name = secure_filename(sample_name)
     path = g.manager.get_temp_path(secure_name)
     request.files['observed-ions-file'].save(path)
@@ -186,6 +192,9 @@ def post_add_sample():
     missed_peaks = int(request.values['missed-peaks'])
     maximum_charge_state = int(request.values['maximum-charge-state'])
 
+    ms1_background_reduction = float(request.values.get(
+        'ms1-background-reduction', 5.))
+
     n_workers = g.manager.configuration.get("preprocessor_worker_count", 6)
     if cpu_count() < n_workers:
         n_workers = cpu_count()
@@ -196,9 +205,10 @@ def post_add_sample():
         sample_name, msn_averagine, ms1_score_threshold,
         msn_score_threshold, missed_peaks, n_processes=n_workers,
         storage_path=storage_path, extract_only_tandem_envelopes=extract_only_tandem_envelopes,
+        ms1_background_reduction=ms1_background_reduction,
         callback=lambda: 0)
 
-    g.manager.add_task(task)
+    g.add_task(task)
     return Response("Task Scheduled")
 
 
@@ -210,13 +220,6 @@ def add_sample():
 @app.route("/view_sample/<sample_run_uuid>")
 def view_sample(sample_run_uuid):
     view = get_view(sample_run_uuid)
-    # record = g.manager.sample_manager.get(sample_run_uuid)
-    # reader = ProcessedMzMLDeserializer(record.path)
-    # scan_levels = {
-    #     1: len(reader.extended_index.ms1_ids),
-    #     "N": len(reader.extended_index.msn_ids)
-    # }
-    # chromatograms = render_chromatograms(reader)
     return render_template(
         "view_sample_run/overview.templ",
         sample_run=view.record,

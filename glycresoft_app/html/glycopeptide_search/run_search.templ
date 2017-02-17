@@ -9,7 +9,7 @@
                 <label for="hypothesis_choice">Choose a Hypothesis</label>
                 <br>
                 <select id="hypothesis_choice" name="hypothesis_choice" class='browser-default'>
-                    {% for hypothesis in manager.glycopeptide_hypotheses() %}
+                    {% for hypothesis in manager.glycopeptide_hypotheses(user) %}
                         <option value="{{hypothesis.uuid}}">{{hypothesis.name}}</option>
                     {% endfor %}
                 </select>

@@ -1,6 +1,5 @@
 from flask import Response, g, jsonify
 from ..task.dummy_task import DummyTask
-from ..task.task_process import make_log_path
 from .service_module import register_service
 
 task_actions = register_service("task_management", __name__)
@@ -30,5 +29,5 @@ def cancel_task(task_id):
 @task_actions.route("/internal/test_task")
 def schedule_dummy_task():
     task = DummyTask()
-    g.manager.add_task(task)
+    g.add_task(task)
     return jsonify(task_id=task.id)

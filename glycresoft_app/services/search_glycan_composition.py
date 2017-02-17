@@ -57,6 +57,6 @@ def run_search_post():
             minimum_mass=minimum_mass,
             callback=lambda: 0,
             job_name_part=job_number)
-        g.manager.add_task(task)
+        g.add_task(task)
 
     return Response("Tasks Scheduled")
