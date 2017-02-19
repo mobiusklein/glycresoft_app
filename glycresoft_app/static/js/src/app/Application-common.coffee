@@ -160,7 +160,7 @@ class Application extends ActionLayerManager
 
         taskListContainer.html("")
         taskListContainer.append(_.map(
-            _.sortBy(Object.values(@tasks), ["createdAt"]), renderTask))
+            _.sortBy(_.values(@tasks), ["createdAt"]), renderTask))
         taskListContainer.find('li').map (i, li) -> contextMenu li, {
             "View Log": viewLog
             "Cancel Task": cancelTask

@@ -307,11 +307,15 @@ ajaxForm = function(formHandle, success, error, transform, progress) {
     encoding = handle.attr('enctype') || 'application/x-www-form-urlencoded; charset=UTF-8';
     wrappedSuccess = function(a, b, c) {
       handle.data("locked", false);
-      return success(a, b, c);
+      if (success != null) {
+        return success(a, b, c);
+      }
     };
     wrappedError = function(a, b, c) {
       handle.data("locked", false);
-      return error(a, b, c);
+      if (error != null) {
+        return error(a, b, c);
+      }
     };
     ajaxParams = {
       'xhr': function() {

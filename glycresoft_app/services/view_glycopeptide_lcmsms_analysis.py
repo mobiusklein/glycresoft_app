@@ -425,25 +425,28 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id):
             error_tolerance=view.analysis.parameters["fragment_error_tolerance"])
 
         max_peak = max([p.intensity for p in match.spectrum])
-
         ax = figax()
-        art = SmoothingChromatogramArtist([gp], ax=ax, colorizer=lambda *a, **k: 'green').draw(
-            label_function=lambda *a, **k: "", legend=False)
-        lo, hi = ax.get_xlim()
-        lo -= 0.5
-        hi += 0.5
-        yl = ax.get_ylabel()
-        ax.set_ylabel(yl, fontsize=16)
-        ax.set_xlabel(ax.get_xlabel(), fontsize=16)
-        ax.set_xlim(lo, hi)
-        ax.get_xaxis().get_major_formatter().set_useOffset(False)
-        labels = [tl for tl in ax.get_xticklabels()]
-        for label in labels:
-            label.set(fontsize=12)
-        for label in ax.get_yticklabels():
-            label.set(fontsize=12)
+        if gp.chromatogram:
+            art = SmoothingChromatogramArtist([gp], ax=ax, colorizer=lambda *a, **k: 'green').draw(
+                label_function=lambda *a, **k: "", legend=False)
+            lo, hi = ax.get_xlim()
+            lo -= 0.5
+            hi += 0.5
+            yl = ax.get_ylabel()
+            ax.set_ylabel(yl, fontsize=16)
+            ax.set_xlabel(ax.get_xlabel(), fontsize=16)
+            ax.set_xlim(lo, hi)
+            ax.get_xaxis().get_major_formatter().set_useOffset(False)
+            labels = [tl for tl in ax.get_xticklabels()]
+            for label in labels:
+                label.set(fontsize=12)
+            for label in ax.get_yticklabels():
+                label.set(fontsize=12)
+        else:
+            ax.text(0.5, 0.5, "No Chromatogram Extracted", ha='center')
+            ax.set_axis_off()
 
-        spectrum_plot = match.annotate(ax=figax(), pretty=True)
+        spectrum_plot = match.annotate(ax=figax(), label_font_size=10, pretty=True)
         spectrum_plot.set_title("%s\n" % (scan.id,), fontsize=18)
         spectrum_plot.set_ylabel(spectrum_plot.get_ylabel(), fontsize=16)
         spectrum_plot.set_xlabel(spectrum_plot.get_xlabel(), fontsize=16)
@@ -454,9 +457,12 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id):
             "/view_glycopeptide_search/components/glycopeptide_detail.templ",
             glycopeptide=gp,
             match=match,
-            chromatogram_plot=report.svg_plot(ax, bbox_inches='tight', height=3, width=7, patchless=True),
-            spectrum_plot=report.svg_plot(spectrum_plot, bbox_inches='tight', height=3, width=10, patchless=True),
-            sequence_logo_plot=report.svg_plot(sequence_logo_plot, bbox_inches='tight', height=2, width=7, patchless=True),
+            chromatogram_plot=report.svg_plot(
+                ax, bbox_inches='tight', height=3, width=7, patchless=True),
+            spectrum_plot=report.svg_plot(
+                spectrum_plot, bbox_inches='tight', height=3, width=10, patchless=True),
+            sequence_logo_plot=report.svg_plot(
+                sequence_logo_plot, bbox_inches='tight', height=2, width=7, patchless=True),
             matched_scans=matched_scans,
             max_peak=max_peak,
         )
@@ -478,7 +484,7 @@ def _export_csv(analysis_uuid):
         GlycopeptideLCMSMSAnalysisCSVSerializer(
             open(path, 'wb'), gen,
             protein_name_resolver).start()
-    return file_name
+    return [file_name]
 
 
 def _export_spectrum_match_csv(analysis_uuid):
@@ -498,7 +504,7 @@ def _export_spectrum_match_csv(analysis_uuid):
             if sm.target.protein_relation.protein_id in protein_name_resolver)
         GlycopeptideSpectrumMatchAnalysisCSVSerializer(
             open(path, 'wb'), gen, protein_name_resolver).start()
-    return file_name
+    return [file_name]
 
 
 def _export_mzid(analysis_uuid):
@@ -512,14 +518,15 @@ def _export_mzid(analysis_uuid):
             gp for protein_id in protein_name_resolver for gp in
             view.get_items_for_display(protein_id).members
         ]
-        MzIdentMLSerializer(
-            open(path, 'wb'), glycopeptides, view.analysis, view.connection).start()
-    return file_name
+        writer = MzIdentMLSerializer(
+            open(path, 'wb'), glycopeptides, view.analysis, view.connection)
+        writer.start()
+    return [file_name, writer.output_mzml_path]
 
 
 @app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/to-csv")
 def to_csv(analysis_uuid):
-    file_name = _export_csv(analysis_uuid)
+    file_name = _export_csv(analysis_uuid)[0]
     return jsonify(filename=file_name)
 
 
@@ -550,14 +557,17 @@ serialization_formats = {
 
 @app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/export")
 def export_menu(analysis_uuid):
-    options = [
-        "glycopeptides (csv)",
-        "glycopeptide spectrum matches (csv)",
-        "mzIdentML (mzid 1.1.0)"
-    ]
-    return render_template(
-        "/view_glycopeptide_search/components/export_formats.templ",
-        analysis_id=analysis_uuid, export_type_list=options)
+    view = get_view(analysis_uuid)
+    with view:
+        options = [
+            "glycopeptides (csv)",
+            "glycopeptide spectrum matches (csv)",
+            "mzIdentML (mzid 1.1.0)"
+        ]
+        return render_template(
+            "/view_glycopeptide_search/components/export_formats.templ",
+            analysis_id=analysis_uuid, export_type_list=options,
+            name=view.analysis.name)
 
 
 @app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/export", methods=["POST"])
@@ -566,6 +576,6 @@ def export_data(analysis_uuid):
     for format_key in request.values:
         if format_key in serialization_formats:
             work_task = serialization_formats[format_key]
-            file_names.append(
+            file_names.extend(
                 work_task(analysis_uuid))
     return jsonify(status='success', filenames=file_names)

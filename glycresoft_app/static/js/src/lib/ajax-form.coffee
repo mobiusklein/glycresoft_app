@@ -22,11 +22,13 @@ ajaxForm = (formHandle, success, error, transform, progress) ->
 
         wrappedSuccess = (a, b, c) ->
             handle.data("locked", false)
-            success(a, b, c)
+            if success?
+                success(a, b, c)
 
         wrappedError = (a, b, c) ->
             handle.data("locked", false)
-            error(a, b, c)       
+            if error?
+                error(a, b, c)       
 
         ajaxParams = 
             'xhr': ->

@@ -30,6 +30,7 @@ report.prepare_environment(app.jinja_env)
 
 DEBUG = True
 SECRETKEY = 'TG9yZW0gaXBzdW0gZG90dW0'
+
 SERVER = None
 manager = None
 project_multiplexer = None
@@ -125,7 +126,7 @@ def associate_project_context(project_id):
 
 @app.route("/")
 def index():
-    if not session.get("has_logged_in", False):
+    if MULTIUSER_MODE and not session.get("has_logged_in", False):
         return redirect("/login")
     return render_template("index.templ")
 
@@ -252,12 +253,15 @@ def _setup_win32_keyboard_interrupt_handler(server, manager):
 
 
 def server(context, database_connection, base_path, external=False, port=None, no_execute_tasks=False,
-           multi_user=False, max_tasks=1):
+           multi_user=False, max_tasks=1, trust_file_system=False):
     global manager, SERVER, project_multiplexer, MULTIUSER_MODE
     MULTIUSER_MODE = multi_user
     project_multiplexer = ProjectMultiplexer()
     manager = ApplicationManager(database_connection, base_path)
     project_multiplexer.register_project(manager)
+
+    if MULTIUSER_MODE:
+        print("Multi-User Mode Enabled")
 
     manager.configuration["allow_external_connections"] |= external
     manager.max_running_tasks = max_tasks

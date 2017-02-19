@@ -239,7 +239,7 @@ Application = (function(superClass) {
       }
     };
     taskListContainer.html("");
-    taskListContainer.append(_.map(_.sortBy(Object.values(this.tasks), ["createdAt"]), renderTask));
+    taskListContainer.append(_.map(_.sortBy(_.values(this.tasks), ["createdAt"]), renderTask));
     taskListContainer.find('li').map(function(i, li) {
       return contextMenu(li, {
         "View Log": viewLog,
