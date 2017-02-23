@@ -28,10 +28,22 @@ ajaxForm("#export-form", function (payload) {
         console.log(name)
         // GlycReSoft.downloadFile(name)
     }
-    $.post("/internal/multiple_file_download/", payload).success(function(response){
-        GlycReSoft.downloadFile(response.filename)
-    })
-    GlycReSoft.closeMessageModal()
+    if(GlycReSoft.isNativeClient()){
+        nativeClientMultiFileDownloadDirectory(function(directory){
+            $.post("/internal/move_files", {
+                filenames: payload.filenames,
+                destination: directory
+            }).success(function(){
+                GlycReSoft.closeMessageModal()
+                openDirectoryExternal(directory)
+            })
+        })
+    } else {
+        $.post("/internal/multiple_file_download/", payload).success(function(response){
+            GlycReSoft.downloadFile(response.filename)
+            GlycReSoft.closeMessageModal()
+        })
+    }
 })
     </script>
 </div>

@@ -76,9 +76,9 @@ $(function() {
     <div>
         <div id='left-sidebar' class="side-nav fixed">
         <a class='toggle-sidebar mdi mdi-chevron-right right' data-state='open' style='padding-top:10px;font-size:1.3em;'></a>
-            <div id='sidebar-content'>    
+            <div id='sidebar-content'>
                 <div id='user-display' style='margin-top:7px;'>
-                    {% if multiuser and is_logged_in() %}
+                    {% if multiuser and is_logged_in %}
                         User: {{user.name}}
                     {% endif %}        
                 </div>

@@ -276,6 +276,9 @@ class Application extends ActionLayerManager
         @monosaccharideFilterState.invalidate()
         console.log("Invalidated")
 
+    isNativeClient: ->
+        window.nativeClientKey?
+
 
 composeSampleAnalysisTree = (bundle) ->
     samples = bundle.samples

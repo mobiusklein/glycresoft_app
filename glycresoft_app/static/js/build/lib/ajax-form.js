@@ -20,6 +20,11 @@ ajaxForm = function(formHandle, success, error, transform, progress) {
       locked = true;
       handle.data("locked", locked);
     }
+    if (error == null) {
+      error = function() {
+        return console.log(arguments);
+      };
+    }
     if (transform == null) {
       transform = function(form) {
         return new FormData(form);

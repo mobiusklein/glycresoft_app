@@ -5,6 +5,7 @@ from flask import (
     Flask, request, session, g, redirect, url_for,
     abort, render_template, flash, Markup, make_response, jsonify,
     Response, current_app)
+import click
 
 
 from glycresoft_app import report
@@ -35,6 +36,7 @@ SERVER = None
 manager = None
 project_multiplexer = None
 MULTIUSER_MODE = False
+NATIVE_CLIENT_KEY = None
 
 identity_provider = message_queue.identity_provider
 null_user = message_queue.null_user
@@ -166,14 +168,29 @@ def get_current_user_id():
 
 @app.before_request
 def before_request():
-    user_id = session.get("user_id", null_user.id)
+    # In multi-user mode, the user id should be read from the session cookie, though if
+    # not we should use the null user.
+    if MULTIUSER_MODE:
+        user_id = session.get("user_id", null_user.id)
+    # Otherwise, we should always use the null user since single user mode should not
+    # be using user ids for project isolation.
+    else:
+        user_id = null_user.id
+    # Use the user id to request the associated UserIdentity object from the global
+    # identity provider. Future implementations of the IdentityProvider may cause this
+    # action to fail, in which case this failure will need to be propagated somehow?
     g.user = identity_provider.new_user(user_id)
+
+    # Use the per-connection cookie containing the project ID to attach the corrent
+    # ApplicationManager instance to the context, or use the default project.
     project_id = int(request.cookies.get("project_id", 0))
     if project_id == "":
         project_id = 0
+
     associate_project_context(project_id)
 
-    # Context Sensitive wrappers for ApplicationManager methods
+    # Set up the context's wrappers around the ApplicationManager to
+    # seamlessly propagate the user 
     def add_message(message):
         if message.user is None:
             message.user = g.user
@@ -186,6 +203,8 @@ def before_request():
 
     g.add_message = add_message
     g.add_task = add_task
+
+    g.has_native_client = has_native_client()
 
 
 @app.teardown_request
@@ -206,15 +225,23 @@ def inject_info():
         "application_version": version,
         "user": g.get("user", null_user),
         "null_user": null_user,
-        "is_logged_in": is_logged_in
+        "is_logged_in": is_logged_in()
     }
+
+
+def has_native_client():
+    key_is_not_none = request.cookies.get("native_client_key") is not None
+    key_matches = request.cookies.get("native_client_key") == NATIVE_CLIENT_KEY
+    return key_is_not_none and key_matches
 
 
 @app.context_processor
 def inject_config():
     return {
         "configuration": g.manager.configuration,
-        "multiuser": MULTIUSER_MODE
+        "multiuser": MULTIUSER_MODE,
+        "native_client_key": NATIVE_CLIENT_KEY,
+        "has_native_client": has_native_client()
     }
 
 
@@ -253,22 +280,23 @@ def _setup_win32_keyboard_interrupt_handler(server, manager):
 
 
 def server(context, database_connection, base_path, external=False, port=None, no_execute_tasks=False,
-           multi_user=False, max_tasks=1, trust_file_system=False):
-    global manager, SERVER, project_multiplexer, MULTIUSER_MODE
+           multi_user=False, max_tasks=1, native_client_key=None):
+    global manager, SERVER, project_multiplexer, MULTIUSER_MODE, NATIVE_CLIENT_KEY
     MULTIUSER_MODE = multi_user
+    NATIVE_CLIENT_KEY = native_client_key
     project_multiplexer = ProjectMultiplexer()
     manager = ApplicationManager(database_connection, base_path)
     project_multiplexer.register_project(manager)
 
     if MULTIUSER_MODE:
-        print("Multi-User Mode Enabled")
+        click.secho("Multi-User Mode Enabled", fg='yellow')
 
     manager.configuration["allow_external_connections"] |= external
     manager.max_running_tasks = max_tasks
 
     host = "127.0.0.1"
     if manager.configuration["allow_external_connections"]:
-        print("Allowing Public Access")
+        click.secho("Allowing Public Access", fg='yellow')
         host = "0.0.0.0"
     app.debug = DEBUG
     app.secret_key = SECRETKEY

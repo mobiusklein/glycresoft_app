@@ -16,9 +16,10 @@ _UserIdentity = namedtuple("UserIdentity", ["id", "info"])
 
 class UserIdentity(_UserIdentity):
     def has_access(self, record):
+        user_id = str(record.user_id)
         permission = (
-            (record.user_id == self.id) or
-            (record.user_id == null_user.id) or
+            (user_id == self.id) or
+            (user_id == null_user.id) or
             (self.id == super_user.id) or
             (self.id is None)
         )

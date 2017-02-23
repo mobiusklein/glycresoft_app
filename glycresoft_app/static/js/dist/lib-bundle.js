@@ -296,6 +296,11 @@ ajaxForm = function(formHandle, success, error, transform, progress) {
       locked = true;
       handle.data("locked", locked);
     }
+    if (error == null) {
+      error = function() {
+        return console.log(arguments);
+      };
+    }
     if (transform == null) {
       transform = function(form) {
         return new FormData(form);
@@ -580,7 +585,6 @@ identifyProteomicsFormat = function(file, callback) {
   reader.onload = function() {
     var lines, proteomicsFileType;
     lines = this.result.split("\n");
-    console.log(lines);
     proteomicsFileType = "fasta";
     if (isMzidentML(lines)) {
       proteomicsFileType = "mzIdentML";
@@ -649,7 +653,6 @@ getProteinNamesFromMzIdentML = function(file, callback, nameCallback) {
             nameCallback(name);
           }
         } else if (/<\/SequenceCollection>/i.test(line)) {
-          console.log("Done!", line);
           isDone = true;
         }
         lastLine = "";

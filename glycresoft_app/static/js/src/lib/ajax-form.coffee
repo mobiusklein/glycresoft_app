@@ -13,6 +13,9 @@ ajaxForm = (formHandle, success, error, transform, progress) ->
         else if locked == false
             locked = true
             handle.data("locked", locked)
+        if !error?
+            error = () ->
+                console.log(arguments)
         if !transform?
             transform = (form) -> new FormData(form)
         url = handle.attr('action')

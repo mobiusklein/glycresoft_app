@@ -14,7 +14,7 @@
                         Settings
                     </a>
                 </li>
-                {% if multiuser and user != null_user %}
+                {% if multiuser and is_logged_in %}
                     <li>
                         <a id='logout-link' href='/logout' style='padding-left:25px;padding-right:25px;'>
                             Log Out

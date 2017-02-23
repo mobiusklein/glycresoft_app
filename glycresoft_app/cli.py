@@ -1,6 +1,6 @@
 import click
 
-from glycan_profiling.cli.base import cli
+from glycan_profiling.cli.base import cli, HiddenOption
 
 
 @cli.command()
@@ -11,15 +11,16 @@ from glycan_profiling.cli.base import cli
 @click.option("-p", "--port", default=8080, type=int, help="The port to listen on")
 @click.option("-m", "--multiuser", is_flag=True, default=False)
 @click.option("-t", "--max-tasks", type=int, default=1)
+@click.option("-x", "--native-client-key", type=str, required=False, default=None, cls=HiddenOption)
 def server(context, project_store_root, base_path, external=False, port=None, no_execute_tasks=False,
-           multiuser=False, max_tasks=1):
+           multiuser=False, max_tasks=1, native_client_key=None):
     '''
     Start a web server to allow users to build hypotheses, preprocess MS data, run
     database search analyses, and view results.
     '''
     from glycresoft_app.server import server as inner_fn
     inner_fn(context, project_store_root, base_path, external, port, multi_user=multiuser,
-             max_tasks=max_tasks)
+             max_tasks=max_tasks, native_client_key=native_client_key)
 
 
 # @cli.command("project")

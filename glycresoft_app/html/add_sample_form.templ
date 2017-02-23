@@ -9,6 +9,7 @@
                         <input name='observed-ions-file' type="file"/>
                     </span>
                     <input class="file-path validate" type="text" placeholder="Please provide a file in mzML format" />
+                    <input type='hidden' id='observed-ions-file-path' name='observed-ions-file-path' />
                 </div>
             </div>
             <div class='col s4'>
@@ -34,7 +35,7 @@
                 <div class='input-field'>
                     <label for='start-time'>Start Processing Time</label>
                     <input type="number" id="start-time" name="start-time"
-                           min='0' value="0.0" step='1' placeholder="Start Processing Time"
+                           min='0' value="0.0" step='any' placeholder="Start Processing Time"
                            class='numeric-entry'>
                 </div>
             </div>
@@ -42,7 +43,7 @@
                 <div class='input-field'>
                     <label for='end-time'>End Processing Time</label>
                     <input type="number" id="end-time" name="end-time"
-                           min='0' value="256" step='1' placeholder="End Processing Time"
+                           min='0' value="256" step='any' placeholder="End Processing Time"
                            class='numeric-entry'>
                 </div>
             </div>
@@ -143,28 +144,42 @@
     materialRefresh()
     materialFileInput()
 
-    $('#submit-btn').click(function(event){
-        Materialize.toast("Please wait. Reading large files may take several minutes.", 16000)
-    })
-    $('#add-sample-form input[name="observed-ions-file"]').change(function(){
-        console.log(this.files[0].name)
-        var sampleNameInput = $("#add-sample-form input[name='sample-name']")
-        var sampleName = sampleNameInput.val()
-        if(sampleName === ""){
-            sampleName = this.files[0].name.split(".").slice(0, -1).join(".")
-            sampleNameInput.val(sampleName)
+    function transformForm(form) {
+        if(GlycReSoft.isNativeClient()){
+            console.log("Clearing file from upload payload")
+            var inputFileField = $('#add-sample-form input[name="observed-ions-file"]')[0]
+            inputFileField.value = ""
+            console.log(inputFileField.files)
+        } else {
+            Materialize.toast("Please wait. Reading large files may take several minutes.", 16000)
         }
-    })
-    ajaxForm($("form#add-sample-form"), function(){
+        return new FormData(form)
+    }
+
+    function uploadProgress(ev) {
+        var percent = ev.loaded / ev.total * 100.
+        $("#mzml-upload-progress .determinate").css("width", percent + '%')
+    }
+
+    function completeSubmission() {
         var currentAction = GlycReSoft.getShowingLayer()
         GlycReSoft.setShowingLayer("home-layer")
         currentAction.dispose()
-    }, function(err){
-        console.log(arguments)
-    }, null, function(ev){
-        var percent = ev.loaded / ev.total * 100.
-        $("#mzml-upload-progress .determinate").css("width", percent + '%')
+    }
+
+    $('#add-sample-form input[name="observed-ions-file"]').change(function(){
+        console.log(this.files[0].name, this.files[0].path)
+        var sampleNameInput = $("#add-sample-form input[name='sample-name']")
+        var sampleName = sampleNameInput.val()
+        sampleName = this.files[0].name.split(".").slice(0, -1).join(".")
+        sampleNameInput.val(sampleName)
+
+        //This field will only have meaning when run in Electron
+        if(GlycReSoft.isNativeClient()){
+            $("#observed-ions-file-path").val(this.files[0].path)
+        }
     })
+    ajaxForm($("form#add-sample-form"), completeSubmission, null, transformForm, uploadProgress)
 })()
     </script>    
 </div>

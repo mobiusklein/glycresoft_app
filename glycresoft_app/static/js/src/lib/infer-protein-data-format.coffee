@@ -8,7 +8,6 @@ identifyProteomicsFormat = (file, callback) ->
     reader = new FileReader()
     reader.onload = ->
         lines = @result.split("\n")
-        console.log lines
         proteomicsFileType = "fasta"
         if isMzidentML(lines)
             proteomicsFileType = "mzIdentML"
@@ -61,7 +60,6 @@ getProteinNamesFromMzIdentML = (file, callback, nameCallback) ->
                         proteins[name] = true
                         nameCallback(name)
                 else if /<\/SequenceCollection>/i.test line
-                    console.log("Done!", line)
                     isDone = true
                 lastLine = ""
             catch error

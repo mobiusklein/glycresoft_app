@@ -17,7 +17,7 @@ from glycresoft_app import report
 from glycan_profiling.tandem.ref import SpectrumReference
 from glycan_profiling.serialize import (
     Analysis, Protein, Glycopeptide, GlycanCombination,
-    IdentifiedGlycopeptide, func,
+    IdentifiedGlycopeptide, func, AnalysisDeserializer,
     MSScan, GlycopeptideSpectrumSolutionSet)
 
 from glycan_profiling.tandem.glycopeptide.scoring import CoverageWeightedBinomialScorer
@@ -41,7 +41,7 @@ from glycan_profiling.tandem.glycopeptide import chromatogram_graph
 from glycan_profiling.output import (
     GlycopeptideLCMSMSAnalysisCSVSerializer,
     GlycopeptideSpectrumMatchAnalysisCSVSerializer,
-    MzIdentMLSerializer)
+    MzIdentMLSerializer, ImportableGlycanHypothesisCSVSerializer)
 
 from glycan_profiling.plotting.plot_glycoforms import plot_glycoforms_svg
 from glycan_profiling.plotting.sequence_fragment_logo import glycopeptide_match_logo
@@ -427,7 +427,7 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id):
         max_peak = max([p.intensity for p in match.spectrum])
         ax = figax()
         if gp.chromatogram:
-            art = SmoothingChromatogramArtist([gp], ax=ax, colorizer=lambda *a, **k: 'green').draw(
+            SmoothingChromatogramArtist([gp], ax=ax, colorizer=lambda *a, **k: 'green').draw(
                 label_function=lambda *a, **k: "", legend=False)
             lo, hi = ax.get_xlim()
             lo -= 0.5
@@ -471,7 +471,7 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id):
 def _export_csv(analysis_uuid):
     view = get_view(analysis_uuid)
     with view:
-        g.add_message(Message("Building CSV Export", "update"))
+        g.add_message(Message("Building Glycopeptide CSV Export", "update"))
         protein_name_resolver = {entry['protein_id']: entry['protein_name'] for entry in view.protein_index}
 
         file_name = "%s-glycopeptides.csv" % (view.analysis.name)
@@ -490,7 +490,7 @@ def _export_csv(analysis_uuid):
 def _export_spectrum_match_csv(analysis_uuid):
     view = get_view(analysis_uuid)
     with view:
-        g.add_message(Message("Building CSV Export", "update"))
+        g.add_message(Message("Building Spectrum Match CSV Export", "update"))
         protein_name_resolver = {entry['protein_id']: entry['protein_name'] for entry in view.protein_index}
 
         file_name = "%s-glycopeptide-spectrum-matches.csv" % (view.analysis.name)
@@ -524,6 +524,19 @@ def _export_mzid(analysis_uuid):
     return [file_name, writer.output_mzml_path]
 
 
+def _export_associated_glycan_compositions(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        g.add_message(Message("Building Associated Glycan List Export", "update"))
+        reader = AnalysisDeserializer(view.connection._original_connection, analysis_id=view.analysis_id)
+        compositions = reader.load_glycans_from_identified_glycopeptides()
+        file_name = "%s-associated-glycans.txt" % (view.analysis.name,)
+        path = g.manager.get_temp_path(file_name)
+        ImportableGlycanHypothesisCSVSerializer(
+            open(path, 'wb'), compositions).start()
+    return [file_name]
+
+
 @app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/to-csv")
 def to_csv(analysis_uuid):
     file_name = _export_csv(analysis_uuid)[0]
@@ -551,7 +564,8 @@ def chromatogram_group_plot(analysis_uuid, protein_id):
 serialization_formats = {
     "glycopeptides (csv)": _export_csv,
     "glycopeptide spectrum matches (csv)": _export_spectrum_match_csv,
-    "mzIdentML (mzid 1.1.0)": _export_mzid
+    "mzIdentML (mzid 1.1.0)": _export_mzid,
+    "associated glycans (txt)": _export_associated_glycan_compositions
 }
 
 
@@ -562,7 +576,8 @@ def export_menu(analysis_uuid):
         options = [
             "glycopeptides (csv)",
             "glycopeptide spectrum matches (csv)",
-            "mzIdentML (mzid 1.1.0)"
+            "mzIdentML (mzid 1.1.0)",
+            "associated glycans (txt)"
         ]
         return render_template(
             "/view_glycopeptide_search/components/export_formats.templ",

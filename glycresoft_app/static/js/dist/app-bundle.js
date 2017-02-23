@@ -422,6 +422,10 @@ Application = (function(superClass) {
     return console.log("Invalidated");
   };
 
+  Application.prototype.isNativeClient = function() {
+    return window.nativeClientKey != null;
+  };
+
   return Application;
 
 })(ActionLayerManager);

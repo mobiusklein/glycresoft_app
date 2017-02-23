@@ -16,7 +16,6 @@ identifyProteomicsFormat = function(file, callback) {
   reader.onload = function() {
     var lines, proteomicsFileType;
     lines = this.result.split("\n");
-    console.log(lines);
     proteomicsFileType = "fasta";
     if (isMzidentML(lines)) {
       proteomicsFileType = "mzIdentML";
@@ -85,7 +84,6 @@ getProteinNamesFromMzIdentML = function(file, callback, nameCallback) {
             nameCallback(name);
           }
         } else if (/<\/SequenceCollection>/i.test(line)) {
-          console.log("Done!", line);
           isDone = true;
         }
         lastLine = "";

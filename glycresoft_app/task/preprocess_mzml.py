@@ -77,8 +77,9 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
                     scale=ms1_background_reduction, window_length=2.),
             ]
         }
+
     ms1_deconvolution_args = {
-        "scorer": ms_deisotope.scoring.PenalizedMSDeconVFitter(score_threshold),
+        "scorer": ms_deisotope.scoring.PenalizedMSDeconVFitter(score_threshold, 2.),
         "max_missed_peaks": missed_peaks,
         "averagine": averagine
     }
