@@ -21,7 +21,7 @@ def copy_file_to_server():
 
 @file_exports.route("/copy-file-form", methods=["POST"])
 def copy_file_to_server_post():
-    print request.files['target-file']
+    print(request.files['target-file'])
     return Response("Done")
 
 

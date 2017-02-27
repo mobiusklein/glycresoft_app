@@ -23,10 +23,10 @@ def server(context, project_store_root, base_path, external=False, port=None, no
              max_tasks=max_tasks, native_client_key=native_client_key)
 
 
-# @cli.command("project")
-# @click.argument("path")
-# def project_init(path):
-#     from glycresoft_app.project.project import Project
-#     proj = Project(path)
-#     print(proj)
-#     proj.force_build_indices()
+@cli.command("project")
+@click.argument("path")
+def project_init(path):
+    from glycresoft_app.project.project import Project
+    proj = Project(path)
+    click.secho("%r" % (proj,))
+    proj.force_build_indices()

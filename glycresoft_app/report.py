@@ -12,6 +12,8 @@ try:
 except:
     from io import StringIO
 
+from lxml import etree
+
 from matplotlib import rcParams as mpl_params
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
@@ -32,9 +34,17 @@ def png_plot(figure, **kwargs):
     return b"<img src='data:image/png;base64,%s'>" % urllib.quote(data_buffer.getvalue().encode("base64"))
 
 
-def svg_plot(figure, **kwargs):
+def svg_plot(figure, svg_width=None, xml_transform=None, **kwargs):
     data_buffer = render_plot(figure, format='svg', **kwargs)
-    return data_buffer.getvalue()
+    if svg_width is not None or xml_transform is not None:
+        root = etree.fromstring(data_buffer.getvalue())
+        if svg_width is not None:
+            root.attrib["width"] = svg_width
+        if xml_transform is not None:
+            root = xml_transform(root)
+        return etree.tostring(root)
+    else:
+        return data_buffer.getvalue()
 
 
 def render_plot(figure, **kwargs):

@@ -16,7 +16,6 @@ MonosaccharideInputWidgetGrid = (function() {
     for (i = 0, len = ref.length; i < len; i++) {
       row = ref[i];
       row = $(row);
-      console.log(row);
       entry = {
         name: row.find(".monosaccharide-name").val(),
         lower_bound: row.find(".lower-bound").val(),
@@ -29,9 +28,7 @@ MonosaccharideInputWidgetGrid = (function() {
         row.addClass("warning");
         pos = row.position();
         notify = new TinyNotification(pos.top + 50, pos.left, "This monosaccharide is already present.", row);
-        console.log(row, notify);
         row.data("tinyNotification", notify);
-        console.log(notify);
       } else {
         row.removeClass("warning");
         if (row.data("tinyNotification") != null) {
@@ -42,7 +39,6 @@ MonosaccharideInputWidgetGrid = (function() {
         monosaccharides[entry.name] = entry;
       }
     }
-    console.log(monosaccharides);
     return this.monosaccharides = monosaccharides;
   };
 
@@ -91,7 +87,6 @@ MonosaccharideInputWidgetGrid = (function() {
         return _this.update();
       };
     })(this));
-    console.log(row);
     return this.update();
   };
 

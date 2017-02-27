@@ -1,4 +1,4 @@
-var Application, Task, composeSampleAnalysisTree, createdAtParser, renderTask,
+var Application, Task, createdAtParser, renderTask,
   bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
@@ -430,22 +430,6 @@ Application = (function(superClass) {
 
 })(ActionLayerManager);
 
-composeSampleAnalysisTree = function(bundle) {
-  var analyses, analysis, id, sampleMap, sampleName, samples;
-  samples = bundle.samples;
-  analyses = bundle.analyses;
-  sampleMap = {};
-  for (id in analyses) {
-    analysis = analyses[id];
-    sampleName = analysis.sample_name;
-    if (sampleMap[sampleName] == null) {
-      sampleMap[sampleName] = [];
-    }
-    sampleMap[sampleName].push(analysis);
-  }
-  return sampleMap;
-};
-
 createdAtParser = /(\d{4})-(\d{2})-(\d{2})\s(\d+)-(\d+)-(\d+(?:\.\d*)?)/;
 
 Task = (function() {
@@ -477,31 +461,6 @@ renderTask = function(task) {
   element.attr("data-name", name);
   return element;
 };
-
-$(function() {
-  var options;
-  if (window.ApplicationConfiguration == null) {
-    window.ApplicationConfiguration = {
-      refreshTasksInterval: 25000,
-      upkeepInterval: 10000
-    };
-  }
-  window.GlycReSoft = new Application(options = {
-    actionContainer: ".action-layer-container",
-    refreshTasksInterval: window.ApplicationConfiguration.refreshTasksInterval,
-    upkeepInterval: window.ApplicationConfiguration.upkeepInterval
-  });
-  window.onerror = function(msg, url, line, col, error) {
-    console.log(msg, url, line, col, error);
-    GlycReSoft.ajaxWithContext(ErrorLogURL, {
-      data: [msg, url, line, col, error]
-    });
-    return false;
-  };
-  GlycReSoft.runInitializers();
-  GlycReSoft.updateSettings();
-  return GlycReSoft.updateTaskList();
-});
 
 //# sourceMappingURL=Application-common.js.map
 
@@ -608,7 +567,6 @@ MonosaccharideInputWidgetGrid = (function() {
     for (i = 0, len = ref.length; i < len; i++) {
       row = ref[i];
       row = $(row);
-      console.log(row);
       entry = {
         name: row.find(".monosaccharide-name").val(),
         lower_bound: row.find(".lower-bound").val(),
@@ -621,9 +579,7 @@ MonosaccharideInputWidgetGrid = (function() {
         row.addClass("warning");
         pos = row.position();
         notify = new TinyNotification(pos.top + 50, pos.left, "This monosaccharide is already present.", row);
-        console.log(row, notify);
         row.data("tinyNotification", notify);
-        console.log(notify);
       } else {
         row.removeClass("warning");
         if (row.data("tinyNotification") != null) {
@@ -634,7 +590,6 @@ MonosaccharideInputWidgetGrid = (function() {
         monosaccharides[entry.name] = entry;
       }
     }
-    console.log(monosaccharides);
     return this.monosaccharides = monosaccharides;
   };
 
@@ -683,7 +638,6 @@ MonosaccharideInputWidgetGrid = (function() {
         return _this.update();
       };
     })(this));
-    console.log(row);
     return this.update();
   };
 
@@ -1168,6 +1122,150 @@ makePresetSelector = function(container) {
 
 //# sourceMappingURL=sample-preprocessing-configurations.js.map
 
+var composeSampleAnalysisTree;
+
+composeSampleAnalysisTree = function(bundle) {
+  var analyses, analysis, analysisList, entry, id, name, sampleMap, sampleName, samples, trees;
+  samples = bundle.samples;
+  analyses = bundle.analyses;
+  sampleMap = {};
+  for (id in analyses) {
+    analysis = analyses[id];
+    sampleName = analysis.sample_name;
+    if (sampleMap[sampleName] == null) {
+      sampleMap[sampleName] = [];
+    }
+    sampleMap[sampleName].push(analysis);
+  }
+  trees = [];
+  for (name in sampleMap) {
+    analysisList = sampleMap[name];
+    entry = {
+      "sample": samples[name],
+      "analyses": analysisList
+    };
+    trees.push(entry);
+  }
+  return trees;
+};
+
+Application.prototype.renderSampleTree = function(container) {
+  var analyses, analysis, analysisChunk, analysisChunks, cleanNamePattern, entry, expander, i, j, len, len1, prefix, rendered, sample, suffix, tree, trees;
+  container = $(container);
+  trees = composeSampleAnalysisTree(this);
+  rendered = [];
+  cleanNamePattern = /_/g;
+  for (i = 0, len = trees.length; i < len; i++) {
+    tree = trees[i];
+    sample = tree.sample;
+    analyses = tree.analyses;
+    analysisChunks = [];
+    if (analyses.length > 0) {
+      expander = "<span class=\"expanded-display-control indigo-text\">\n    <i class=\"material-icons\">check_box_outline_blank</i>\n</span>";
+    } else {
+      expander = "";
+    }
+    prefix = "<div class='project-entry'>\n    <div class=\"project-item\" data-uuid='" + sample.uuid + "'>\n        <span class='project-sample-name'>\n            " + expander + "\n            " + (sample.name.replace(cleanNamePattern, " ")) + "\n        </span>\n        <div class=\"analysis-entry-list\">";
+    for (j = 0, len1 = analyses.length; j < len1; j++) {
+      analysis = analyses[j];
+      analysisChunk = "<div class='analysis-entry-item' data-uuid='" + analysis.uuid + "'>\n    <span class='project-analysis-name'>\n        " + (analysis.name.replace(" at " + sample.name, "").replace(cleanNamePattern, " ")) + "\n    </span>\n</div>";
+      analysisChunks.push(analysisChunk);
+    }
+    suffix = "        </div>\n    </div>\n</div>";
+    entry = [prefix, analysisChunks.join("\n"), suffix].join("\n");
+    rendered.push(entry);
+  }
+  return container.append(rendered);
+};
+
+Application.initializers.push(function() {
+  return this.on("render-samples", (function(_this) {
+    return function() {
+      return _this.renderSampleTree(".projects-entry-list");
+    };
+  })(this));
+});
+
+//# sourceMappingURL=sample-tree-layout.js.map
+
+var composeSampleAnalysisTree;
+
+composeSampleAnalysisTree = function(bundle) {
+  var analyses, analysis, analysisList, entry, id, name, sampleMap, sampleName, samples, trees;
+  samples = bundle.samples;
+  analyses = bundle.analyses;
+  sampleMap = {};
+  for (name in samples) {
+    sampleMap[name] = [];
+  }
+  for (id in analyses) {
+    analysis = analyses[id];
+    sampleName = analysis.sample_name;
+    if (sampleMap[sampleName] == null) {
+      sampleMap[sampleName] = [];
+    }
+    sampleMap[sampleName].push(analysis);
+  }
+  trees = [];
+  for (name in sampleMap) {
+    analysisList = sampleMap[name];
+    entry = {
+      "sample": samples[name],
+      "analyses": _.sortBy(analysisList, "name")
+    };
+    trees.push(entry);
+  }
+  _.sortBy(trees, function(obj) {
+    return obj.sample.name;
+  });
+  return trees;
+};
+
+Application.prototype.renderSampleTree = function(container) {
+  var analyses, analysis, analysisChunk, analysisChunks, cleanNamePattern, entry, expander, i, j, len, len1, prefix, rendered, sample, suffix, tree, trees;
+  container = $(container);
+  container.empty();
+  trees = composeSampleAnalysisTree(this);
+  rendered = [];
+  cleanNamePattern = /_/g;
+  for (i = 0, len = trees.length; i < len; i++) {
+    tree = trees[i];
+    sample = tree.sample;
+    analyses = tree.analyses;
+    analysisChunks = [];
+    if (analyses.length > 0) {
+      expander = "<span class=\"expanded-display-control indigo-text\">\n    <i class=\"material-icons\">check_box_outline_blank</i>\n</span>";
+    } else {
+      expander = "";
+    }
+    prefix = "<div class='project-entry'>\n    <div class=\"project-item\" data-uuid='" + sample.uuid + "'>\n        <span class='project-sample-name'>\n            " + expander + "\n            " + (sample.name.replace(cleanNamePattern, " ")) + "\n        </span>\n        <div class=\"analysis-entry-list\">";
+    for (j = 0, len1 = analyses.length; j < len1; j++) {
+      analysis = analyses[j];
+      analysisChunk = "<div class='analysis-entry-item' data-uuid='" + analysis.uuid + "'>\n    <span class='project-analysis-name'>\n        " + (analysis.name.replace(" at " + sample.name, "").replace(cleanNamePattern, " ")) + "\n    </span>\n</div>";
+      analysisChunks.push(analysisChunk);
+    }
+    suffix = "        </div>\n    </div>\n</div>";
+    entry = [prefix, analysisChunks.join("\n"), suffix].join("\n");
+    rendered.push(entry);
+  }
+  return container.append(rendered);
+};
+
+Application.initializers.push(function() {
+  this.on("render-samples", (function(_this) {
+    return function() {
+      return _this.renderSampleTree(".projects-entry-list");
+    };
+  })(this));
+  return this.on("render-analyses", (function(_this) {
+    return function() {
+      return _this.renderSampleTree(".projects-entry-list");
+    };
+  })(this));
+});
+
+//# sourceMappingURL=sample-tree-ui.js.map
+
 Application.prototype.renderSampleListAt = function(container) {
   var chunks, i, len, ref, row, sample, sampleStatusDisplay, self;
   chunks = [];
@@ -1356,6 +1454,7 @@ GlycanCompositionLCMSSearchController = (function() {
       "Fuc": 10,
       "Neu5Ac": 10
     };
+    this.showExportMenu = bind(this.showExportMenu, this);
     this.handle = $(this.containerSelector);
     this.paginator = new GlycanCompositionLCMSSearchPaginator(this.analysisId, this.handle, this);
     updateHandlers = [
@@ -1366,7 +1465,7 @@ GlycanCompositionLCMSSearchController = (function() {
       })(this), (function(_this) {
         return function() {
           var handle;
-          handle = $(_this.tabView.containerSelector);
+          handle = _this.find(_this.tabView.containerSelector);
           $.get("/view_glycan_lcms_analysis/" + _this.analysisId + "/chromatograms_chart").success(function(payload) {
             return handle.find("#chromatograms-plot").html(payload);
           });
@@ -1380,25 +1479,31 @@ GlycanCompositionLCMSSearchController = (function() {
     this.setup();
   }
 
+  GlycanCompositionLCMSSearchController.prototype.find = function(selector) {
+    return this.handle.find(selector);
+  };
+
   GlycanCompositionLCMSSearchController.prototype.setup = function() {
     var filterContainer, self;
     this.handle.find(".tooltipped").tooltip();
     self = this;
     this.handle.find("#save-csv-btn").click(function(event) {
-      var url;
-      url = self.saveCSVURL.format({
-        analysisId: self.analysisId
-      });
-      return $.get(url).success(function(info) {
-        return GlycReSoft.downloadFile(info.filename);
-      });
+      return self.showExportMenu();
     });
     this.updateView();
-    filterContainer = $(this.monosaccharideFilterContainerSelector);
+    filterContainer = this.find(this.monosaccharideFilterContainerSelector);
     return GlycReSoft.monosaccharideFilterState.update(this.hypothesisUUID, (function(_this) {
       return function(bounds) {
         _this.monosaccharideFilter = new MonosaccharideFilter(filterContainer);
         return _this.monosaccharideFilter.render();
+      };
+    })(this));
+  };
+
+  GlycanCompositionLCMSSearchController.prototype.showExportMenu = function() {
+    return $.get("/view_glycan_lcms_analysis/" + this.analysisId + "/export").success((function(_this) {
+      return function(formContent) {
+        return GlycReSoft.displayMessageModal(formContent);
       };
     })(this));
   };
@@ -1836,12 +1941,16 @@ PlotGlycoformsManager = (function(superClass) {
   };
 
   PlotGlycoformsManager.prototype.modificationTooltipCallback = function(handle) {
-    var sequence, template, value;
+    var formattedGlycan, glycanComposition, glycopeptideId, sequence, template, value;
     template = '<div> <span>{value}</span> </div>';
     value = handle.parent().attr('data-modification-type');
-    if (value === 'HexNAc') {
-      sequence = $('#' + handle.parent().attr('data-parent')).attr('data-sequence');
-      value = 'HexNAc - Glycosylation: ' + sequence.split(/(\[|\{)/).slice(1).join('');
+    if (/Glycosylation/ig.test(value)) {
+      glycopeptideId = handle.parent().attr('data-parent');
+      sequence = $("g[data-record-id=\"" + glycopeptideId + "\"]").attr('data-sequence');
+      sequence = new PeptideSequence(sequence);
+      glycanComposition = sequence.glycan;
+      formattedGlycan = glycanComposition.format(GlycReSoft.colors);
+      value = (value + ": ") + formattedGlycan;
     }
     return template.format({
       'value': value
@@ -1854,15 +1963,19 @@ PlotGlycoformsManager = (function(superClass) {
     glycopeptide.customTooltip(this.glycopeptideTooltipCallback, 'protein-view-tooltip');
     self = this;
     glycopeptide.hover(function(event) {
-      var baseColor, handle, newColor;
-      handle = $(this);
+      var baseColor, handle, newColor, origTarget, recordId;
+      origTarget = $(this);
+      recordId = origTarget.attr("data-record-id");
+      handle = $("g[data-record-id=" + recordId + "]");
       baseColor = handle.find("path").css("fill");
       newColor = '#74DEC5';
       handle.data("baseColor", baseColor);
       return handle.find("path").css("fill", newColor);
     }, function(event) {
-      var handle;
-      handle = $(this);
+      var handle, origTarget, recordId;
+      origTarget = $(this);
+      recordId = origTarget.attr("data-record-id");
+      handle = $("g[data-record-id=" + recordId + "]");
       return handle.find("path").css("fill", handle.data("baseColor"));
     });
     glycopeptide.click(function(event) {
@@ -1921,6 +2034,8 @@ GlycopeptideLCMSMSSearchController = (function() {
 
   GlycopeptideLCMSMSSearchController.prototype.saveCSVURL = "/view_glycopeptide_lcmsms_analysis/{analysisId}/to-csv";
 
+  GlycopeptideLCMSMSSearchController.prototype.searchByScanIdUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/search_by_scan/{scanId}";
+
   GlycopeptideLCMSMSSearchController.prototype.monosaccharideFilterContainerSelector = '#monosaccharide-filters';
 
   function GlycopeptideLCMSMSSearchController(analysisId, hypothesisUUID, proteinId1) {
@@ -1929,6 +2044,7 @@ GlycopeptideLCMSMSSearchController = (function() {
     this.hypothesisUUID = hypothesisUUID;
     this.proteinId = proteinId1;
     this.proteinChoiceHandler = bind(this.proteinChoiceHandler, this);
+    this.searchByScanId = bind(this.searchByScanId, this);
     this.showExportMenu = bind(this.showExportMenu, this);
     this.handle = $(this.containerSelector);
     this.paginator = new GlycopeptideLCMSMSSearchPaginator(this.analysisId, this.handle, this);
@@ -1962,6 +2078,10 @@ GlycopeptideLCMSMSSearchController = (function() {
     this.handle.find("#save-result-btn").click(function(event) {
       console.log("Clicked Save Button");
       return self.showExportMenu();
+    });
+    this.handle.find("#search-by-scan-id").blur(function(event) {
+      console.log(this);
+      return self.searchByScanId(this.value.replace(/\s+$/g, ""));
     });
     proteinRowHandle.click(function(event) {
       return self.proteinChoiceHandler(this);
@@ -2019,6 +2139,26 @@ GlycopeptideLCMSMSSearchController = (function() {
 
   GlycopeptideLCMSMSSearchController.prototype.noResultsHandler = function() {
     return $(this.tabView.containerSelector).html('<h5 class=\'red-text center\' style=\'margin: 50px;\'>\nYou don\'t appear to have any results to show. Your filters may be set too high. <br>\nTo lower your filters, please go to the Preferences menu in the upper right corner <br>\nof the screen and set the <code>"Minimum MS2 Score Filter"</code> to be lower and try again.<br>\n</h5>');
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.searchByScanId = function(scanId) {
+    var url;
+    if (!scanId) {
+      return;
+    }
+    url = this.searchByScanIdUrl.format({
+      "analysisId": this.analysisId,
+      "scanId": scanId
+    });
+    return $.get(url).success((function(_this) {
+      return function(doc) {
+        var modalHandle;
+        modalHandle = _this.getModal();
+        modalHandle.find('.modal-content').html(doc);
+        $(".lean-overlay").remove();
+        return modalHandle.openModal();
+      };
+    })(this));
   };
 
   GlycopeptideLCMSMSSearchController.prototype.proteinChoiceHandler = function(row) {

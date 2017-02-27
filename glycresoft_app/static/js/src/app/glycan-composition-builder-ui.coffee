@@ -29,7 +29,6 @@ class MonosaccharideInputWidgetGrid
         monosaccharides = {}
         for row in @container.find(".monosaccharide-row")
             row = $(row)
-            console.log(row)
             entry = {
                 name: row.find(".monosaccharide-name").val()
                 lower_bound: row.find(".lower-bound").val()
@@ -42,9 +41,7 @@ class MonosaccharideInputWidgetGrid
                 row.addClass "warning"
                 pos = row.position()
                 notify = new TinyNotification(pos.top + 50, pos.left, "This monosaccharide is already present.", row)
-                console.log(row, notify)
                 row.data("tinyNotification", notify)
-                console.log(notify)
             else
                 row.removeClass "warning"
                 if row.data("tinyNotification")?
@@ -52,7 +49,6 @@ class MonosaccharideInputWidgetGrid
                     notif.dismiss()
                     row.data("tinyNotification", undefined)
                 monosaccharides[entry.name] = entry
-        console.log(monosaccharides)
         @monosaccharides = monosaccharides
 
     addEmptyRowOnEdit: (addHeader=false) ->
@@ -80,7 +76,6 @@ class MonosaccharideInputWidgetGrid
         # row.find(".monosaccharide-composition").val(composition)
         @container.append(row)
         row.find("input").change => @update()
-        console.log(row)
         @update()
 
 

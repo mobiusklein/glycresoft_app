@@ -1,4 +1,7 @@
+import re
+
 from flask import request
+
 from werkzeug.serving import run_simple
 from werkzeug.wsgi import LimitedStream
 
@@ -20,6 +23,63 @@ class StreamConsumingMiddleware(object):
         finally:
             if hasattr(app_iter, 'close'):
                 app_iter.close()
+
+
+class AddressFilteringMiddleware(object):
+    def __init__(self, app, blacklist=None, whitelist=None):
+        if blacklist is None:
+            blacklist = []
+        if whitelist is None:
+            whitelist = []
+        self.app = app
+        self.blacklist = []
+        self.whitelist = []
+
+        for item in blacklist:
+            self.add_address_to_filter(item)
+
+        for item in whitelist:
+            self.add_address_to_allow(item)
+
+    def __call__(self, environ, start_response):
+        client_ip = environ['REMOTE_ADDR']
+        for pattern in self.whitelist:
+            if pattern.match(client_ip):
+                return self.app(environ, start_response)
+        for pattern in self.blacklist:
+            if pattern.match(client_ip):
+                start_response("403", {})
+                return iter(("Connection Refused!",))
+        else:
+            return self.app(environ, start_response)
+
+    def add_address_to_filter(self, ipaddr):
+        pattern = re.compile(ipaddr)
+        self.blacklist.append(pattern)
+
+    def add_address_to_allow(self, ipaddr):
+        pattern = re.compile(ipaddr)
+        self.whitelist.append(pattern)
+
+
+class AddressFilteringApplication(object):
+    def __init__(self, app, blacklist=None, whitelist=None):
+        if blacklist is None:
+            blacklist = []
+        if whitelist is None:
+            whitelist = []
+        self.app = app
+        self._whitelist = list(whitelist)
+        self._blacklist = list(blacklist)
+        self._filter = AddressFilteringMiddleware(
+            self.app.wsgi_app, self._blacklist, self._whitelist)
+        self.app.wsgi_app = self._filter
+
+    def blacklist(self, ipaddr):
+        self._filter.add_address_to_filter(ipaddr)
+
+    def whitelist(self, ipaddr):
+        self._filter.add_address_to_allow(ipaddr)
 
 
 class ApplicationServer(object):

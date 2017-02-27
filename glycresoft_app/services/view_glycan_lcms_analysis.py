@@ -25,7 +25,8 @@ from glycan_profiling.plotting.summaries import (
     GlycanChromatographySummaryGraphBuilder, SmoothingChromatogramArtist,
     figax)
 
-from glycan_profiling.output import GlycanLCMSAnalysisCSVSerializer
+from glycan_profiling.output import (
+    GlycanLCMSAnalysisCSVSerializer, ImportableGlycanHypothesisCSVSerializer)
 
 app = view_glycan_lcms_analysis = register_service("view_glycan_lcms_analysis", __name__)
 
@@ -256,3 +257,62 @@ def to_csv(analysis_uuid):
         path = g.manager.get_temp_path(file_name)
         GlycanLCMSAnalysisCSVSerializer(open(path, 'wb'), snapshot.glycan_chromatograms).start()
         return jsonify(filename=file_name)
+
+
+def _export_csv(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        g.add_message(Message("Building CSV Export", "update"))
+        snapshot = view.get_items_for_display()
+        file_name = "%s-glycan-chromatograms.csv" % (view.analysis.name)
+        path = g.manager.get_temp_path(file_name)
+        GlycanLCMSAnalysisCSVSerializer(open(path, 'wb'), snapshot.glycan_chromatograms).start()
+    return [file_name]
+
+
+def _export_hypothesis(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        g.add_message(Message("Building CSV Export", "update"))
+        snapshot = view.get_items_for_display()
+        file_name = "%s-glycan-compositions.txt" % (view.analysis.name)
+        path = g.manager.get_temp_path(file_name)
+        composition_keys = {c.composition.id: c.composition for c in snapshot.glycan_chromatograms}
+        compositions = [
+            view.session.query(GlycanComposition).get(key) for key in composition_keys
+        ]
+        with open(path, 'wb') as handle:
+            ImportableGlycanHypothesisCSVSerializer(handle, compositions).start()
+    return [file_name]
+
+
+serialization_formats = {
+    "glycan chromatogrmas (csv)": _export_csv,
+    "associated glycans (txt)": _export_hypothesis
+}
+
+
+@app.route("/view_glycan_lcms_analysis/<analysis_uuid>/export")
+def export_menu(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        options = [
+            "glycan chromatogrmas (csv)",
+            "associated glycans (txt)"
+        ]
+        return render_template(
+            "/view_glycan_search/export_formats.templ",
+            analysis_id=analysis_uuid, export_type_list=options,
+            name=view.analysis.name)
+
+
+@app.route("/view_glycan_lcms_analysis/<analysis_uuid>/export", methods=["POST"])
+def export_data(analysis_uuid):
+    file_names = []
+    for format_key in request.values:
+        if format_key in serialization_formats:
+            work_task = serialization_formats[format_key]
+            file_names.extend(
+                work_task(analysis_uuid))
+    return jsonify(status='success', filenames=file_names)
+

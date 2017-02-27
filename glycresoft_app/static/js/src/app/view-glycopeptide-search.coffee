@@ -92,9 +92,13 @@ class PlotGlycoformsManager extends PlotManagerBase
         <span>{value}</span>
         </div>'
         value = handle.parent().attr('data-modification-type')
-        if value == 'HexNAc'
-            sequence = $('#' + handle.parent().attr('data-parent')).attr('data-sequence')
-            value = 'HexNAc - Glycosylation: ' + sequence.split(/(\[|\{)/).slice(1).join('')
+        if (/Glycosylation/ig).test(value)
+            glycopeptideId = handle.parent().attr('data-parent')
+            sequence = $("g[data-record-id=\"#{glycopeptideId}\"]").attr('data-sequence')
+            sequence = new PeptideSequence(sequence)
+            glycanComposition = sequence.glycan
+            formattedGlycan = glycanComposition.format(GlycReSoft.colors)
+            value = "#{value}: " + formattedGlycan
         template.format 'value': value
 
     setupTooltips: ->
@@ -103,13 +107,17 @@ class PlotGlycoformsManager extends PlotManagerBase
         self = @
         glycopeptide.hover(
             (event) ->
-                handle = $ @
+                origTarget = $ @
+                recordId = origTarget.attr("data-record-id")
+                handle = $ "g[data-record-id=#{recordId}]"
                 baseColor = handle.find("path").css("fill")
                 newColor = '#74DEC5'
                 handle.data("baseColor", baseColor)
                 handle.find("path").css("fill", newColor)
             (event) ->
-                handle = $ @
+                origTarget = $ @
+                recordId = origTarget.attr("data-record-id")
+                handle = $ "g[data-record-id=#{recordId}]"
                 handle.find("path").css("fill", handle.data("baseColor"))
             )
         glycopeptide.click (event) ->
@@ -144,6 +152,7 @@ class GlycopeptideLCMSMSSearchController
 
     detailUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/details_for/{glycopeptideId}"
     saveCSVURL: "/view_glycopeptide_lcmsms_analysis/{analysisId}/to-csv"
+    searchByScanIdUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/search_by_scan/{scanId}"
 
     monosaccharideFilterContainerSelector: '#monosaccharide-filters'
 
@@ -174,6 +183,10 @@ class GlycopeptideLCMSMSSearchController
         @handle.find("#save-result-btn").click (event) ->
             console.log("Clicked Save Button")
             self.showExportMenu()
+
+        @handle.find("#search-by-scan-id").blur (event) ->
+            console.log(@)
+            self.searchByScanId @value.replace(/\s+$/g, "")
 
         proteinRowHandle.click (event) ->
             self.proteinChoiceHandler @
@@ -220,6 +233,21 @@ class GlycopeptideLCMSMSSearchController
             of the screen and set the <code>"Minimum MS2 Score Filter"</code> to be lower and try again.<br>
             </h5>
         ''')
+
+    searchByScanId: (scanId) =>
+        if !scanId
+            return
+
+        url = @searchByScanIdUrl.format({
+            "analysisId": @analysisId,
+            "scanId": scanId
+        })
+        $.get(url).success (doc) =>
+            modalHandle = @getModal()
+            modalHandle.find('.modal-content').html doc
+            # Remove any straggler overlays from rapid re-opening of modal
+            $(".lean-overlay").remove()
+            modalHandle.openModal()
 
     proteinChoiceHandler: (row) =>
         handle = $ row

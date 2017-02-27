@@ -15,7 +15,8 @@ from glycresoft_app.application_manager import (
 
 from glycresoft_app.application_server import (
     ApplicationServerManager,
-    StreamConsumingMiddleware)
+    StreamConsumingMiddleware,
+    AddressFilteringApplication)
 
 
 from glycresoft_app.services import (
@@ -25,7 +26,11 @@ from glycresoft_app.utils import message_queue
 
 
 app = Flask(__name__)
-app.wsgi_app = StreamConsumingMiddleware(app.wsgi_app)
+app.wsgi_app = (
+    StreamConsumingMiddleware(app.wsgi_app))
+
+ip_address_filter = AddressFilteringApplication(app)
+
 app.config['PROPAGATE_EXCEPTIONS'] = True
 report.prepare_environment(app.jinja_env)
 
@@ -131,6 +136,11 @@ def index():
     if MULTIUSER_MODE and not session.get("has_logged_in", False):
         return redirect("/login")
     return render_template("index.templ")
+
+
+@app.route("/projects")
+def projects():
+    return render_template("components/project_view.templ")
 
 
 @app.route("/login")

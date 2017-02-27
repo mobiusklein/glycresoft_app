@@ -2,9 +2,9 @@ import json
 import random
 import logging
 
-from flask import Response, Blueprint, g, request
+from flask import Response, g, request
 
-from ..task.task_process import QueueEmptyException, Message, null_user, identity_provider
+from ..task.task_process import QueueEmptyException, Message, identity_provider
 from .service_module import register_service
 
 

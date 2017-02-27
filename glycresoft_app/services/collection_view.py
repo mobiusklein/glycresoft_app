@@ -29,7 +29,7 @@ class ViewCache(object):
         return self.get(key)
 
     def set(self, key, value):
-        logger.info("Storing %r, (Total Size: %d)", key, len(self.cache))
+        logger.info("Storing %r, (Total Size: %d)\n%r", key, len(self.cache), self.cache.keys())
         with self.lock:
             if len(self.cache) >= self.size:
                 try:
@@ -57,8 +57,9 @@ class CollectionViewBase(object):
         self.session = self.connection.session
 
     def close(self):
-        self.session.close()
-        self.session = None
+        if self.session is not None:
+            self.session.close()
+            self.session = None
 
     def __enter__(self):
         self._instance_lock.acquire()

@@ -15563,10 +15563,18 @@ Monosaccharide Grid
 
 }
 
-
-code.sequence-text {
-    font-family: Consolas, monospace !important;
+@font-face {
+    font-family: Inconsolata;
+    src: url("../fonts/Inconsolata/Inconsolata-Regular.ttf");
+    font-weight: normal;
+    font-style: normal;
 }
+
+
+code, pre {
+    font-family: Inconsolata, monospace !important;
+}
+
 
 .handle {
     cursor: hand;
@@ -15577,9 +15585,11 @@ code.sequence-text {
     border-bottom: 1px lightgrey solid;
 }
 
+
 .no-shadow {
     box-shadow: none !important;
 }
+
 
 .narrow-btn {
     padding-left: 12px !important;
@@ -15595,13 +15605,16 @@ code.sequence-text {
    clear: both;
 }
 
+
 #save-csv-file {
     line-height: 18px;
 }
 
+
 .user-provided-name {
     word-break: break-all;
 }
+
 
 .protein-name {
     padding-left: 20px;
@@ -15670,7 +15683,7 @@ Navigation
 
 .side-nav.fixed {
     padding-left: 5px;
-    width: 14%;
+    width: 13%;
 }
 
 .task-list-container ul li {

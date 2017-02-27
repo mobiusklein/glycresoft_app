@@ -17,6 +17,11 @@ module.exports = (grunt) ->
                 expand: true
                 src: "static/fonts/roboto/*"
                 dest: "static/dist/fonts/roboto/"
+            fontInconsolata:
+                flatten: true
+                expand: true
+                src: "static/fonts/Inconsolata/*"
+                dest: "static/dist/fonts/Inconsolata/"
             font:
                 flatten: true
                 expand: true
@@ -26,7 +31,7 @@ module.exports = (grunt) ->
             options:
                 separator: "\n"
             app:
-                src: ["static/js/build/app/**.js"]
+                src: ["static/js/build/app/**.js", "static/js/build/*.js"]
                 dest: "static/js/dist/app-bundle.js"
             lib:
                 src: ["static/js/build/lib/**.js"]

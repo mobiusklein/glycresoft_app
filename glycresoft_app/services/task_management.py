@@ -1,3 +1,5 @@
+import textwrap
+
 from flask import Response, g, jsonify
 from ..task.dummy_task import DummyTask
 from .service_module import register_service
@@ -9,10 +11,11 @@ task_actions = register_service("task_management", __name__)
 def send_log(task_name):
     try:
         log_file = g.manager.get_task_path(task_name + '.log')
-        wrapper = "<pre class='log-display' data-log-name=\"{task_name}\">{content}</pre>"
-        encoded_contents = open(
-            log_file, 'r').read().replace(
-            ">", "&gt;").replace("<", "&lt;").decode('string_escape')
+        wrapper = """<pre class='log-display' data-log-name="{task_name}">{content}</pre>"""
+        log_buffer = open(log_file, 'r').read()
+        formatted_buffer = log_buffer.replace(
+            ">", "&gt;").replace("<", "&lt;")
+        encoded_contents = formatted_buffer.decode('string_escape')
         log_content = wrapper.format(
             task_name=task_name, content=encoded_contents)
         return Response(log_content, mimetype='application/text')

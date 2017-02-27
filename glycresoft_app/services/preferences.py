@@ -1,4 +1,4 @@
-from flask import Blueprint, g, jsonify, render_template, request
+from flask import g, jsonify, render_template, request
 from .service_module import register_service
 
 
@@ -6,7 +6,7 @@ app_config = register_service("preferences", __name__)
 
 
 default_preferences = {
-    "minimum_ms2_score": 30.,
+    "minimum_ms2_score": 20.,
     "minimum_ms1_score": 0.6,
     "color_palette": "NGlycanCompositionColorizer"
 }

@@ -34,9 +34,7 @@ from glycan_profiling.plotting.summaries import (
     SmoothingChromatogramArtist,
     figax)
 
-
 from glycan_profiling.tandem.glycopeptide import chromatogram_graph
-
 
 from glycan_profiling.output import (
     GlycopeptideLCMSMSAnalysisCSVSerializer,
@@ -153,10 +151,13 @@ class GlycopeptideAnalysisView(CollectionViewBase):
         if self._peak_loader is None:
             try:
                 if os.path.exists(self.analysis.parameters['sample_path']):
+                    log_handle.log("Reading spectra from %r" % self.analysis.parameters['sample_path'])
                     self._peak_loader = ProcessedMzMLDeserializer(self.analysis.parameters['sample_path'])
                 elif os.path.exists(
                         os.path.join(
                             g.manager.base_path, self.analysis.parameters['sample_path'])):
+                    log_handle.log("Reading spectra from %r" % os.path.join(
+                        g.manager.base_path, self.analysis.parameters['sample_path']))
                     self._peak_loader = ProcessedMzMLDeserializer(
                         os.path.join(
                             g.manager.base_path, self.analysis.parameters['sample_path']))
@@ -182,13 +183,14 @@ class GlycopeptideAnalysisView(CollectionViewBase):
             MSScan.scan_id == scan_id,
             GlycopeptideSpectrumSolutionSet.analysis_id == self.analysis_id).first()
         if case is None:
-            return jsonify(status="No Match", solutions=[])
+            return []
         else:
             case = case.convert()
-            solutions = []
-            for member in case:
-                solutions.append(dict(score=member.score, target=str(member.target), id=member.target.id))
-            return jsonify(status='Match', solutions=solutions)
+            # solutions = []
+            # for member in case:
+            #     solutions.append(dict(score=member.score, target=str(member.target), id=member.target.id))
+            # return jsonify(status='Match', solutions=solutions)
+            return case
 
     def _resolve_sources(self):
         self.analysis = self.session.query(Analysis).get(self.analysis_id)
@@ -312,7 +314,8 @@ class GlycopeptideAnalysisView(CollectionViewBase):
         self.monosaccharide_bounds = monosaccharide_bounds
 
     def paginate(self, protein_id, page, per_page=25):
-        return self.get_items_for_display(protein_id).paginate(page, per_page)
+        return self.get_items_for_display(
+            protein_id).paginate(page, per_page)
 
 
 def get_view(analysis_uuid):
@@ -388,14 +391,31 @@ def site_specific_glycosylation(analysis_uuid, protein_id):
 @app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/search_by_scan/<scan_id>")
 def search_by_scan(analysis_uuid, scan_id):
     view = get_view(analysis_uuid)
+    scan_id = scan_id.strip()
     with view:
-        return view.search_by_scan(scan_id)
+        match = view.search_by_scan(scan_id)
+        if match:
+            top = match[0]
+            target = top.target
+            ident = view.session.query(IdentifiedGlycopeptide).filter(
+                IdentifiedGlycopeptide.structure_id == target.id,
+                IdentifiedGlycopeptide.analysis_id == view.analysis_id).first()
+            return glycopeptide_detail(
+                analysis_uuid,
+                target.protein_relation.protein_id,
+                ident.id, top.scan.id)
+        else:
+            return Response('''
+<h3>
+    No Match
+</h3>
+                ''')
 
 
 @app.route(
     "/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/<int:protein_id>/details_for/<int:glycopeptide_id>",
     methods=['POST'])
-def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id):
+def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None):
     view = get_view(analysis_uuid)
     with view:
         snapshot = view.get_items_for_display(protein_id)
@@ -417,8 +437,10 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id):
             scan.score = psm.score
             matched_scans.append(scan)
 
-        spectrum_match_ref = max(gp.spectrum_matches, key=lambda x: x.score)
-        scan = view.peak_loader.get_scan_by_id(spectrum_match_ref.scan.id)
+        if scan_id is None:
+            spectrum_match_ref = max(gp.spectrum_matches, key=lambda x: x.score)
+            scan_id = spectrum_match_ref.scan.id
+        scan = view.peak_loader.get_scan_by_id(scan_id)
 
         match = CoverageWeightedBinomialScorer.evaluate(
             scan, gp.structure,
@@ -452,17 +474,32 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id):
         spectrum_plot.set_xlabel(spectrum_plot.get_xlabel(), fontsize=16)
 
         sequence_logo_plot = glycopeptide_match_logo(match, ax=figax())
+        xlim = list(sequence_logo_plot.get_xlim())
+        xlim[0] += 1
+
+        sequence_logo_plot.set_xlim(xlim[0], xlim[1])
+
+        def xml_transform(root):
+            view_box_str = root.attrib["viewBox"]
+            x_start, y_start, x_end, y_end = map(float, view_box_str.split(" "))
+            x_start += 100
+            updated_view_box_str = " ".join(map(str, [x_start, y_start, x_end, y_end]))
+            root.attrib["viewBox"] = updated_view_box_str
+            fig_g = root.find(".//{http://www.w3.org/2000/svg}g[@id=\"figure_1\"]")
+            fig_g.attrib["transform"] = "scale(1.2, 1.0)"
+            return root
 
         return render_template(
             "/view_glycopeptide_search/components/glycopeptide_detail.templ",
             glycopeptide=gp,
             match=match,
             chromatogram_plot=report.svg_plot(
-                ax, bbox_inches='tight', height=3, width=7, patchless=True),
+                ax, svg_width="100%", bbox_inches='tight', height=4, width=10, patchless=True),
             spectrum_plot=report.svg_plot(
-                spectrum_plot, bbox_inches='tight', height=3, width=10, patchless=True),
+                spectrum_plot, svg_width="100%", bbox_inches='tight', height=3, width=10, patchless=True),
             sequence_logo_plot=report.svg_plot(
-                sequence_logo_plot, bbox_inches='tight', height=2, width=7, patchless=True),
+                sequence_logo_plot, svg_width="100%", xml_transform=xml_transform, bbox_inches='tight',
+                height=3, width=7, patchless=True),
             matched_scans=matched_scans,
             max_peak=max_peak,
         )

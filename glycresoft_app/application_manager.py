@@ -293,6 +293,12 @@ class ApplicationManager(object):
                 if AnalysisTypeEnum.glycan_lc_ms == analysis.analysis_type and
                 has_access(analysis, user)]
 
+    def analyses_for_sample(self, sample_name):
+        return [
+            analysis for analysis in self.analysis_manager
+            if analysis.sample_name == sample_name
+        ]
+
     def get_next_job_number(self):
         with self._data_lock:
             try:

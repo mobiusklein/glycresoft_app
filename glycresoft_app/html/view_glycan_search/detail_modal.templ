@@ -6,14 +6,14 @@
                 {{(chromatogram.glycan_composition.mass() - chromatogram.weighted_neutral_mass) / chromatogram.weighted_neutral_mass}}
             ) <br/>
             <b>Total Abundance</b>: {{"%0.4e" % chromatogram.total_signal}} <br/>
-            {% if chromatogram.adducts|length > 1 %}
-                <b>Adduct Signal Fractions</b>
-                <ul class='adduct-signal-fraction-list' style='margin-top:0px;'>
-                {% for adduct, fraction in chromatogram.adduct_signal_fractions().items() %}
-                    <li class='adduct-signal-fraction-item' style='margin-left:10px;'>{{adduct.name}}</b>: {{"%0.4e" % fraction}}</li>
-                {% endfor %}
-                </ul>
-            {% endif %}
+            <b>Adduct Signal Fractions</b>
+            <ul class='adduct-signal-fraction-list' style='margin-top:0px;'>
+            {% for adduct, fraction in chromatogram.adduct_signal_fractions().items() %}
+                <li class='adduct-signal-fraction-item' style='margin-left:10px;'>
+                    {{adduct.name}}</b>: {{"%0.4e" % fraction}}
+                </li>
+            {% endfor %}
+            </ul>
         </div>
         <div class='col s4'>
             <b>Charge States</b>: {{chromatogram.charge_states | join(", ")}} <br/>

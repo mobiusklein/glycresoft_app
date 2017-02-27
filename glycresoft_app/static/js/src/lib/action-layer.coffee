@@ -109,8 +109,6 @@ errorLoadingContent = """
 
 
 class ActionLayer
-    # @actions = {}
-
     constructor: (manager, options, params, method='get') ->
         @manager = manager
         @options = options

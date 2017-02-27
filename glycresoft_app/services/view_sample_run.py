@@ -138,8 +138,7 @@ def view_sample(sample_run_uuid):
         "view_sample_run/overview.templ",
         sample_run=view.record,
         scan_levels=view.scan_levels,
-        chromatograms=view.draw_chromatograms(),
-        lcms_map=view.draw_lcms_map())
+        chromatograms=view.draw_chromatograms())
 
 
 def binsearch(array, value, tol=0.1):

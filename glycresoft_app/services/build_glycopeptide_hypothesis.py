@@ -59,9 +59,12 @@ def build_glycopeptide_search_space_post():
         glycan_options["glycan_source_identifier"] = None
     else:
         option_type, option_id = glycan_database.split(",", 1)
+
         record = g.manager.hypothesis_manager.get(option_id)
         identifier = record.id
+
         glycan_options["glycan_source_identifier"] = identifier
+
         if option_type == "Hypothesis":
             option_type = "hypothesis"
             glycan_options["glycomics_source"] = record.path
@@ -71,12 +74,13 @@ def build_glycopeptide_search_space_post():
 
         glycan_options["glycan_source_type"] = option_type
 
+    n_workers = g.manager.configuration.get("database_build_worker_count", 4)
     if protein_list_type == "fasta":
         task = BuildGlycopeptideHypothesisFasta(
             storage_path, fasta_file=secure_protein_list, enzyme=enzyme,
             missed_cleavages=max_missed_cleavages, occupied_glycosites=maximum_glycosylation_sites,
             name=hypothesis_name, constant_modification=constant_modifications,
-            variable_modification=variable_modifications, processes=4,
+            variable_modification=variable_modifications, processes=n_workers,
             glycan_source=glycan_options["glycomics_source"],
             glycan_source_type=glycan_options["glycan_source_type"],
             glycan_source_identifier=glycan_options["glycan_source_identifier"])
@@ -86,7 +90,7 @@ def build_glycopeptide_search_space_post():
         task = BuildGlycopeptideHypothesisMzId(
             storage_path, secure_protein_list, name=hypothesis_name,
             occupied_glycosites=maximum_glycosylation_sites, target_protein=protein_names,
-            processes=4, glycan_source=glycan_options['glycomics_source'],
+            processes=n_workers, glycan_source=glycan_options['glycomics_source'],
             glycan_source_type=glycan_options['glycan_source_type'],
             glycan_source_identifier=glycan_options["glycan_source_identifier"])
         g.add_task(task)

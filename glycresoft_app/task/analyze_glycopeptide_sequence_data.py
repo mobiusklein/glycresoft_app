@@ -1,12 +1,10 @@
 import os
-from click import Abort
 
 from glycresoft_app.project import analysis as project_analysis
-from .task_process import Task, Message, null_user
+from .task_process import Task, Message
 
 from glycan_profiling.serialize import (
-    DatabaseBoundOperation, GlycopeptideHypothesis,
-    SampleRun)
+    DatabaseBoundOperation, GlycopeptideHypothesis)
 
 from glycan_profiling.profiler import (
     MzMLGlycopeptideLCMSMSAnalyzer)
@@ -71,7 +69,7 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
             msn_mass_error_tolerance=msn_mass_error_tolerance,
             psm_fdr_threshold=psm_fdr_threshold,
             peak_shape_scoring_model=peak_shape_scoring_model)
-        proc = analyzer.start()
+        gps, unassigned, target_hits, decoy_hits = analyzer.start()
         analysis = analyzer.analysis
         record = project_analysis.AnalysisRecord(
             name=analysis.name, id=analysis.id, uuid=analysis.uuid, path=output_path,
@@ -81,6 +79,7 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
             sample_name=analysis.parameters['sample_name'],
             user_id=channel.user.id)
         channel.send(Message(record.to_json(), 'new-analysis'))
+
     except:
         channel.send(Message.traceback())
         channel.abort("An error occurred during analysis.")

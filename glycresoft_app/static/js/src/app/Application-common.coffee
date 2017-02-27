@@ -280,21 +280,6 @@ class Application extends ActionLayerManager
         window.nativeClientKey?
 
 
-composeSampleAnalysisTree = (bundle) ->
-    samples = bundle.samples
-    analyses = bundle.analyses
-
-    sampleMap = {}
-    for id, analysis of analyses
-        sampleName = analysis.sample_name
-        if !sampleMap[sampleName]?
-            sampleMap[sampleName] = []
-
-        sampleMap[sampleName].push(analysis)
-
-    return sampleMap
-
-
 createdAtParser = /(\d{4})-(\d{2})-(\d{2})\s(\d+)-(\d+)-(\d+(?:\.\d*)?)/
 
 
@@ -316,26 +301,3 @@ renderTask = (task) ->
     element = $("<li data-id=\'#{id}\' data-status=\'#{status}\' data-name=\'#{name}\' data-created-at=\'#{created_at}\'><b>#{name}</b> (#{status})</li>")
     element.attr("data-name", name)
     element
-
-
-$(() ->
-    if not window.ApplicationConfiguration?
-        window.ApplicationConfiguration = {
-            refreshTasksInterval: 25000,
-            upkeepInterval: 10000,
-        }
-
-    window.GlycReSoft = new Application(options={
-        actionContainer: ".action-layer-container",
-        refreshTasksInterval: window.ApplicationConfiguration.refreshTasksInterval,
-        upkeepInterval: window.ApplicationConfiguration.upkeepInterval,
-    })
-    window.onerror = (msg, url, line, col, error) ->
-        console.log(msg, url, line, col, error)
-        GlycReSoft.ajaxWithContext(ErrorLogURL, {
-            data: [msg, url, line, col, error]
-        })
-        return false
-    GlycReSoft.runInitializers()
-    GlycReSoft.updateSettings()
-    GlycReSoft.updateTaskList())

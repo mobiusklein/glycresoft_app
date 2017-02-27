@@ -44,7 +44,7 @@ class GlycanCompositionLCMSSearchController
             =>
                 @paginator.setupTable()
             =>
-                handle = $ @tabView.containerSelector
+                handle = @find @tabView.containerSelector
                 $.get("/view_glycan_lcms_analysis/#{@analysisId}/chromatograms_chart").success (payload) ->
                     handle.find("#chromatograms-plot").html(payload)
                 $.get("/view_glycan_lcms_analysis/#{@analysisId}/abundance_bar_chart").success (payload) ->
@@ -54,20 +54,26 @@ class GlycanCompositionLCMSSearchController
         @tabView = new GlycanCompositionLCMSSearchTabView(@analysisId, @handle, @, updateHandlers)
         @setup()
 
+    find: (selector) -> @handle.find(selector)
+
     setup: ->
         @handle.find(".tooltipped").tooltip()
         self = @
 
         @handle.find("#save-csv-btn").click (event) ->
-            url = self.saveCSVURL.format({analysisId: self.analysisId})
-            $.get(url).success (info) ->
-                GlycReSoft.downloadFile info.filename
+            self.showExportMenu()
         @updateView()
 
-        filterContainer = $(@monosaccharideFilterContainerSelector)
+        filterContainer = @find(@monosaccharideFilterContainerSelector)
         GlycReSoft.monosaccharideFilterState.update @hypothesisUUID, (bounds) =>
             @monosaccharideFilter = new MonosaccharideFilter(filterContainer)
             @monosaccharideFilter.render()
+
+    showExportMenu: =>
+        $.get("/view_glycan_lcms_analysis/#{@analysisId}/export").success(
+            (formContent) =>
+                GlycReSoft.displayMessageModal(formContent)
+        )
 
     updateView: ->
         @tabView.updateView()

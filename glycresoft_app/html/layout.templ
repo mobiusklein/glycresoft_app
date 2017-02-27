@@ -29,6 +29,35 @@
     <script src="{{ url_for('static',filename='dist/js/app-bundle.js') }}"></script>
     <script>
 
+
+$(function(){
+    if(window.ApplicationConfiguration === undefined){
+        window.ApplicationConfiguration = {
+            refreshTasksInterval: 25000,
+            upkeepInterval: 10000,
+        }
+        
+    }
+
+    window.GlycReSoft = new Application({
+        actionContainer: ".action-layer-container",
+        refreshTasksInterval: window.ApplicationConfiguration.refreshTasksInterval,
+        upkeepInterval: window.ApplicationConfiguration.upkeepInterval,
+    })
+
+    window.onerror = function(msg, url, line, col, error){
+        console.log(msg, url, line, col, error)
+        GlycReSoft.ajaxWithContext(ErrorLogURL, {
+            data: [msg, url, line, col, error]
+        })
+        return false
+    }
+    GlycReSoft.runInitializers()
+    GlycReSoft.updateSettings()
+    GlycReSoft.updateTaskList()
+    
+})
+
 ApplicationConfiguration = {
     refreshTasksInterval: {{ configuration.refresh_task_interval or 25000}},
     upkeepInterval: {{ configuration.upkeep_interval or 10000}},
@@ -64,11 +93,96 @@ $(function() {
     })
     $(window).resize()
 
-    setInterval(clearTooltip, 6000);
+    setInterval(clearTooltip, 16000);
 });
 
 
 
+    </script>
+    <style type="text/css">
+        .project-item {
+            border-bottom: 1px solid lightgrey;
+            border-collapse: collapse;
+        }
+
+        .analysis-entry-list:not(:last-child) {
+            border-bottom: 1px solid lightgrey;
+            border-collapse: collapse;
+        }
+
+        .analysis-entry-item {
+            border-bottom: 1px solid lightgrey;
+            border-collapse: collapse;
+            padding-left: 15px;
+        }
+
+        .project-sample-name {
+            font-family: Inconsolata;
+            font-weight: 600;
+            font-size: 1.0em;
+            cursor: pointer;
+        }
+
+        .project-analysis-name {
+            font-family: Inconsolata;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+
+        .expanded-display-control {
+            cursor: pointer;
+        }
+
+        .expanded-display-control i {
+            font-size: 22px;
+            position: relative;
+            top: 5;
+        }
+    </style>
+    <script type="text/javascript">
+        $(function(){
+            $("body").on("click", ".projects-entry-list .analysis-entry-item", function(event){
+                let target = this
+                GlycReSoft.invalidate()
+                let handle = $(target)
+                let id = handle.attr('data-uuid')
+                if (GlycReSoft.getShowingLayer().name != ActionLayerManager.HOME_LAYER){
+                    GlycReSoft.removeCurrentLayer()
+                }
+                GlycReSoft.addLayer(
+                    ActionBook.viewAnalysis, {analysis_id: id})
+                console.log(GlycReSoft.layers)
+                console.log(GlycReSoft.lastAdded)
+                GlycReSoft.context["analysis_id"] = id
+                GlycReSoft.setShowingLayer(
+                    GlycReSoft.lastAdded)
+            })
+
+            function findProjectEntry(element){
+                let parent = element.parent()
+                let isMatch = (parent.hasClass("project-entry"))
+                let i = 0
+                while(!isMatch && i < 100){
+                    i++
+                    parent = parent.parent()
+                    isMatch = (parent.hasClass("project-entry") || parent.prop("tagName") === "BODY")
+                }
+                return parent
+            }
+
+            $("body").on("click", ".project-entry .expanded-display-control", function(event){
+                let target = $(event.currentTarget)
+                let parent = findProjectEntry(target)
+                let handleList = parent.find(".analysis-entry-list")
+                if(handleList.is(":visible")){
+                    handleList.hide()
+                    $(this).find(".material-icons").text("add_box")
+                } else {
+                    handleList.show()
+                    $(this).find(".material-icons").text("check_box_outline_blank")                    
+                }
+            })
+        })
     </script>
 </head>
 <body>
@@ -88,8 +202,14 @@ $(function() {
                     <h6>Tasks</h6>
                     <div class='divider'>
                     </div>
-                    <ul>
+                    <ul style="overflow-y: auto; max-height: 30%;">
                     </ul>
+                </div>
+                <div class='project-item-list-container'>
+                    <h6>Projects</h6>
+                    <div class='divider'></div>
+                    <div class="projects-entry-list" style='overflow-y: auto; max-height: 70%;'>
+                    </div>
                 </div>
             </div>
         </div>
