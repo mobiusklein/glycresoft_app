@@ -41,6 +41,8 @@ from glycan_profiling.output import (
     GlycopeptideSpectrumMatchAnalysisCSVSerializer,
     MzIdentMLSerializer, ImportableGlycanHypothesisCSVSerializer)
 
+
+from glycan_profiling.plotting.spectral_annotation import SpectrumMatchAnnotator
 from glycan_profiling.plotting.plot_glycoforms import plot_glycoforms_svg
 from glycan_profiling.plotting.sequence_fragment_logo import glycopeptide_match_logo
 
@@ -427,6 +429,8 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
 
         matched_scans = []
         for solution_set in gp.spectrum_matches:
+            if solution_set.best_solution().target != gp.structure:
+                continue
             psm = solution_set[0]
             if isinstance(psm.scan, SpectrumReference):
                 scan = session.query(MSScan).filter(
@@ -468,10 +472,13 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
             ax.text(0.5, 0.5, "No Chromatogram Extracted", ha='center')
             ax.set_axis_off()
 
-        spectrum_plot = match.annotate(ax=figax(), label_font_size=10, pretty=True)
-        spectrum_plot.set_title("%s\n" % (scan.id,), fontsize=18)
-        spectrum_plot.set_ylabel(spectrum_plot.get_ylabel(), fontsize=16)
-        spectrum_plot.set_xlabel(spectrum_plot.get_xlabel(), fontsize=16)
+        specmatch_artist = SpectrumMatchAnnotator(match, ax=figax())
+        specmatch_artist.draw(fontsize=10, pretty=True)
+        annotated_match_ax = specmatch_artist.ax
+
+        annotated_match_ax.set_title("%s\n" % (scan.id,), fontsize=18)
+        annotated_match_ax.set_ylabel(annotated_match_ax.get_ylabel(), fontsize=16)
+        annotated_match_ax.set_xlabel(annotated_match_ax.get_xlabel(), fontsize=16)
 
         sequence_logo_plot = glycopeptide_match_logo(match, ax=figax())
         xlim = list(sequence_logo_plot.get_xlim())
@@ -482,11 +489,11 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
         def xml_transform(root):
             view_box_str = root.attrib["viewBox"]
             x_start, y_start, x_end, y_end = map(float, view_box_str.split(" "))
-            x_start += 100
+            x_start += 25
             updated_view_box_str = " ".join(map(str, [x_start, y_start, x_end, y_end]))
             root.attrib["viewBox"] = updated_view_box_str
             fig_g = root.find(".//{http://www.w3.org/2000/svg}g[@id=\"figure_1\"]")
-            fig_g.attrib["transform"] = "scale(1.2, 1.0)"
+            fig_g.attrib["transform"] = "scale(1.0, 1.0)"
             return root
 
         return render_template(
@@ -496,7 +503,7 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
             chromatogram_plot=report.svg_plot(
                 ax, svg_width="100%", bbox_inches='tight', height=4, width=10, patchless=True),
             spectrum_plot=report.svg_plot(
-                spectrum_plot, svg_width="100%", bbox_inches='tight', height=3, width=10, patchless=True),
+                annotated_match_ax, svg_width="100%", bbox_inches='tight', height=3, width=10, patchless=True),
             sequence_logo_plot=report.svg_plot(
                 sequence_logo_plot, svg_width="100%", xml_transform=xml_transform, bbox_inches='tight',
                 height=3, width=7, patchless=True),

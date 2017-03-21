@@ -7,10 +7,9 @@ This code is taken from https://github.com/Dogfalo/materialize/blob/master/js/fo
 
 materialRefresh = ->
     try
-        $('.material-tooltip').remove()
-        $('.tooltipped').tooltip({delay: 50});
+        materialTooltip()
     try
-        $('select').material_select();
+        $('select').material_select()
     try
         materialFileInput()
     try
@@ -18,6 +17,11 @@ materialRefresh = ->
     try
         clearTooltip()    
     return
+
+materialTooltip = ->
+    $('.material-tooltip').remove()
+    $('.tooltipped').tooltip({delay: 50});
+
 
 materialFileInput = ->
     $(document).on 'change', '.file-field input[type="file"]', ->

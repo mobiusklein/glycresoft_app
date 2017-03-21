@@ -3,9 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title></title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='dist/css/bundle.css') }}">    
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <title>GlycReSoft</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='dist/css/bundle.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='dist/fonts/icons/material_icons.css') }}">
+    {# <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"> #}
     <link rel="icon" type="img/png" href="{{ url_for('static', filename='logo.png') }}">
     <script src="{{ url_for('static',filename='dist/js/jquery.js') }}"></script>
     <script>
@@ -96,93 +97,6 @@ $(function() {
     setInterval(clearTooltip, 16000);
 });
 
-
-
-    </script>
-    <style type="text/css">
-        .project-item {
-            border-bottom: 1px solid lightgrey;
-            border-collapse: collapse;
-        }
-
-        .analysis-entry-list:not(:last-child) {
-            border-bottom: 1px solid lightgrey;
-            border-collapse: collapse;
-        }
-
-        .analysis-entry-item {
-            border-bottom: 1px solid lightgrey;
-            border-collapse: collapse;
-            padding-left: 15px;
-        }
-
-        .project-sample-name {
-            font-family: Inconsolata;
-            font-weight: 600;
-            font-size: 1.0em;
-            cursor: pointer;
-        }
-
-        .project-analysis-name {
-            font-family: Inconsolata;
-            font-size: 0.9em;
-            cursor: pointer;
-        }
-
-        .expanded-display-control {
-            cursor: pointer;
-        }
-
-        .expanded-display-control i {
-            font-size: 22px;
-            position: relative;
-            top: 5;
-        }
-    </style>
-    <script type="text/javascript">
-        $(function(){
-            $("body").on("click", ".projects-entry-list .analysis-entry-item", function(event){
-                let target = this
-                GlycReSoft.invalidate()
-                let handle = $(target)
-                let id = handle.attr('data-uuid')
-                if (GlycReSoft.getShowingLayer().name != ActionLayerManager.HOME_LAYER){
-                    GlycReSoft.removeCurrentLayer()
-                }
-                GlycReSoft.addLayer(
-                    ActionBook.viewAnalysis, {analysis_id: id})
-                console.log(GlycReSoft.layers)
-                console.log(GlycReSoft.lastAdded)
-                GlycReSoft.context["analysis_id"] = id
-                GlycReSoft.setShowingLayer(
-                    GlycReSoft.lastAdded)
-            })
-
-            function findProjectEntry(element){
-                let parent = element.parent()
-                let isMatch = (parent.hasClass("project-entry"))
-                let i = 0
-                while(!isMatch && i < 100){
-                    i++
-                    parent = parent.parent()
-                    isMatch = (parent.hasClass("project-entry") || parent.prop("tagName") === "BODY")
-                }
-                return parent
-            }
-
-            $("body").on("click", ".project-entry .expanded-display-control", function(event){
-                let target = $(event.currentTarget)
-                let parent = findProjectEntry(target)
-                let handleList = parent.find(".analysis-entry-list")
-                if(handleList.is(":visible")){
-                    handleList.hide()
-                    $(this).find(".material-icons").text("add_box")
-                } else {
-                    handleList.show()
-                    $(this).find(".material-icons").text("check_box_outline_blank")                    
-                }
-            })
-        })
     </script>
 </head>
 <body>

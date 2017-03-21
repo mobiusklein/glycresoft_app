@@ -22,7 +22,8 @@
                 <td class='narrow'>{{"%0.4f"|format(gpm.chromatogram.weighted_neutral_mass)}}</td>
             {% else %}
                 <td class='narrow'>{{"%0.4f"|format(
-                    gpm.tandem_solutions[0].scan.precursor_information.neutral_mass)}}</td>
+                    gpm.tandem_solutions[0].scan.precursor_information.neutral_mass)}}
+                </td>
             {% endif %}
             <td class='very-very-wide'>{{gpm.structure | glycopeptide_string}}</td>
             <td class='narrow'>{{"%0.4f"|format(gpm.ms2_score)}}</td>

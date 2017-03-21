@@ -1,11 +1,9 @@
-from uuid import uuid4
 import logging
 
-from flask import Response, g, jsonify, current_app, render_template, request
+from flask import Response, g, jsonify, render_template, request
 from .service_module import register_service
 
 from glycresoft_app.task.index_db import IndexDatabaseTask
-from glycresoft_app.task.task_process import Message
 
 api = register_service("maintenance", __name__)
 

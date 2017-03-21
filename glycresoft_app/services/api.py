@@ -4,6 +4,8 @@ from flask import g, jsonify, current_app
 from glycresoft_app.utils import json_serializer
 from glycan_profiling.serialize import IdentifiedGlycopeptide
 from glycan_profiling.plotting import colors
+from glypy.composition import formula
+from glycopeptidepy.structure.modification import ModificationTable, ModificationCategory
 
 from .service_module import register_service
 from .view_hypothesis import _locate_hypothesis
@@ -78,4 +80,22 @@ def api_analyses():
             d[analysis.uuid] = dump
         except Exception:
             current_app.logger.exception("Error occurred in api_analyses for %r", analysis, exc_info=True)
+    return jsonify(**d)
+
+
+@api.route("/api/modifications")
+def modifications():
+    d = {}
+    mt = ModificationTable()
+    d['definitions'] = [
+        (rule.title, formula(rule.composition), rule.mass) for rule in mt.rules()
+    ]
+    d['specificities'] = set()
+    for rule in mt.rules():
+        if (ModificationCategory.substitution in rule.categories or
+            ModificationCategory.glycosylation in rule.categories or
+                ModificationCategory.other_glycosylation in rule.categories):
+            continue
+        d['specificities'].update(rule.as_spec_strings())
+    d['specificities'] = tuple(d['specificities'])
     return jsonify(**d)

@@ -1049,6 +1049,534 @@ MonosaccharideFilter = (function() {
 
 //# sourceMappingURL=monosaccharide-composition-filter.js.map
 
+var ModificationIndex, ModificationRule, ModificationRuleListing, ModificationSelectionEditor, ModificationSpecification, ModificationTarget, PositionClassifier, makeModificationSelectionEditor, parseModificationRuleSpecification,
+  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  hasProp = {}.hasOwnProperty,
+  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+
+PositionClassifier = {
+  "nterm": "N-term",
+  "cterm": "C-term",
+  "N-term": "N-term",
+  "C-term": "C-term"
+};
+
+parseModificationRuleSpecification = function(specString) {
+  var match;
+  match = /(.*)\s\((.+)\)$/.exec(specString);
+  return [match[1], ModificationTarget.parse(match[2])];
+};
+
+ModificationTarget = (function() {
+  function ModificationTarget(residues, positionClassifier) {
+    if (residues == null) {
+      residues = [];
+    }
+    this.residues = residues;
+    this.positionClassifier = positionClassifier;
+  }
+
+  ModificationTarget.prototype.serialize = function() {
+    var parts;
+    parts = [];
+    parts.push(this.residues.join(""));
+    if (this.positionClassifier != null) {
+      parts.push("@");
+      parts.push(PositionClassifier[this.positionClassifier]);
+    }
+    return parts.join(" ");
+  };
+
+  ModificationTarget.parse = function(specString) {
+    var match;
+    match = /([A-Z]*)(?: @ ([NC]-term))?/.exec(specString);
+    return new ModificationTarget(match[1].split(""), match[2]);
+  };
+
+  return ModificationTarget;
+
+})();
+
+ModificationRule = (function() {
+  function ModificationRule(name1, formula1, mass, targets, hidden, category, recent) {
+    var k, len, target;
+    this.name = name1;
+    this.formula = formula1;
+    this.mass = mass;
+    this.hidden = hidden != null ? hidden : false;
+    this.category = category != null ? category : 0;
+    this.recent = recent != null ? recent : false;
+    this.targets = [];
+    if (targets != null) {
+      if (_.isArray(targets)) {
+        for (k = 0, len = targets.length; k < len; k++) {
+          target = targets[k];
+          this.addTarget(target);
+        }
+      } else {
+        this.addTarget(target);
+      }
+    }
+  }
+
+  ModificationRule.prototype.addTarget = function(target) {
+    if (!(target instanceof ModificationTarget)) {
+      target = ModificationTarget.parse(target);
+    }
+    return this.targets.push(target);
+  };
+
+  ModificationRule.prototype.toSpecifications = function() {
+    var k, len, ref, specs, target;
+    specs = [];
+    ref = this.targets;
+    for (k = 0, len = ref.length; k < len; k++) {
+      target = ref[k];
+      specs.push(new ModificationSpecification(this, target));
+    }
+    return specs;
+  };
+
+  ModificationRule.prototype.render = function(container) {
+    var entry, formula, formulaEntry, k, len, name, nameEntry, ref, results, target;
+    if (this.name.length < 20) {
+      name = this.name;
+      nameEntry = "<div class=\"modification-rule-entry-name col s4\" data-modification-name=\"" + this.name + "\">\n    " + name + "\n</div>";
+    } else {
+      name = this.name.slice(0, 17) + "...";
+      nameEntry = "<div class=\"modification-rule-entry-name col s4 tooltipped\" data-tooltip=\"" + this.name + "\" data-modification-name=\"" + this.name + "\">\n    " + name + "\n</div>";
+    }
+    if (this.formula.length < 13) {
+      formula = this.formula;
+      formulaEntry = "<div class=\"modification-rule-entry-formula col s3\">\n    " + formula + "\n</div>";
+    } else {
+      formula = this.formula.slice(0, 10) + '...';
+      formulaEntry = "<div class=\"modification-rule-entry-formula col s3 tooltipped\" data-tooltip=\"" + this.formula + "\">\n    " + formula + "\n</div>";
+    }
+    ref = this.targets;
+    results = [];
+    for (k = 0, len = ref.length; k < len; k++) {
+      target = ref[k];
+      entry = $("<div class=\"modification-rule-entry row\">\n    " + nameEntry + "\n    <div class=\"modification-rule-entry-target col s2\">\n        " + (target.serialize()) + "\n    </div>\n    " + formulaEntry + "\n    <div class=\"modification-rule-entry-mass col s3\">\n        " + this.mass + "\n    </div>\n</div>");
+      results.push(container.append(entry));
+    }
+    return results;
+  };
+
+  return ModificationRule;
+
+})();
+
+ModificationSpecification = (function() {
+  function ModificationSpecification(rule1, target1, hidden) {
+    this.rule = rule1;
+    this.target = target1;
+    this.hidden = hidden != null ? hidden : false;
+    this.name = this.rule.name;
+    this.formula = this.rule.formula;
+    this.mass = this.rule.mass;
+  }
+
+  ModificationSpecification.prototype.render = function(container) {
+    var entry, formula, formulaEntry, name, nameEntry;
+    if (this.name.length < 20) {
+      name = this.name;
+      nameEntry = "<div class=\"modification-rule-entry-name col s4\" data-modification-name=\"" + this.name + "\">\n    " + name + "\n</div>";
+    } else {
+      name = this.name.slice(0, 17) + "...";
+      nameEntry = "<div class=\"modification-rule-entry-name col s4 tooltipped\" data-tooltip=\"" + this.name + "\" data-modification-name=\"" + this.name + "\">\n    " + name + "\n</div>";
+    }
+    if (this.formula.length < 13) {
+      formula = this.formula;
+      formulaEntry = "<div class=\"modification-rule-entry-formula col s3\">\n    " + formula + "\n</div>";
+    } else {
+      formula = this.formula.slice(0, 10) + '...';
+      formulaEntry = "<div class=\"modification-rule-entry-formula col s3 tooltipped\" data-tooltip=\"" + this.formula + "\">\n    " + formula + "\n</div>";
+    }
+    entry = $("<div class=\"modification-rule-entry row\" data-key=\"" + (this.serialize()) + "\">\n    " + nameEntry + "\n    <div class=\"modification-rule-entry-target col s2\">\n        " + (this.target.serialize()) + "\n    </div>\n    " + formulaEntry + "\n    <div class=\"modification-rule-entry-mass col s3\">\n        " + this.mass + "\n    </div>\n</div>");
+    return container.append(entry);
+  };
+
+  ModificationSpecification.prototype.serialize = function() {
+    return this.name + " (" + (this.target.serialize()) + ")";
+  };
+
+  return ModificationSpecification;
+
+})();
+
+ModificationIndex = (function() {
+  function ModificationIndex(rules) {
+    if (rules == null) {
+      rules = {};
+    }
+    this.rules = rules;
+    this.index = {};
+  }
+
+  ModificationIndex.prototype.addRule = function(rule) {
+    return this.rules[rule.serialize()] = rule;
+  };
+
+  ModificationIndex.prototype.removeRule = function(rule) {
+    return delete this.rules[rule.serialize()];
+  };
+
+  ModificationIndex.prototype.getRule = function(spec) {
+    return this.rules[spec];
+  };
+
+  ModificationIndex.prototype.updateRuleFromSpecString = function(specString) {
+    var name, ref, target;
+    ref = parseModificationRuleSpecification(specString), name = ref[0], target = ref[1];
+    if (this.rules[name] != null) {
+      return this.rules[name].addTarget(target);
+    } else {
+      throw new Error(name + " does not exist");
+    }
+  };
+
+  ModificationIndex.prototype.updateFromAPI = function(callback) {
+    return $.get("/api/modifications").done((function(_this) {
+      return function(collection) {
+        var definitions, entry, i, j, k, key, l, len, len1, len2, m, modSpec, name, ref, ref1, spec, specificities, target, tempIndex, values;
+        definitions = collection["definitions"];
+        specificities = collection["specificities"];
+        i = 0;
+        tempIndex = {};
+        for (k = 0, len = definitions.length; k < len; k++) {
+          values = definitions[k];
+          i += 1;
+          entry = new ModificationRule(values[0], values[1], values[2]);
+          tempIndex[entry.name] = entry;
+        }
+        j = 0;
+        for (l = 0, len1 = specificities.length; l < len1; l++) {
+          spec = specificities[l];
+          j += 1;
+          ref = parseModificationRuleSpecification(spec), name = ref[0], target = ref[1];
+          entry = tempIndex[name];
+          entry.addTarget(target);
+          j = 0;
+        }
+        for (key in tempIndex) {
+          entry = tempIndex[key];
+          ref1 = entry.toSpecifications();
+          for (m = 0, len2 = ref1.length; m < len2; m++) {
+            modSpec = ref1[m];
+            _this.addRule(modSpec);
+          }
+        }
+        console.log("Update From API Done");
+        _this.index = tempIndex;
+        if (callback != null) {
+          return callback(_this);
+        }
+      };
+    })(this));
+  };
+
+  return ModificationIndex;
+
+})();
+
+ModificationRuleListing = (function(superClass) {
+  extend(ModificationRuleListing, superClass);
+
+  function ModificationRuleListing(container1, rules) {
+    this.container = container1;
+    if (rules == null) {
+      rules = {};
+    }
+    ModificationRuleListing.__super__.constructor.call(this, rules);
+  }
+
+  ModificationRuleListing.prototype.find = function(selector) {
+    return this.container.find(selector);
+  };
+
+  ModificationRuleListing.prototype.render = function() {
+    var k, key, keys, len, rule;
+    this.container.empty();
+    keys = Object.keys(this.rules);
+    keys.sort(function(a, b) {
+      a = a.toLowerCase();
+      b = b.toLowerCase();
+      if (a > b) {
+        return 1;
+      } else if (a < b) {
+        return -1;
+      }
+      return 0;
+    });
+    for (k = 0, len = keys.length; k < len; k++) {
+      key = keys[k];
+      rule = this.rules[key];
+      if (rule.hidden) {
+        continue;
+      }
+      rule.render(this.container);
+    }
+    return materialTooltip();
+  };
+
+  return ModificationRuleListing;
+
+})(ModificationIndex);
+
+ModificationSelectionEditor = (function() {
+  function ModificationSelectionEditor(container1) {
+    this.container = container1;
+    this.getSelectedModifications = bind(this.getSelectedModifications, this);
+    this.fullListingContainer = this.container.find(".modification-listing");
+    this.constantListingContainer = this.container.find(".constant-modification-choices");
+    this.variableListingContainer = this.container.find(".variable-modification-choices");
+    this.fullListing = new ModificationRuleListing(this.fullListingContainer);
+    this.constantListing = new ModificationRuleListing(this.constantListingContainer);
+    this.variableListing = new ModificationRuleListing(this.variableListingContainer);
+    this.state = 'select';
+    this.setState(this.state);
+  }
+
+  ModificationSelectionEditor.prototype.initialize = function(callback) {
+    return this.fullListing.updateFromAPI((function(_this) {
+      return function(content) {
+        console.log("Finished Update From API");
+        _this.fullListing.render();
+        _this.setupHandlers();
+        if (callback != null) {
+          return callback(_this);
+        }
+      };
+    })(this));
+  };
+
+  ModificationSelectionEditor.prototype.getSelectedModifications = function(listing, sourceListing) {
+    var chosen, k, key, len, row, rule, specs;
+    if (sourceListing == null) {
+      sourceListing = this.fullListing;
+    }
+    chosen = listing.find(".selected");
+    specs = [];
+    for (k = 0, len = chosen.length; k < len; k++) {
+      row = chosen[k];
+      row = $(row);
+      key = row.data("key");
+      rule = sourceListing.getRule(key);
+      specs.push(rule);
+    }
+    return specs;
+  };
+
+  ModificationSelectionEditor.prototype._getChosenModificationSpecs = function(listing) {
+    var chosen, k, key, len, row, specs;
+    chosen = listing.find(".modification-rule-entry");
+    specs = [];
+    for (k = 0, len = chosen.length; k < len; k++) {
+      row = chosen[k];
+      row = $(row);
+      key = row.data("key");
+      specs.push(key);
+    }
+    return specs;
+  };
+
+  ModificationSelectionEditor.prototype.getConstantModificationSpecs = function() {
+    return this._getChosenModificationSpecs(this.constantListing);
+  };
+
+  ModificationSelectionEditor.prototype.getVariableModificationSpecs = function() {
+    return this._getChosenModificationSpecs(this.variableListing);
+  };
+
+  ModificationSelectionEditor.prototype._chooseModification = function(modSpec, listing) {
+    var rule;
+    rule = this.fullListing.getRule(modSpec);
+    this.fullListing.removeRule(rule);
+    listing.addRule(rule);
+    this.fullListing.render();
+    return listing.render();
+  };
+
+  ModificationSelectionEditor.prototype.chooseConstant = function(modSpec) {
+    return this._chooseModification(modSpec, this.constantListing);
+  };
+
+  ModificationSelectionEditor.prototype.chooseVariable = function(modSpec) {
+    return this._chooseModification(modSpec, this.variableListing);
+  };
+
+  ModificationSelectionEditor.prototype.transferModificationsToChosenSet = function(chosenListing) {
+    var k, len, ruleSpec, rules;
+    rules = this.getSelectedModifications(this.fullListingContainer);
+    for (k = 0, len = rules.length; k < len; k++) {
+      ruleSpec = rules[k];
+      this.fullListing.removeRule(ruleSpec);
+      chosenListing.addRule(ruleSpec);
+    }
+    chosenListing.render();
+    return this.fullListing.render();
+  };
+
+  ModificationSelectionEditor.prototype.removeRuleFromChosenSet = function(chosenListing) {
+    var k, len, ruleSpec, rules;
+    rules = this.getSelectedModifications(chosenListing, chosenListing);
+    for (k = 0, len = rules.length; k < len; k++) {
+      ruleSpec = rules[k];
+      chosenListing.removeRule(ruleSpec);
+      this.fullListing.addRule(ruleSpec);
+    }
+    this.fullListing.render();
+    return chosenListing.render();
+  };
+
+  ModificationSelectionEditor.prototype.setupHandlers = function() {
+    var self;
+    this.container.on("click", ".modification-rule-entry", function(event) {
+      var handle, isSelected;
+      handle = $(this);
+      isSelected = handle.data("selected");
+      if (isSelected == null) {
+        isSelected = false;
+      }
+      handle.data("selected", !isSelected);
+      if (handle.data("selected")) {
+        return handle.addClass("selected");
+      } else {
+        return handle.removeClass("selected");
+      }
+    });
+    self = this;
+    this.container.find(".add-constant-btn").click((function(_this) {
+      return function(event) {
+        return _this.transferModificationsToChosenSet(_this.constantListing);
+      };
+    })(this));
+    this.container.find(".add-variable-btn").click((function(_this) {
+      return function(event) {
+        return _this.transferModificationsToChosenSet(_this.variableListing);
+      };
+    })(this));
+    this.container.find(".remove-selected-btn").click((function(_this) {
+      return function(event) {
+        _this.removeRuleFromChosenSet(_this.constantListing);
+        return _this.removeRuleFromChosenSet(_this.variableListing);
+      };
+    })(this));
+    this.container.find(".create-custom-btn").click((function(_this) {
+      return function(event) {
+        return _this.setState("create");
+      };
+    })(this));
+    this.container.find(".cancel-creation-btn").click((function(_this) {
+      return function(event) {
+        return _this.setState("select");
+      };
+    })(this));
+    this.container.find(".submit-creation-btn").click((function(_this) {
+      return function(event) {
+        return _this.createModification();
+      };
+    })(this));
+    return this.container.find("#modification-listing-search").keyup(function(event) {
+      return self.filterSelectionList(this.value);
+    });
+  };
+
+  ModificationSelectionEditor.prototype.createModification = function() {
+    var formData, formula, name, target;
+    name = this.container.find("#new-modification-name").val();
+    formula = this.container.find("#new-modification-formula").val();
+    target = this.container.find("#new-modification-target").val();
+    formData = {
+      "new-modification-name": name,
+      "new-modification-formula": formula,
+      "new-modification-target": target
+    };
+    console.log("Submitting", formData);
+    return $.post("/glycopeptide_search_space/modification_menu", formData).done((function(_this) {
+      return function(payload) {
+        var k, l, len, len1, modRule, modSpec, ref, ref1, spec;
+        _this.container.find("#new-modification-name").val("");
+        _this.container.find("#new-modification-formula").val("");
+        _this.container.find("#new-modification-target").val("");
+        modRule = new ModificationRule(payload.name, payload.formula, payload.mass);
+        ref = payload.specificities;
+        for (k = 0, len = ref.length; k < len; k++) {
+          spec = ref[k];
+          modRule.addTarget(spec);
+        }
+        ref1 = modRule.toSpecifications();
+        for (l = 0, len1 = ref1.length; l < len1; l++) {
+          modSpec = ref1[l];
+          _this.fullListing.addRule(modSpec);
+        }
+        _this.fullListing.render();
+        return _this.setState("select");
+      };
+    })(this)).fail((function(_this) {
+      return function(err) {
+        return console.log(err);
+      };
+    })(this));
+  };
+
+  ModificationSelectionEditor.prototype.filterSelectionList = function(pattern) {
+    var err, key, ref, results, rule;
+    try {
+      pattern = new RegExp(pattern);
+      ref = this.fullListing.rules;
+      results = [];
+      for (key in ref) {
+        rule = ref[key];
+        if (pattern.test(key)) {
+          results.push(rule.hidden = false);
+        } else {
+          results.push(rule.hidden = true);
+        }
+      }
+      return results;
+    } catch (_error) {
+      err = _error;
+      return console.log(err);
+    } finally {
+      this.fullListing.render();
+    }
+  };
+
+  ModificationSelectionEditor.prototype.setState = function(state) {
+    if (state === 'select') {
+      this.container.find(".modification-listing-container").show();
+      this.container.find(".modification-creation-container").hide();
+      this.container.find(".modification-editor-disabled").hide();
+    } else if (state === 'create') {
+      this.container.find(".modification-listing-container").hide();
+      this.container.find(".modification-creation-container").show();
+      this.container.find(".modification-editor-disabled").hide();
+    } else if (state === "disabled") {
+      this.container.find(".modification-listing-container").hide();
+      this.container.find(".modification-creation-container").hide();
+      this.container.find(".modification-editor-disabled").show();
+    }
+    return this.state = state;
+  };
+
+  return ModificationSelectionEditor;
+
+})();
+
+makeModificationSelectionEditor = function(uid, callback) {
+  var handle, inst, template;
+  template = "<div class='modification-selection-editor' id='modification-selection-editor-" + uid + "'>\n    <div class='modification-listing-container'>\n        <div class='row'>\n            <h5>Select Modifications</h5>\n        </div>\n        <div class='row'>\n            <div class='col s6'>\n                <div class='modification-listing-header row'>\n                    <div class='col s4'>Name</div>\n                    <div class='col s2'>Target</div>\n                    <div class='col s3'>Formula</div>\n                    <div class='col s3'>Mass</div>\n                </div>\n                <div class='modification-listing'>\n                </div>\n                <input id='modification-listing-search' type=\"text\" name=\"modification-listing-search\"\n                       placeholder=\"Search by name\"/>\n            </div>\n            <div class='col s2'>\n                <div class='modification-choice-controls'>\n                    <a class='btn add-constant-btn tooltipped'\n                       data-tooltip=\"Add Selected Modification Rules to Constant List\">\n                       + Constant</a><br>\n                    <a class='btn add-variable-btn tooltipped'\n                       data-tooltip=\"Add Selected Modification Rules to Variable List\">\n                       + Variable</a><br>\n                    <a class='btn remove-selected-btn tooltipped'\n                       data-tooltip=\"Remove Selected Rules From Constant and/or Variable List\">\n                       - Selection</a><br>\n                    <a class='btn create-custom-btn tooltipped' data-tooltip=\"Create New Modification Rule\">\n                        Create Custom</a><br>\n                </div>\n            </div>\n            <div class='modification-choices-container col s4'>\n                <div class='modification-choices'>\n                    <div class='choice-list-header'>\n                        Constant\n                    </div>\n                    <div class='constant-modification-choices'>\n                        \n                    </div>\n                    <div class='choice-list-header' style='border-top: 1px solid lightgrey'>\n                        Variable\n                    </div>\n                    <div class='variable-modification-choices'>\n                        \n                    </div>\n                </div>\n            </div>\n        </div>\n    </div>\n    <div class='modification-creation-container'>\n        <div class='row'>\n            <h5>Create Modification</h5>\n        </div>\n        <div class='modification-creation row'>\n            <div class='col s3 input-field'>\n                <label for='new-modification-name'>New Modification Name</label>\n                <input id='new-modification-name' name=\"new-modification-name\"\n                       type=\"text\" class=\"validate\">\n            </div>\n            <div class='col s3 input-field'>\n                <label for='new-modification-formula'>New Modification Formula</label>\n                <input id='new-modification-formula' name=\"new-modification-formula\"\n                       type=\"text\" class=\"validate\" pattern=\"^[A-Za-z0-9\-\(\)]+$\">\n            </div>\n            <div class='col s3 input-field'>\n                <label for='new-modification-target'>New Modification Target</label>\n                <input id='new-modification-target' name=\"new-modification-target\"\n                       type=\"text\" class=\"validate\" pattern=\"([A-Z]*)(?: @ ([NC]-term))?\">\n            </div>\n        </div>\n        <div class='modification-choice-controls row'>\n            <a class='btn submit-creation-btn'>Create</a><br>\n            <a class='btn cancel-creation-btn'>Cancel</a><br>\n        </div>\n    </div>\n    <div class='modification-editor-disabled'>\n        Modification Specification Not Permitted\n    </div>\n</div>";
+  handle = $(template);
+  handle.find("#modification-selection-editor-" + uid);
+  inst = new ModificationSelectionEditor(handle);
+  inst.initialize(callback);
+  return inst;
+};
+
+//# sourceMappingURL=peptide-modification-ui.js.map
+
 var makePresetSelector, samplePreprocessingPresets, setSamplePreprocessingConfiguration;
 
 samplePreprocessingPresets = [
@@ -1188,48 +1716,57 @@ Application.initializers.push(function() {
 
 //# sourceMappingURL=sample-tree-layout.js.map
 
-var composeSampleAnalysisTree;
-
-composeSampleAnalysisTree = function(bundle) {
-  var analyses, analysis, analysisList, entry, id, name, sampleMap, sampleName, samples, trees;
-  samples = bundle.samples;
-  analyses = bundle.analyses;
-  sampleMap = {};
-  for (name in samples) {
-    sampleMap[name] = [];
-  }
-  for (id in analyses) {
-    analysis = analyses[id];
-    sampleName = analysis.sample_name;
-    if (sampleMap[sampleName] == null) {
-      sampleMap[sampleName] = [];
+(function() {
+  var TreeViewStateCode, composeSampleAnalysisTree, findProjectEntry, toggleProjectTreeOpenCloseState;
+  TreeViewStateCode = {
+    open: "open",
+    closed: "closed"
+  };
+  composeSampleAnalysisTree = function(bundle) {
+    var analyses, analysis, analysisList, entry, id, name, sampleMap, sampleName, samples, trees;
+    samples = bundle.samples;
+    analyses = bundle.analyses;
+    sampleMap = {};
+    for (name in samples) {
+      sampleMap[name] = [];
     }
-    sampleMap[sampleName].push(analysis);
-  }
-  trees = [];
-  for (name in sampleMap) {
-    analysisList = sampleMap[name];
-    entry = {
-      "sample": samples[name],
-      "analyses": _.sortBy(analysisList, "name")
-    };
-    trees.push(entry);
-  }
-  _.sortBy(trees, function(obj) {
-    return obj.sample.name;
-  });
-  return trees;
-};
-
-Application.prototype.renderSampleTree = function(container) {
-  var analyses, analysis, analysisChunk, analysisChunks, cleanNamePattern, entry, expander, i, j, len, len1, prefix, rendered, sample, suffix, tree, trees;
-  container = $(container);
-  container.empty();
-  trees = composeSampleAnalysisTree(this);
-  rendered = [];
-  cleanNamePattern = /_/g;
-  for (i = 0, len = trees.length; i < len; i++) {
-    tree = trees[i];
+    for (id in analyses) {
+      analysis = analyses[id];
+      sampleName = analysis.sample_name;
+      if (sampleMap[sampleName] == null) {
+        sampleMap[sampleName] = [];
+      }
+      sampleMap[sampleName].push(analysis);
+    }
+    trees = [];
+    for (name in sampleMap) {
+      analysisList = sampleMap[name];
+      entry = {
+        "sample": samples[name],
+        "analyses": _.sortBy(analysisList, "name")
+      };
+      trees.push(entry);
+    }
+    _.sortBy(trees, function(obj) {
+      return obj.sample.name;
+    });
+    return trees;
+  };
+  findProjectEntry = function(element) {
+    var i, isMatch, parent;
+    parent = element.parent();
+    isMatch = parent.hasClass("project-entry");
+    i = 0;
+    while (!isMatch && i < 100) {
+      i++;
+      parent = parent.parent();
+      isMatch = parent.hasClass("project-entry") || parent.prop("tagName") === "BODY";
+    }
+    return parent;
+  };
+  Application.prototype._makeSampleTree = function(tree) {
+    var analyses, analysis, analysisChunk, analysisChunks, cleanNamePattern, entry, expander, j, len, prefix, sample, suffix;
+    cleanNamePattern = /_/g;
     sample = tree.sample;
     analyses = tree.analyses;
     analysisChunks = [];
@@ -1239,30 +1776,110 @@ Application.prototype.renderSampleTree = function(container) {
       expander = "";
     }
     prefix = "<div class='project-entry'>\n    <div class=\"project-item\" data-uuid='" + sample.uuid + "'>\n        <span class='project-sample-name'>\n            " + expander + "\n            " + (sample.name.replace(cleanNamePattern, " ")) + "\n        </span>\n        <div class=\"analysis-entry-list\">";
-    for (j = 0, len1 = analyses.length; j < len1; j++) {
+    for (j = 0, len = analyses.length; j < len; j++) {
       analysis = analyses[j];
       analysisChunk = "<div class='analysis-entry-item' data-uuid='" + analysis.uuid + "'>\n    <span class='project-analysis-name'>\n        " + (analysis.name.replace(" at " + sample.name, "").replace(cleanNamePattern, " ")) + "\n    </span>\n</div>";
       analysisChunks.push(analysisChunk);
     }
     suffix = "        </div>\n    </div>\n</div>";
     entry = [prefix, analysisChunks.join("\n"), suffix].join("\n");
-    rendered.push(entry);
-  }
-  return container.append(rendered);
-};
-
-Application.initializers.push(function() {
-  this.on("render-samples", (function(_this) {
-    return function() {
-      return _this.renderSampleTree(".projects-entry-list");
-    };
-  })(this));
-  return this.on("render-analyses", (function(_this) {
-    return function() {
-      return _this.renderSampleTree(".projects-entry-list");
-    };
-  })(this));
-});
+    return $(entry);
+  };
+  Application.prototype.renderSampleTree = function(container) {
+    var dataTag, element, entry, j, k, l, len, len1, len2, openClosed, pastState, ref, rendered, stateValue, tree, trees, uuid;
+    container = $(container);
+    pastState = {};
+    ref = container.find(".project-entry");
+    for (j = 0, len = ref.length; j < len; j++) {
+      element = ref[j];
+      element = $(element);
+      dataTag = element.find(".project-item");
+      uuid = dataTag.data("uuid");
+      stateValue = dataTag.data("state");
+      pastState[uuid] = stateValue != null ? stateValue : TreeViewStateCode.closed;
+    }
+    container.empty();
+    trees = composeSampleAnalysisTree(this);
+    rendered = [];
+    for (k = 0, len1 = trees.length; k < len1; k++) {
+      tree = trees[k];
+      entry = this._makeSampleTree(tree);
+      rendered.push(entry);
+    }
+    container.append(rendered);
+    for (l = 0, len2 = rendered.length; l < len2; l++) {
+      entry = rendered[l];
+      dataTag = entry.find(".project-item");
+      uuid = dataTag.data("uuid");
+      openClosed = pastState[uuid];
+      if (openClosed === "closed") {
+        toggleProjectTreeOpenCloseState(entry, openClosed);
+      }
+    }
+    return pastState;
+  };
+  toggleProjectTreeOpenCloseState = function(projectTree, state) {
+    var dataTag, handleList;
+    if (state == null) {
+      state = void 0;
+    }
+    handleList = projectTree.find(".analysis-entry-list");
+    dataTag = projectTree.find(".project-item");
+    if (state == null) {
+      if (handleList.is(":visible")) {
+        state = TreeViewStateCode.closed;
+      } else {
+        state = TreeViewStateCode.open;
+      }
+    }
+    if (state === TreeViewStateCode.open) {
+      handleList.show();
+      projectTree.find(".expanded-display-control .material-icons").text("check_box_outline_blank");
+      return dataTag.data("state", TreeViewStateCode.open);
+    } else {
+      handleList.hide();
+      projectTree.find(".expanded-display-control .material-icons").text("add_box");
+      return dataTag.data("state", TreeViewStateCode.closed);
+    }
+  };
+  $(function() {
+    $("body").on("click", ".projects-entry-list .analysis-entry-item", function(event) {
+      var handle, id, target;
+      target = this;
+      GlycReSoft.invalidate();
+      handle = $(target);
+      id = handle.data('uuid');
+      if (GlycReSoft.getShowingLayer().name !== ActionLayerManager.HOME_LAYER) {
+        GlycReSoft.removeCurrentLayer();
+      }
+      GlycReSoft.addLayer(ActionBook.viewAnalysis, {
+        analysis_id: id
+      });
+      console.log(GlycReSoft.layers);
+      console.log(GlycReSoft.lastAdded);
+      GlycReSoft.context["analysis_id"] = id;
+      return GlycReSoft.setShowingLayer(GlycReSoft.lastAdded);
+    });
+    return $("body").on("click", ".project-entry .expanded-display-control", function(event) {
+      var parent, target;
+      target = $(event.currentTarget);
+      parent = findProjectEntry(target);
+      return toggleProjectTreeOpenCloseState(parent);
+    });
+  });
+  return Application.initializers.push(function() {
+    this.on("render-samples", (function(_this) {
+      return function() {
+        return _this.renderSampleTree(".projects-entry-list");
+      };
+    })(this));
+    return this.on("render-analyses", (function(_this) {
+      return function() {
+        return _this.renderSampleTree(".projects-entry-list");
+      };
+    })(this));
+  });
+})();
 
 //# sourceMappingURL=sample-tree-ui.js.map
 

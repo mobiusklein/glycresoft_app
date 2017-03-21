@@ -17,6 +17,11 @@ module.exports = (grunt) ->
                 expand: true
                 src: "static/fonts/roboto/*"
                 dest: "static/dist/fonts/roboto/"
+            iconsMaterialDesign:
+                flatten: true
+                expand: true
+                src: "static/fonts/icons/*"
+                dest: "static/dist/fonts/icons/"
             fontInconsolata:
                 flatten: true
                 expand: true

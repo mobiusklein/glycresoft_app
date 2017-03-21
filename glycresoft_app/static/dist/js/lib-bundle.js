@@ -836,14 +836,11 @@ When these elements are added dynamically, they must be configured manually.
 
 This code is taken from https://github.com/Dogfalo/materialize/blob/master/js/forms.js#L156
  */
-var clearTooltip, materialCheckbox, materialFileInput, materialRefresh;
+var clearTooltip, materialCheckbox, materialFileInput, materialRefresh, materialTooltip;
 
 materialRefresh = function() {
   try {
-    $('.material-tooltip').remove();
-    $('.tooltipped').tooltip({
-      delay: 50
-    });
+    materialTooltip();
   } catch (_error) {}
   try {
     $('select').material_select();
@@ -857,6 +854,13 @@ materialRefresh = function() {
   try {
     clearTooltip();
   } catch (_error) {}
+};
+
+materialTooltip = function() {
+  $('.material-tooltip').remove();
+  return $('.tooltipped').tooltip({
+    delay: 50
+  });
 };
 
 materialFileInput = function() {

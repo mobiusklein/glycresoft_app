@@ -11,38 +11,27 @@
             </div>
         </div>
         <div class='row'>
-            <div class='col s8'>
+            <div class='col s6'>
                 <div class="file-field input-field">
                     <h6>Protein List</h6>
                     <div class="btn">
-                        <span>Select File...</span>
+                        <span>Select File</span>
                         <input name='protein-list-file' id='protein-list-file' type="file"/>
                     </div>
-                    <input class="file-path validate" type="text" style="width: 60%;padding-left:5px;"/>
+                    <input class="file-path validate" type="text" style="width:70%;padding-left:5px;"/>
                     <input type='hidden' name='proteomics-file-type' id="proteomics-file-type" />
                 </div>
             </div>
-            <small class='col s4' id='protein-list-file-help'>
+            <span class='col s5' id='protein-list-file-help'>
             A list of protein sequences to digest and glycosylate <em>in-silico</em>, provided in Fasta format or mzIdentML. 
-            </small>
+            </span>
         </div>
         <div id='mzid-protein-list-container'>
         </div>
+        <div id='modification-selection-editor-container' class="row">
+            {# {% include 'components/modification_selection_editor.templ' %} #}
+        </div>
         <div class='row'>
-            <div class='col s4' id='constant-modifications-container'>
-                <h6>Constant Modifications</h6>
-            {% with select_name='constant_modifications' %}
-                {% include 'components/modification_selection.templ' %}        
-            {% endwith %}
-            </div>
-            <div class='col s4' id='variable-modifications-container'>
-                <h6>Variable Modifications</h6>
-            {% with select_name='variable_modifications' %}
-                {% include 'components/modification_selection.templ' %}     
-            {% endwith %}
-                <br>
-                <span class='message'></span>
-            </div>
             <div class='col s4' id='enzyme-container'>
                 <h6>Enzymatic Digest</h6>
             {% with select_name='enzyme' %}
@@ -91,20 +80,7 @@
                             <option value="Hypothesis,{{hypothesis.uuid}}">{{hypothesis.name}}</option>
                         {% endfor %}
                         </optgroup>
-{#                         <optgroup label="Glycan Analyses">
-                        {% for result in manager.glycan_analyses(user) %}
-                            <option value="Analysis,{{result.uuid}}">{{result.name}}</option>
-                        {% endfor %} #}
-                        </optgroup>
                     </select>
-                </div>
-                <div id='glycan-import-score-filter-container' class='input-field'>
-                    <input type='number' name='glycan-import-score-filter' class='numeric-entry'
-                           id='glycan-import-score-filter' min='0' max='1' value='0.3'
-                           step='0.05'/>
-                    <label for='glycan-import-score-filter'>
-                        Minimum Glycomics Score Threshold
-                    </label>
                 </div>
             </div>
         </div>
@@ -146,7 +122,14 @@ $("#protein-list-file").on("change", function(event){
     }
 })
 
-$('.tooltipped').tooltip({delay: 50});
+
+modificationSelectionEditor = makeModificationSelectionEditor(0, function(editor){
+    editor.chooseConstant("Carbamidomethyl (C)")
+})
+
+$("#modification-selection-editor-container").append(modificationSelectionEditor.container)
+
+materialTooltip()
 
 mzIdentMLHandle = undefined;
 
@@ -182,17 +165,9 @@ function updateFormatOptions(format, file){
     }
 }
 
-function selectModificationOption(select, value){
-    for(var i=0; i<select.options.length; i++){
-        if(select.options[i].value === value){
-            return select.options[i]
-        }
-    }
-}
-
-selectModificationOption(
-    $("#constant-modifications-container").find("select")[0],
-    "Carbamidomethyl (C)").selected = true
+// selectModificationOption(
+//     $("#constant-modifications-container").find("select")[0],
+//     "Carbamidomethyl (C)").selected = true
 
 ajaxForm($("form#glycopeptide-hypothesis-form"), function(){
     var currentAction = GlycReSoft.getShowingLayer()
@@ -208,6 +183,11 @@ ajaxForm($("form#glycopeptide-hypothesis-form"), function(){
             proteinChoices = mzIdentMLHandle.getAllProteins()
         }
         formData.append("protein_names", proteinChoices)
+    }
+    if(modificationSelectionEditor !== undefined){
+        formData.append("constant_modifications", modificationSelectionEditor.getConstantModificationSpecs())
+        formData.append("variable_modifications", modificationSelectionEditor.getVariableModificationSpecs())
+        console.log(modificationSelectionEditor)
     }
     return formData
 }, function(ev){

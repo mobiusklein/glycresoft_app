@@ -25,6 +25,10 @@ from glycan_profiling.plotting.summaries import (
     GlycanChromatographySummaryGraphBuilder, SmoothingChromatogramArtist,
     figax)
 
+
+from glycan_profiling.plotting.chromatogram_artist import ChargeSeparatingSmoothingChromatogramArtist
+
+
 from glycan_profiling.output import (
     GlycanLCMSAnalysisCSVSerializer, ImportableGlycanHypothesisCSVSerializer)
 
@@ -233,18 +237,26 @@ def details_for(analysis_uuid, chromatogram_id):
             for adduct in adducts:
                 with_adduct, rest = rest.bisect_adduct(adduct)
                 labels[adduct] = with_adduct
-                adduct_plot = SmoothingChromatogramArtist(
-                    labels.values(),
-                    colorizer=lambda *a, **k: 'green', ax=figax()).draw(
-                    label_function=lambda *a, **k: tuple(a[0].adducts)[0].name,
-                    legend=False).ax
-                adduct_plot.set_title(
-                    "Adduct-Separated\nExtracted Ion Chromatogram", fontsize=24)
-                adduct_separation = report.svg_plot(adduct_plot, bbox_inches='tight', height=5, width=9)
+            adduct_plot = SmoothingChromatogramArtist(
+                labels.values(),
+                colorizer=lambda *a, **k: 'green', ax=figax()).draw(
+                label_function=lambda *a, **k: tuple(a[0].adducts)[0].name,
+                legend=False).ax
+            adduct_plot.set_title(
+                "Adduct-Separated\nExtracted Ion Chromatogram", fontsize=24)
+            adduct_separation = report.svg_plot(adduct_plot, bbox_inches='tight', height=5, width=9)
+
+        charge_separation = ""
+        if len(chroma.charge_states) > 1:
+            charge_separating_plot = ChargeSeparatingSmoothingChromatogramArtist(
+                [chroma], ax=figax()).draw().ax
+            charge_separating_plot.set_title("Charge-Separated\nExtracted Ion Chromatogram", fontsize=24)
+            charge_separation = report.svg_plot(charge_separating_plot, bbox_inches='tight', height=5, width=9)
 
         return render_template(
             "/view_glycan_search/detail_modal.templ", chromatogram=chroma,
-            chromatogram_svg=chroma_svg, adduct_separation_svg=adduct_separation)
+            chromatogram_svg=chroma_svg, adduct_separation_svg=adduct_separation,
+            charge_chromatogram_svg=charge_separation)
 
 
 @app.route("/view_glycan_lcms_analysis/<analysis_uuid>/to-csv")
