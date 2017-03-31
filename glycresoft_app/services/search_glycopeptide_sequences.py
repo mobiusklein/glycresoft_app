@@ -40,6 +40,8 @@ def run_search_post():
 
     sample_records = list(map(g.manager.sample_manager.get, data.getlist("samples")))
 
+    minimum_oxonium_threshold = float(data.get("minimum-oxonium-threshold", 0.05))
+
     for sample_record in sample_records:
         sample_name = sample_record.name
         job_number = g.manager.get_next_job_number()
@@ -54,6 +56,7 @@ def run_search_post():
             storage_path, name_prefix, grouping_error_tolerance=grouping_tolerance,
             mass_error_tolerance=matching_tolerance,
             msn_mass_error_tolerance=ms2_matching_tolerance, psm_fdr_threshold=psm_fdr_threshold,
+            minimum_oxonium_threshold=minimum_oxonium_threshold,
             job_name_part=job_number)
         g.add_task(task)
     return Response("Tasks Scheduled")
