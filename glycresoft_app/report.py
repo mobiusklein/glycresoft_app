@@ -31,7 +31,7 @@ mpl_params.update({
 
 def png_plot(figure, **kwargs):
     data_buffer = render_plot(figure, format='png', **kwargs)
-    return b"<img src='data:image/png;base64,%s'>" % urllib.quote(data_buffer.getvalue().encode("base64"))
+    return "<img src='data:image/png;base64,%s'>" % urllib.quote(data_buffer.getvalue().encode("base64"))
 
 
 def svg_plot(figure, svg_width=None, xml_transform=None, **kwargs):

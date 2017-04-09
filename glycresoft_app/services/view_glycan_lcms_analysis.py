@@ -25,6 +25,7 @@ from glycan_profiling.plotting.summaries import (
     GlycanChromatographySummaryGraphBuilder, SmoothingChromatogramArtist,
     figax)
 
+from glycan_profiling.plotting import ArtistBase
 
 from glycan_profiling.plotting.chromatogram_artist import ChargeSeparatingSmoothingChromatogramArtist
 
@@ -60,11 +61,21 @@ class GlycanChromatographySnapShot(object):
         return True
 
     def _make_summary_graphics(self):
-        builder = GlycanChromatographySummaryGraphBuilder(
-            ChromatogramFilter(self.glycan_chromatograms + self.unidentified_chromatograms))
-        chrom, bar = builder.draw(self.score_threshold)
-        self.figure_axes['chromatograms_chart'] = chrom
-        self.figure_axes['abundance_bar_chart'] = bar
+        try:
+            builder = GlycanChromatographySummaryGraphBuilder(
+                ChromatogramFilter(self.glycan_chromatograms + self.unidentified_chromatograms))
+            chrom, bar = builder.draw(self.score_threshold)
+            self.figure_axes['chromatograms_chart'] = chrom
+            self.figure_axes['abundance_bar_chart'] = bar
+        except ValueError:
+            ax = figax()
+            ax.text(0.5, 0.5, "No Chromatograms Extracted", ha='center')
+            ax.set_axis_off()
+            self.figure_axes["chromatograms_chart"] = ArtistBase(ax)
+            ax = figax()
+            ax.text(0.5, 0.5, "No Entities Matched", ha='center')
+            ax.set_axis_off()
+            self.figure_axes['abundance_bar_chart'] = ArtistBase(ax)
 
     def abundance_bar_chart(self):
         try:

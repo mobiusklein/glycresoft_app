@@ -31,6 +31,11 @@
         {{chromatograms}}
     </div>
 </div>
-<div class='row'>
+<div id="chromatogram-table" class='row'>
 
 </div>
+<script type="text/javascript">
+    $.get("/view_sample/{{sample_run.uuid}}/chromatogram_table").then(function(content) {
+        $("#chromatogram-table").html(content)
+    })
+</script>

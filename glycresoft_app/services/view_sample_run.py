@@ -23,13 +23,14 @@ VIEW_CACHE = ViewCache()
 
 
 class SampleView(object):
-    def __init__(self, record):
+    def __init__(self, record, minimum_mass=1000):
         self.record = record
         self.reader = ProcessedMzMLDeserializer(record.path)
         self.scan_levels = {
             1: len(self.reader.extended_index.ms1_ids),
             "N": len(self.reader.extended_index.msn_ids)
         }
+        self.minimum_mass = minimum_mass
         self.abundance_threshold = None
         self.chromatograms = None
         self.total_ion_chromatogram = None
@@ -105,7 +106,7 @@ class SampleView(object):
             self._estimate_threshold()
         ex = ChromatogramExtractor(
             self.reader, minimum_intensity=self.abundance_threshold,
-            minimum_mass=1000)
+            minimum_mass=self.minimum_intensity)
         self.chromatograms = ex.run()
         self.total_ion_chromatogram = ex.total_ion_chromatogram
 
@@ -139,6 +140,14 @@ def view_sample(sample_run_uuid):
         sample_run=view.record,
         scan_levels=view.scan_levels,
         chromatograms=view.draw_chromatograms())
+
+
+@app.route("/view_sample/<sample_run_uuid>/chromatogram_table")
+def chromatogram_table(sample_run_uuid):
+    view = get_view(sample_run_uuid)
+    return render_template(
+        "view_sample_run/chromatogram_table.templ",
+        chromatogram_collection=view.chromatograms)
 
 
 def binsearch(array, value, tol=0.1):
@@ -177,7 +186,7 @@ def render_chromatograms(reader):
 
     threshold = np.percentile(acc, 90)
 
-    ex = ChromatogramExtractor(reader, minimum_intensity=threshold, minimum_mass=1000)
+    ex = ChromatogramExtractor(reader, minimum_intensity=threshold, minimum_mass=300)
     chroma = ex.run()
 
     window_width = 0.01
@@ -220,4 +229,4 @@ def render_chromatograms(reader):
 
     fig = a.ax.get_figure()
     fig.set_figwidth(10)
-    return svg_plot(ax, patchless=True, bbox_inches='tight')
+    return png_plot(ax, patchless=True, bbox_inches='tight')
