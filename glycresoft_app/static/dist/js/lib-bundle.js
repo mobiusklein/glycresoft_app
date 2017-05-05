@@ -253,6 +253,10 @@ ActionLayer = (function() {
     return this.controller = controller;
   };
 
+  ActionLayer.prototype.getController = function() {
+    return this.controller;
+  };
+
   ActionLayer.prototype.show = function() {
     this.container.fadeIn(100);
     return this.showing = true;

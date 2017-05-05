@@ -262,7 +262,7 @@ class ModificationSelectionEditor
             row = $ row
             key = row.data("key")
             specs.push key
-        return specs
+        return specs.join(";;;")
 
     getConstantModificationSpecs: ->
         @_getChosenModificationSpecs @constantListing

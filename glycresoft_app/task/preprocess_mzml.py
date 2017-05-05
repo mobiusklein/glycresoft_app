@@ -26,7 +26,7 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
                maximum_charge=None, name=None, msn_averagine=None, score_threshold=35.,
                msn_score_threshold=5., missed_peaks=1, n_processes=5, storage_path=None,
                extract_only_tandem_envelopes=False, ms1_background_reduction=5.,
-               channel=None):
+               msn_background_reduction=0, channel=None):
 
     minimum_charge = 1 if maximum_charge > 0 else -1
     charge_range = (minimum_charge, maximum_charge)
@@ -54,12 +54,12 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
     logger.info("Validating arguments")
     try:
         averagine = validate_averagine(averagine)
-    except:
+    except Exception:
         channel.abort("Could not validate MS1 Averagine %s" % averagine)
 
     try:
         msn_averagine = validate_averagine(msn_averagine)
-    except:
+    except Exception:
         channel.abort("Could not validate MSn Averagine %s" % msn_averagine)
 
     if is_profile:
@@ -77,6 +77,16 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
                     scale=ms1_background_reduction, window_length=2.),
             ]
         }
+
+    if msn_background_reduction > 0:
+        msn_peak_picking_args = {
+            "transforms": [
+                ms_peak_picker.scan_filter.FTICRBaselineRemoval(
+                    scale=msn_background_reduction, window_length=2.),
+            ]
+        }
+    else:
+        msn_peak_picking_args = None
 
     ms1_deconvolution_args = {
         "scorer": ms_deisotope.scoring.PenalizedMSDeconVFitter(score_threshold, 2.),
@@ -96,7 +106,7 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
         charge_range=charge_range,
         ms1_peak_picking_args=ms1_peak_picking_args,
         ms1_deconvolution_args=ms1_deconvolution_args,
-        msn_peak_picking_args=None,
+        msn_peak_picking_args=msn_peak_picking_args,
         msn_deconvolution_args=msn_deconvolution_args,
         storage_path=storage_path,
         sample_name=name,
@@ -124,7 +134,7 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
             sample_type=sample_type,
             user_id=channel.user.id)
         channel.send(Message(sample_run.to_json(), "new-sample-run"))
-    except:
+    except Exception:
         channel.send(Message.traceback())
         channel.abort("An error occurred during preprocessing.")
 
@@ -132,11 +142,11 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
 class PreprocessMSTask(Task):
     def __init__(self, mzml_file, database_connection, averagine, start_time, end_time, maximum_charge,
                  name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, n_processes,
-                 storage_path, extract_only_tandem_envelopes, ms1_background_reduction, callback,
-                 **kwargs):
+                 storage_path, extract_only_tandem_envelopes, ms1_background_reduction, msn_background_reduction,
+                 callback, **kwargs):
         args = (mzml_file, database_connection, averagine, start_time, end_time, maximum_charge,
                 name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, n_processes,
-                storage_path, extract_only_tandem_envelopes, ms1_background_reduction)
+                storage_path, extract_only_tandem_envelopes, ms1_background_reduction, msn_background_reduction)
         job_name = "Preprocess MS %s" % (name,)
         kwargs.setdefault('name', job_name)
         Task.__init__(self, preprocess, args, callback, **kwargs)

@@ -45,16 +45,11 @@ class ApplicationManager(object):
         self.database_connection = DatabaseBoundOperation(
             database_connection)
 
-        self.sample_dir = path.join(
-            base_path, 'sample_dir')
-        self.results_dir = path.join(
-            base_path, 'results_dir')
-        self.hypothesis_dir = path.join(
-            base_path, "hypothesis_dir")
-        self.temp_dir = path.join(
-            base_path, 'temp_dir')
-        self.task_dir = path.join(
-            base_path, 'task_dir')
+        self.sample_dir = path.join(self.base_path, 'sample_dir')
+        self.results_dir = path.join(self.base_path, 'results_dir')
+        self.hypothesis_dir = path.join(self.base_path, "hypothesis_dir")
+        self.temp_dir = path.join(self.base_path, 'temp_dir')
+        self.task_dir = path.join(self.base_path, 'task_dir')
 
         self._ensure_paths_exist()
 
@@ -133,6 +128,10 @@ class ApplicationManager(object):
             self.base_path, "glycresoft-log")
 
     @property
+    def escaped_base_path(self):
+        return self.base_path.encode("unicode_escape")
+
+    @property
     def configuration_path(self):
         return os.path.join(
             self.base_path, self._config_file_name)
@@ -177,23 +176,23 @@ class ApplicationManager(object):
     def _ensure_paths_exist(self):
         try:
             os.makedirs(self.sample_dir)
-        except:
+        except Exception:
             pass
         try:
             os.makedirs(self.results_dir)
-        except:
+        except Exception:
             pass
         try:
             os.makedirs(self.temp_dir)
-        except:
+        except Exception:
             pass
         try:
             os.makedirs(self.task_dir)
-        except:
+        except Exception:
             pass
         try:
             os.makedirs(self.hypothesis_dir)
-        except:
+        except Exception:
             pass
 
     def get_sample_path(self, name):

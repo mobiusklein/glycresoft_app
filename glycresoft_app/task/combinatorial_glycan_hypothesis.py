@@ -43,8 +43,9 @@ def build_combinatorial_hypothesis(rule_file, database_connection, reduction, de
                 break
         else:
             channel.send(Message("Something went wrong (%r)" % (list(record),)))
-    except:
+    except Exception:
         channel.send(Message.traceback())
+        raise
 
 
 class BuildCombinatorialGlycanHypothesis(Task):

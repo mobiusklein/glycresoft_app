@@ -99,6 +99,8 @@ def post_add_sample():
 
     ms1_background_reduction = float(request.values.get(
         'ms1-background-reduction', 5.))
+    msn_background_reduction = float(request.values.get(
+        'msn-background-reduction', 0.))
 
     n_workers = g.manager.configuration.get("preprocessor_worker_count", 6)
     if cpu_count() < n_workers:
@@ -111,6 +113,7 @@ def post_add_sample():
         msn_score_threshold, missed_peaks, n_processes=n_workers,
         storage_path=storage_path, extract_only_tandem_envelopes=extract_only_tandem_envelopes,
         ms1_background_reduction=ms1_background_reduction,
+        msn_background_reduction=msn_background_reduction,
         callback=lambda: 0)
 
     g.add_task(task)

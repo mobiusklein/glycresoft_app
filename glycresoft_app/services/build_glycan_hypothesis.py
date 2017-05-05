@@ -7,7 +7,7 @@ from .service_module import register_service
 
 try:
     from StringIO import StringIO
-except:
+except ImportError:
     from io import StringIO
 
 from glycresoft_app.task.task_process import Message
@@ -21,7 +21,7 @@ app = make_glycan_hypothesis = register_service("make_glycan_hypothesis", __name
 
 @app.route("/glycan_search_space")
 def build_glycan_search_space():
-    return render_template("glycan_search_space.templ")
+    return render_template("glycan_search_space.templ", manager=g.manager)
 
 
 def _serialize_rules_to_buffer(rules, constraints, header_comment=""):
@@ -115,16 +115,20 @@ def build_glycan_search_space_process():
         return Response("Task Not Scheduled")
     # Not yet implemented
     elif selected_method == "merge-hypotheses":
-        id_1 = int(data.get("merged-hypothesis-1", 0))
-        id_2 = int(data.get("merged-hypothesis-2", 0))
+        id_1 = data.get("merged-hypothesis-1", 0)
+        id_2 = data.get("merged-hypothesis-2", 0)
 
         if id_1 == 0 or id_2 == 0 or id_1 == id_2:
             g.add_message(Message("Two different hypotheses must be selected to merge."))
             return Response("Task Not Scheduled")
-        g.add_message(Message("Not yet implemented."))
-        return Response("Task Not Scheduled")
+
+        rec_1 = g.manager.hypothesis_manager.get(id_1)
+        rec_2 = g.manager.hypothesis_manager.get(id_2)
+
+        # g.add_message(Message("Not yet implemented."))
+        # return Response("Task Not Scheduled")
         task = MergeGlycanHypotheses(
-            g.manager.connection_bridge, [id_1, id_2], name=hypothesis_name,
+            g.manager.connection_bridge, [(rec_1.path, rec_1.id), (rec_2.path, rec_2.id)], name=hypothesis_name,
             callback=lambda: 0, user=g.user)
         g.add_task(task)
     else:

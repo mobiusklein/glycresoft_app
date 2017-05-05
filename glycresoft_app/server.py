@@ -7,6 +7,12 @@ from flask import (
     Response, current_app)
 import click
 
+from ms_deisotope.data_source.thermo_raw import determine_if_available as has_thermo
+try:
+    import comtypes
+    has_comtypes = True
+except ImportError:
+    has_comtypes = False
 
 from glycresoft_app import report
 from glycresoft_app.application_manager import (
@@ -178,6 +184,8 @@ def get_current_user_id():
 
 @app.before_request
 def before_request():
+    if has_comtypes:
+        comtypes.CoInitialize()
     # In multi-user mode, the user id should be read from the session cookie, though if
     # not we should use the null user.
     if MULTIUSER_MODE:
@@ -200,7 +208,7 @@ def before_request():
     associate_project_context(project_id)
 
     # Set up the context's wrappers around the ApplicationManager to
-    # seamlessly propagate the user 
+    # seamlessly propagate the user
     def add_message(message):
         if message.user is None:
             message.user = g.user
@@ -222,6 +230,8 @@ def teardown_request(exception):
     db = getattr(g, 'db', None)
     if db is not None:
         db.close()
+    if has_comtypes:
+        comtypes.CoUninitialize()
 
 
 def is_logged_in():
@@ -245,13 +255,23 @@ def has_native_client():
     return key_is_not_none and key_matches
 
 
+def get_accepted_ms_file_formats():
+    selection = [".mzml", ".mzML", ".mzxml", ".mzXML"]
+
+    if has_thermo():
+        selection.extend((".raw", ".RAW"))
+    return ','.join(selection)
+
+
 @app.context_processor
 def inject_config():
     return {
         "configuration": g.manager.configuration,
         "multiuser": MULTIUSER_MODE,
         "native_client_key": NATIVE_CLIENT_KEY,
-        "has_native_client": has_native_client()
+        "has_native_client": has_native_client(),
+        "accepted_ms_formats": get_accepted_ms_file_formats(),
+        "project": g.manager
     }
 
 

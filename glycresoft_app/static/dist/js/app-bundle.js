@@ -789,7 +789,9 @@ Application.prototype.renderAnalyses = function(container) {
 Application.initializers.push(function() {
   return this.on("render-analyses", (function(_this) {
     return function() {
-      return _this.renderAnalyses(".analysis-list");
+      try {
+        return _this.renderAnalyses(".analysis-list");
+      } catch (_error) {}
     };
   })(this));
 });
@@ -1378,7 +1380,7 @@ ModificationSelectionEditor = (function() {
       key = row.data("key");
       specs.push(key);
     }
-    return specs;
+    return specs.join(";;;");
   };
 
   ModificationSelectionEditor.prototype.getConstantModificationSpecs = function() {
@@ -1726,6 +1728,9 @@ Application.initializers.push(function() {
     var analyses, analysis, analysisList, entry, id, name, sampleMap, sampleName, samples, trees;
     samples = bundle.samples;
     analyses = bundle.analyses;
+    if (samples == null) {
+      samples = {};
+    }
     sampleMap = {};
     for (name in samples) {
       sampleMap[name] = [];
@@ -1870,12 +1875,16 @@ Application.initializers.push(function() {
   return Application.initializers.push(function() {
     this.on("render-samples", (function(_this) {
       return function() {
-        return _this.renderSampleTree(".projects-entry-list");
+        try {
+          return _this.renderSampleTree(".projects-entry-list");
+        } catch (_error) {}
       };
     })(this));
     return this.on("render-analyses", (function(_this) {
       return function() {
-        return _this.renderSampleTree(".projects-entry-list");
+        try {
+          return _this.renderSampleTree(".projects-entry-list");
+        } catch (_error) {}
       };
     })(this));
   });

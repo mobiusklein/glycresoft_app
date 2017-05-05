@@ -9,6 +9,8 @@ do ->
     composeSampleAnalysisTree = (bundle) ->
         samples = bundle.samples
         analyses = bundle.analyses
+        if not samples?
+            samples = {}
         sampleMap = {}
         for name of samples
             sampleMap[name] = []
@@ -164,6 +166,8 @@ do ->
 
     Application.initializers.push ->
         @on "render-samples", =>
-            @renderSampleTree ".projects-entry-list"
+            try
+                @renderSampleTree ".projects-entry-list"
         @on "render-analyses", =>
-            @renderSampleTree ".projects-entry-list"
+            try
+                @renderSampleTree ".projects-entry-list"

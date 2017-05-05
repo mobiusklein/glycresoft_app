@@ -8,6 +8,9 @@ from .collection_view import CollectionViewBase, ViewCache
 from .service_module import register_service
 
 from threading import RLock
+
+from glycopeptidepy import PeptideSequence
+
 from glycresoft_app.utils.state_transfer import request_arguments_and_context, FilterSpecificationSet
 from glycresoft_app.utils.pagination import SequencePagination
 from glycresoft_app.task.task_process import Message
@@ -179,6 +182,12 @@ class GlycopeptideAnalysisView(CollectionViewBase):
             pass
             # TODO switch from using a plain dict to using
             # something connected to an LRU cache
+
+    def _compare_sequence_to_spectrum(self, sequence, scan_id, **kwargs):
+        scan = self.peak_loader.get_scan_by_id(scan_id)
+        target = PeptideSequence(sequence)
+        match = CoverageWeightedBinomialScorer.evaluate(scan, target, **kwargs)
+        return match
 
     def search_by_scan(self, scan_id):
         case = self.session.query(GlycopeptideSpectrumSolutionSet).join(MSScan).filter(
@@ -424,7 +433,7 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
         session = view.session
         try:
             gp = snapshot[glycopeptide_id]
-        except:
+        except KeyError:
             gp = view.get_glycopeptide(glycopeptide_id)
 
         matched_scans = []

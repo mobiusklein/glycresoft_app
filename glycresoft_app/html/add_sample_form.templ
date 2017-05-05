@@ -6,7 +6,7 @@
                 <div class="file-field input-field">
                     <span class="btn">
                         <span>Select mzML File</span>
-                        <input name='observed-ions-file' type="file" accept=".mzml,.mzML,.mzxml,.mzXML"/>
+                        <input name='observed-ions-file' type="file" accept="{{accepted_ms_formats}}"/>
                     </span>
                     <input class="file-path validate" type="text"
                            placeholder="Please provide a file in mzML format" />
@@ -94,6 +94,7 @@
                                 <option value='glycopeptide'>Glycopeptide</option>
                                 <option value='peptide'>Peptide</option>
                                 <option value='permethylated-glycan'>Permethylated Glycan</option>
+                                <option value='heparin'>Heparin</option>
                             </select>
                             <input type="text" id="ms1-averagine-custom" name="ms1-averagine-custom"
                                    placeholder="Custom Formula"
@@ -112,6 +113,12 @@
                                    min='0' value="5" step='1' placeholder="Minimum Isotopic Score"
                                            class='numeric-entry'>
                         </div>
+                        <div class='input-field'>
+                            <label for='msn-background-reduction'>Background Reduction</label>
+                            <input type="number" id="msn-background-reduction" name="msn-background-reduction" required
+                                   min='0' value="0" step='1' placeholder="Noise Reduction Scale"
+                                           class='numeric-entry'>
+                        </div>
                     </div>
                     <div class="col s5 tooltipped" data-position='top' data-tooltip='A formula or name for the averagine used for MSn scans'>
                         <div class='input-field'>
@@ -121,6 +128,7 @@
                                 <option value='glycopeptide'>Glycopeptide</option>
                                 <option value='peptide'>Peptide</option>
                                 <option value='permethylated-glycan'>Permethylated Glycan</option>
+                                <option value='heparin'>Heparin</option>
                             </select>
                             <input type="text" id="msn-averagine-custom" name="msn-averagine-custom"
                                    placeholder="Custom Formula"
@@ -169,15 +177,23 @@
     }
 
     $('#add-sample-form input[name="observed-ions-file"]').change(function(){
-        console.log(this.files[0].name, this.files[0].path)
-        var sampleNameInput = $("#add-sample-form input[name='sample-name']")
-        var sampleName = sampleNameInput.val()
-        sampleName = this.files[0].name.split(".").slice(0, -1).join(".")
-        sampleNameInput.val(sampleName)
+        if (this.files.length > 0){
+            console.log(this.files[0].name, this.files[0].path)
+            var sampleNameInput = $("#add-sample-form input[name='sample-name']")
+            var sampleName = sampleNameInput.val()
+            sampleName = this.files[0].name.split(".").slice(0, -1).join(".")
+            sampleNameInput.val(sampleName)
 
-        //This field will only have meaning when run in Electron
-        if(GlycReSoft.isNativeClient()){
-            $("#observed-ions-file-path").val(this.files[0].path)
+            //This field will only have meaning when run in Electron
+            if(GlycReSoft.isNativeClient()){
+                $("#observed-ions-file-path").val(this.files[0].path)
+            }
+        // The user de-selected the file
+        } else {
+            sampleNameInput.val("")
+            if(GlycReSoft.isNativeClient()){
+                $("#observed-ions-file-path").val("")
+            }
         }
     })
     ajaxForm($("form#add-sample-form"), completeSubmission, null, transformForm, uploadProgress)

@@ -29,13 +29,19 @@ def build_glycopeptide_search_space():
 @app.route("/glycopeptide_search_space", methods=["POST"])
 def build_glycopeptide_search_space_post():
     values = request.values
-    constant_modifications = values.getlist("constant_modifications")
-    variable_modifications = values.getlist("variable_modifications")
+    # Separate the JS-based workaround to avoid inappropriate multivalue encoding
+    # being parsed incorrectly by Werkzeug
+    constant_modifications = values.get("constant_modifications").split(";;;")
+    variable_modifications = values.get("variable_modifications").split(";;;")
+
+    constant_modifications = [const_mod for const_mod in constant_modifications if const_mod]
+    variable_modifications = [var_mod for var_mod in variable_modifications if var_mod]
+
     enzyme = values.getlist("enzyme")
     if len(enzyme) == 1:
         enzyme = enzyme[0]
-    hypothesis_name = values.get("hypothesis_name")
 
+    hypothesis_name = values.get("hypothesis_name")
     hypothesis_name = g.manager.make_unique_hypothesis_name(hypothesis_name)
 
     secure_name = secure_filename(hypothesis_name if hypothesis_name is not None else "glycopeptde_database")

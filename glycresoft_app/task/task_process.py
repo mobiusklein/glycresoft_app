@@ -76,7 +76,7 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel):
     try:
         out = task_callable(*args)
         return out
-    except:
+    except Exception:
         channel.send(Message.traceback())
         import sys
         proc_handle = psutil.Process(current_process.pid)
@@ -146,8 +146,8 @@ class TaskControlContext(object):
     def __init__(self, pipe, stop_event=None, user=null_user, context=None):
         if context is None:
             context = dict()
-        else:
-            context = dict(context)
+        # else:
+        #     context = dict(context)
         if stop_event is None:
             stop_event = IPCEvent()
         self.pipe = LoggingPipe(pipe)
@@ -159,6 +159,8 @@ class TaskControlContext(object):
         log_handle.log(message)
 
     def abort(self, message, exc_type=Exception):
+        if isinstance(message, Message):
+            message = message.message
         self.send(Message(message, 'error'))
         raise exc_type(message)
 

@@ -45,4 +45,5 @@ Application::renderAnalyses = (container)->
 
 Application.initializers.push ->
     @on "render-analyses", =>
-        @renderAnalyses ".analysis-list"
+        try
+            @renderAnalyses ".analysis-list"

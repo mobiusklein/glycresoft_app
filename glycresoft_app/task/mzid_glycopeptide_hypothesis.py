@@ -24,8 +24,7 @@ def mzid_glycopeptide(database_connection, mzid_file, name, occupied_glycosites,
                                glycan_source, glycan_source_type,
                                glycan_source_identifier)
     except Abort:
-        channel.send(Message(
-            "Could not validate the glycan source, %s, %s" % (glycan_source, glycan_source_type), 'error'))
+        channel.abort("Could not validate the glycan source, %s, %s" % (glycan_source, glycan_source_type))
     if name is not None:
         name = validate_glycopeptide_hypothesis_name(
             context, database_connection, name)
@@ -54,8 +53,8 @@ def mzid_glycopeptide(database_connection, mzid_file, name, occupied_glycosites,
                 break
         else:
             channel.send(Message("Something went wrong (%r)" % (list(record),)))
-    except:
-        channel.send(Message.traceback())
+    except Exception:
+        channel.abort(Message.traceback())
 
 
 class BuildGlycopeptideHypothesisMzId(Task):

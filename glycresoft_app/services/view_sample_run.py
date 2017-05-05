@@ -106,7 +106,7 @@ class SampleView(object):
             self._estimate_threshold()
         ex = ChromatogramExtractor(
             self.reader, minimum_intensity=self.abundance_threshold,
-            minimum_mass=self.minimum_intensity)
+            minimum_mass=self.minimum_mass)
         self.chromatograms = ex.run()
         self.total_ion_chromatogram = ex.total_ion_chromatogram
 

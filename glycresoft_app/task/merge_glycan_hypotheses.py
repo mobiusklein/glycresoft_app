@@ -2,7 +2,8 @@ from click import Abort
 
 from glycan_profiling.cli.build_db import (
     GlycanCompositionHypothesisMerger, validate_reduction,
-    validate_derivatization, validate_glycan_hypothesis_name)
+    validate_derivatization, validate_glycan_hypothesis_name,
+    DatabaseBoundOperation)
 
 from glycresoft_app.project import hypothesis as project_hypothesis
 from .task_process import Task, Message
@@ -13,7 +14,8 @@ def merge_glycan_hypothesis(database_connection, hypothesis_ids, name, channel):
             name = validate_glycan_hypothesis_name(None, database_connection, name)
             channel.send(Message("Merging Glycan Hypothesis %s" % name, 'info'))
         try:
-            task = GlycanCompositionHypothesisMerger(database_connection, [int(i) for i in hypothesis_ids], name)
+            task = GlycanCompositionHypothesisMerger(database_connection, [
+                (conn, hid) for conn, hid in hypothesis_ids], name)
             task.start()
             record = project_hypothesis.HypothesisRecordSet(database_connection)
             hypothesis_record = None

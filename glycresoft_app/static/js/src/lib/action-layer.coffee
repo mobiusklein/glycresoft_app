@@ -189,6 +189,9 @@ class ActionLayer
     setController: (controller) ->
         @controller = controller
 
+    getController: ->
+        return @controller
+
     show: ->
         @container.fadeIn 100
         @showing = true

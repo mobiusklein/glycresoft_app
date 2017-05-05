@@ -1,10 +1,11 @@
-from flask import g, jsonify, current_app
+from flask import g, jsonify, current_app, request
 
 
 from glycresoft_app.utils import json_serializer
 from glycan_profiling.serialize import IdentifiedGlycopeptide
 from glycan_profiling.plotting import colors
 from glypy.composition import formula
+from glypy.composition.glycan_composition import from_iupac_lite, IUPACError
 from glycopeptidepy.structure.modification import ModificationTable, ModificationCategory
 
 from .service_module import register_service
@@ -42,7 +43,7 @@ def api_samples():
     for h in samples:
         try:
             d[str(h.name)] = h.to_json()
-        except:
+        except Exception:
             current_app.logger.exception("Error occurred in api_samples", exc_info=True)
     return jsonify(**d)
 
@@ -54,13 +55,13 @@ def api_hypotheses():
         try:
             dump = hypothesis.to_json()
             d[hypothesis.uuid] = dump
-        except:
+        except Exception:
             current_app.logger.exception("Error occurred in api_hypotheses", exc_info=True)
     for hypothesis in g.manager.glycopeptide_hypotheses(g.user):
         try:
             dump = hypothesis.to_json()
             d[hypothesis.uuid] = dump
-        except:
+        except Exception:
             current_app.logger.exception("Error occurred in api_hypotheses", exc_info=True)
     return jsonify(**d)
 
@@ -99,3 +100,15 @@ def modifications():
         d['specificities'].update(rule.as_spec_strings())
     d['specificities'] = tuple(d['specificities'])
     return jsonify(**d)
+
+
+@api.route("/api/validate-iupac", methods=["POST"])
+def api_validate_iupac():
+    payload = str(request.values.get("target_string")).strip()
+    if payload == "":
+        return jsonify(valid=False, message="empty name", query=payload)
+    try:
+        residue = from_iupac_lite(payload)
+        return jsonify(valid=True, message=str(residue), query=payload)
+    except IUPACError as e:
+        return jsonify(valid=False, message=str(e), query=payload)

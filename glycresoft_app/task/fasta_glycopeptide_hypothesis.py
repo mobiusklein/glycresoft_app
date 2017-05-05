@@ -20,11 +20,19 @@ def fasta_glycopeptide(database_connection, fasta_file, enzyme, missed_cleavages
                        constant_modification, variable_modification, processes, glycan_source, glycan_source_type,
                        glycan_source_identifier, channel):
     context = None
-    validate_modifications(
-        context, constant_modification + variable_modification)
-    validate_glycan_source(context, database_connection,
-                           glycan_source, glycan_source_type,
-                           glycan_source_identifier)
+    try:
+        validate_modifications(
+            context, constant_modification + variable_modification)
+    except Exception:
+        channel.abort(
+            "Could not validate the modification specification, Constant: %s, Variable: %s" % (
+                constant_modification, variable_modification))
+    try:
+        validate_glycan_source(context, database_connection,
+                               glycan_source, glycan_source_type,
+                               glycan_source_identifier)
+    except Abort:
+        channel.abort("Could not validate the glycan source, %s, %s" % (glycan_source, glycan_source_type))
 
     if name is not None:
         name = validate_glycopeptide_hypothesis_name(

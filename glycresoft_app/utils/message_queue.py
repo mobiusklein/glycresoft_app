@@ -4,7 +4,7 @@ from collections import defaultdict, namedtuple
 
 try:
     from Queue import Queue
-except:
+except ImportError:
     from queue import Queue
 
 from glycresoft_app.utils.base import SyncableStore
@@ -110,6 +110,13 @@ def structure(*args, **kwargs):
 
 
 UserRecord = structure("UserRecord", ["user_id", "metadata", "authentication"])
+
+
+def has_access(record, user):
+    if user is None:
+        return True
+    else:
+        return user.has_access(record)
 
 
 class UserManager(SyncableStore):

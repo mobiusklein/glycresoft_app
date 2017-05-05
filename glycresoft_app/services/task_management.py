@@ -18,7 +18,7 @@ def send_log(task_name):
         encoded_contents = formatted_buffer.decode('string_escape')
         log_content = wrapper.format(
             task_name=task_name, content=encoded_contents)
-        return Response(log_content, mimetype='application/text')
+        return Response(log_content, mimetype='text/html')
     except (KeyError, IOError):
         return Response("<span class='red-text'>There does not appear to be a log for this task</span>")
 
