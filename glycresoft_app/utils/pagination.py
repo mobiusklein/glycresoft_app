@@ -87,6 +87,13 @@ class PaginationBase(object):
                 yield num
                 last = num
 
+    @property
+    def first_item(self):
+        try:
+            return self.items[0]
+        except IndexError:
+            return None
+
 
 class SequencePagination(PaginationBase):
 
@@ -175,7 +182,6 @@ class QueryPagination(PaginationBase):
             abort(404)
 
         items = query.limit(per_page).offset((page - 1) * per_page).all()
-        print(len(items), page, per_page)
 
         if not items and page != 1 and error_out:
             abort(404)
