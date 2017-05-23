@@ -17,6 +17,7 @@ from glycan_profiling.serialize import (
     UnidentifiedChromatogram, func)
 
 from glycan_profiling.chromatogram_tree import ChromatogramFilter
+from glycan_profiling.scoring.chromatogram_solution import logitsum
 
 from glycan_profiling.database.glycan_composition_filter import (
     GlycanCompositionFilter, InclusionFilter)
@@ -51,6 +52,9 @@ class GlycanChromatographySnapShot(object):
         self._make_summary_graphics()
         self.member_id_map = {
             x.id: x for x in self.glycan_chromatograms
+        }
+        self.unidentified_id_map = {
+            x.id: x for x in self.unidentified_chromatograms
         }
 
     def is_valid(self, score_threshold, glycan_filters):
@@ -94,6 +98,9 @@ class GlycanChromatographySnapShot(object):
     def paginate(self, page, per_page=50):
         return SequencePagination.paginate(self.glycan_chromatograms, page, per_page)
 
+    def paginate_unidentified(self, page, per_page=50):
+        return SequencePagination.paginate(self.unidentified_chromatograms, page, per_page)
+
     def __getitem__(self, i):
         return self.member_id_map[i]
 
@@ -125,7 +132,6 @@ class GlycanChromatographyAnalysisView(CollectionViewBase):
         self.glycan_composition_filter = GlycanCompositionFilter(self.hypothesis.glycans.all())
 
     def _get_valid_glycan_compositions(self):
-        assert len(self.glycan_composition_filter.members) != 0
         query = self.monosaccharide_bounds.to_filter_query(self.glycan_composition_filter)
         inclusion_filter = InclusionFilter(query)
         return inclusion_filter
@@ -170,6 +176,9 @@ class GlycanChromatographyAnalysisView(CollectionViewBase):
 
     def paginate(self, page, per_page=25):
         return self.get_items_for_display().paginate(page, per_page)
+
+    def paginate_unidentified(self, page, per_page=25):
+        return self.get_items_for_display().paginate_unidentified(page, per_page)
 
     def update_connection(self):
         self.connect()
@@ -217,7 +226,19 @@ def page(analysis_uuid, page):
     view = get_view(analysis_uuid)
     with view:
         paginator = view.paginate(page, per_page=25)
-        return render_template("/view_glycan_search/table.templ", paginator=paginator)
+        return render_template("/view_glycan_search/table.templ", paginator=paginator,
+                               table_class="glycan-chromatogram-table",
+                               row_class="glycan-match-row")
+
+
+@app.route("/view_glycan_lcms_analysis/<analysis_uuid>/page_unidentified/<int:page>", methods=['POST'])
+def page_unidentified(analysis_uuid, page):
+    view = get_view(analysis_uuid)
+    with view:
+        paginator = view.paginate_unidentified(page, per_page=25)
+        return render_template("/view_glycan_search/table.templ", paginator=paginator,
+                               table_class='unidentified-chromatogram-table',
+                               row_class="unidentified-row")
 
 
 @app.route("/view_glycan_lcms_analysis/<analysis_uuid>/abundance_bar_chart")
@@ -238,7 +259,7 @@ def details_for(analysis_uuid, chromatogram_id):
         plot = SmoothingChromatogramArtist([chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
             label_function=lambda *a, **k: "", legend=False).ax
         plot.set_title("Aggregated\nExtracted Ion Chromatogram", fontsize=24)
-        chroma_svg = report.svg_plot(plot, bbox_inches='tight', height=5, width=9)
+        chroma_svg = report.svg_plot(plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
 
         adduct_separation = ""
         if len(chroma.adducts) > 1:
@@ -255,31 +276,67 @@ def details_for(analysis_uuid, chromatogram_id):
                 legend=False).ax
             adduct_plot.set_title(
                 "Adduct-Separated\nExtracted Ion Chromatogram", fontsize=24)
-            adduct_separation = report.svg_plot(adduct_plot, bbox_inches='tight', height=5, width=9)
+            adduct_separation = report.svg_plot(
+                adduct_plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
 
         charge_separation = ""
         if len(chroma.charge_states) > 1:
             charge_separating_plot = ChargeSeparatingSmoothingChromatogramArtist(
-                [chroma], ax=figax()).draw().ax
+                [chroma], ax=figax()).draw(
+                label_function=lambda x, *a, **kw: str(tuple(x.charge_states)[0]), legend=False).ax
             charge_separating_plot.set_title("Charge-Separated\nExtracted Ion Chromatogram", fontsize=24)
-            charge_separation = report.svg_plot(charge_separating_plot, bbox_inches='tight', height=5, width=9)
+            charge_separation = report.svg_plot(
+                charge_separating_plot, bbox_inches='tight', height=5, width=9,
+                svg_width="100%")
 
         return render_template(
             "/view_glycan_search/detail_modal.templ", chromatogram=chroma,
             chromatogram_svg=chroma_svg, adduct_separation_svg=adduct_separation,
-            charge_chromatogram_svg=charge_separation)
+            charge_chromatogram_svg=charge_separation, logitscore=logitsum(chroma.score_components()))
 
 
-@app.route("/view_glycan_lcms_analysis/<analysis_uuid>/to-csv")
-def to_csv(analysis_uuid):
+@app.route("/view_glycan_lcms_analysis/<analysis_uuid>/details_for_unidentified/<int:chromatogram_id>")
+def details_for_unidentified(analysis_uuid, chromatogram_id):
     view = get_view(analysis_uuid)
     with view:
-        g.add_message(Message("Building CSV Export", "update"))
         snapshot = view.get_items_for_display()
-        file_name = "%s-glycan-chromatograms.csv" % (view.analysis.name)
-        path = g.manager.get_temp_path(file_name)
-        GlycanLCMSAnalysisCSVSerializer(open(path, 'wb'), snapshot.glycan_chromatograms).start()
-        return jsonify(filename=file_name)
+        chroma = snapshot.unidentified_id_map[chromatogram_id]
+        plot = SmoothingChromatogramArtist([chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
+            label_function=lambda *a, **k: "", legend=False).ax
+        plot.set_title("Aggregated\nExtracted Ion Chromatogram", fontsize=24)
+        chroma_svg = report.svg_plot(plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
+
+        adduct_separation = ""
+        if len(chroma.adducts) > 1:
+            adducts = list(chroma.adducts)
+            labels = {}
+            rest = chroma
+            for adduct in adducts:
+                with_adduct, rest = rest.bisect_adduct(adduct)
+                labels[adduct] = with_adduct
+            adduct_plot = SmoothingChromatogramArtist(
+                labels.values(),
+                colorizer=lambda *a, **k: 'green', ax=figax()).draw(
+                label_function=lambda *a, **k: tuple(a[0].adducts)[0].name,
+                legend=False).ax
+            adduct_plot.set_title(
+                "Adduct-Separated\nExtracted Ion Chromatogram", fontsize=24)
+            adduct_separation = report.svg_plot(
+                adduct_plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
+
+        charge_separation = ""
+        if len(chroma.charge_states) > 1:
+            charge_separating_plot = ChargeSeparatingSmoothingChromatogramArtist(
+                [chroma], ax=figax()).draw(
+                label_function=lambda x, *a, **kw: str(tuple(x.charge_states)[0])).ax
+            charge_separating_plot.set_title("Charge-Separated\nExtracted Ion Chromatogram", fontsize=24)
+            charge_separation = report.svg_plot(
+                charge_separating_plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
+
+        return render_template(
+            "/view_glycan_search/detail_modal.templ", chromatogram=chroma,
+            chromatogram_svg=chroma_svg, adduct_separation_svg=adduct_separation,
+            charge_chromatogram_svg=charge_separation, logitscore=logitsum(chroma.score_components()))
 
 
 def _export_csv(analysis_uuid):
@@ -289,7 +346,10 @@ def _export_csv(analysis_uuid):
         snapshot = view.get_items_for_display()
         file_name = "%s-glycan-chromatograms.csv" % (view.analysis.name)
         path = g.manager.get_temp_path(file_name)
-        GlycanLCMSAnalysisCSVSerializer(open(path, 'wb'), snapshot.glycan_chromatograms).start()
+        GlycanLCMSAnalysisCSVSerializer(
+            open(path, 'wb'),
+            list(snapshot.glycan_chromatograms) + list(snapshot.unidentified_chromatograms)
+        ).start()
     return [file_name]
 
 
