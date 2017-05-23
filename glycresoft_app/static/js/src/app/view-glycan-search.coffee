@@ -14,6 +14,22 @@ class GlycanCompositionLCMSSearchPaginator extends PaginationBase
         @controller.showGlycanCompositionDetailsModal row
 
 
+class GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator extends PaginationBase
+    pageUrl: "/view_glycan_lcms_analysis/{analysisId}/page_unidentified/{page}"
+    tableSelector: ".unidentified-chromatogram-table"
+    tableContainerSelector: "#unidentified-chromatograms-table"
+    rowSelector: ".unidentified-row"
+
+    constructor: (@analysisId, @handle, @controller) ->
+        super(1) 
+
+    getPageUrl: (page=1) ->
+        @pageUrl.format {"page": page, "analysisId": @analysisId}
+
+    rowClickHandler: (row) =>
+        @controller.showUnidentifiedDetailsModal row
+
+
 class GlycanCompositionLCMSSearchTabView extends TabViewBase
     tabSelector: 'ul.tabs'
     tabList: ["chromatograms-plot", "chromatograms-table", "summary-abundance-plot"]
@@ -33,6 +49,7 @@ class GlycanCompositionLCMSSearchController
     containerSelector: '#glycan-lcms-container'
     detailModalSelector: '#glycan-detail-modal'
     detailUrl: "/view_glycan_lcms_analysis/{analysisId}/details_for/{chromatogramId}"
+    detailUnidentifiedUrl: "/view_glycan_lcms_analysis/{analysisId}/details_for_unidentified/{chromatogramId}"
     saveCSVURL: "/view_glycan_lcms_analysis/{analysisId}/to-csv"
 
     monosaccharideFilterContainerSelector: '#monosaccharide-filters'
@@ -40,9 +57,11 @@ class GlycanCompositionLCMSSearchController
     constructor: (@analysisId, @hypothesisUUID, @monosaccharides={"Hex": 10, "HexNAc":10, "Fuc": 10, "Neu5Ac": 10}) ->
         @handle = $ @containerSelector
         @paginator = new GlycanCompositionLCMSSearchPaginator(@analysisId, @handle, @)
+        @unidentifiedPaginator = new GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator(@analysisId, @handle, @)
         updateHandlers = [
             =>
                 @paginator.setupTable()
+                @unidentifiedPaginator.setupTable()
             =>
                 handle = @find @tabView.containerSelector
                 $.get("/view_glycan_lcms_analysis/#{@analysisId}/chromatograms_chart").success (payload) ->
@@ -69,6 +88,16 @@ class GlycanCompositionLCMSSearchController
             @monosaccharideFilter = new MonosaccharideFilter(filterContainer)
             @monosaccharideFilter.render()
 
+
+    noResultsHandler: ->
+        $(@tabView.containerSelector).html('''
+            <h5 class='red-text center' style='margin: 50px;'>
+            You don't appear to have any results to show. Your filters may be set too high. <br>
+            To lower your filters, please go to the Preferences menu in the upper right corner <br>
+            of the screen and set the <code>"Minimum MS1 Score Filter"</code> to be lower and try again.<br>
+            </h5>
+        ''')
+
     showExportMenu: =>
         $.get("/view_glycan_lcms_analysis/#{@analysisId}/export").success(
             (formContent) =>
@@ -83,6 +112,16 @@ class GlycanCompositionLCMSSearchController
         id = handle.attr('data-target')
         modal = @getModal()
         url = @detailUrl.format {analysisId: @analysisId, chromatogramId: id}
+        $.get(url).success (doc) ->
+            modal.find('.modal-content').html doc
+            $(".lean-overlay").remove()
+            modal.openModal()
+
+    showUnidentifiedDetailsModal: (row) ->
+        handle = $ row
+        id = handle.attr('data-target')
+        modal = @getModal()
+        url = @detailUnidentifiedUrl.format {analysisId: @analysisId, chromatogramId: id}
         $.get(url).success (doc) ->
             modal.find('.modal-content').html doc
             $(".lean-overlay").remove()
