@@ -80,7 +80,7 @@ class MonosaccharideFilter
             }
             @rules[residue] = rule
         residue.name = residue
-        residue.sanitizeName = sanitizeName = residue.replace(/[\(\),#.@]/g, "_")
+        residue.sanitizeName = sanitizeName = residue.replace(/[\(\),#.@\^]/g, "_")
         template = """
             <span class="col s2 monosaccharide-filter" data-name='#{residue}'>
                 <p style='margin: 0px; margin-bottom: -10px;'>
