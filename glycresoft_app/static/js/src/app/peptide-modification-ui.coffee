@@ -236,12 +236,20 @@ class ModificationSelectionEditor
         @setState(@state)
 
     initialize: (callback) ->
+        @hide()
         @fullListing.updateFromAPI (content) =>
             console.log("Finished Update From API")
             @fullListing.render()
             @setupHandlers()
+            @show()
             if callback?
                 callback(@)
+
+    hide: ->
+        @container.hide()
+
+    show: ->
+        @container.show()
 
     getSelectedModifications: (listing, sourceListing) =>
         if not sourceListing?
