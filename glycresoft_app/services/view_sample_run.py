@@ -51,7 +51,11 @@ class SampleView(object):
         ox_time = []
         ox_current = []
         for scan_id in self.reader.extended_index.msn_ids:
-            scan = self.reader.get_scan_header_by_id(scan_id)
+            try:
+                scan = self.reader.get_scan_header_by_id(scan_id)
+            except AttributeError:
+                print("Unable to resolve scan id %r" % scan_id)
+                break
             mz, intens = scan.arrays
             total = 0
             for ion in standard_oxonium_ions:
