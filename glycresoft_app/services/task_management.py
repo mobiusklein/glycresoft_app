@@ -1,5 +1,3 @@
-import textwrap
-
 from flask import Response, g, jsonify
 from ..task.dummy_task import DummyTask
 from .service_module import register_service
