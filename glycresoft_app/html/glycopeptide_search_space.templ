@@ -12,7 +12,7 @@
         </div>
         <div class='row'>
             <div class='col s6'>
-                <div class="file-field input-field">
+                <div id='protein-list-file-container' class="file-field input-field">
                     <h6>Protein List</h6>
                     <div class="btn">
                         <span>Select File</span>
@@ -29,7 +29,6 @@
         <div id='mzid-protein-list-container'>
         </div>
         <div id='modification-selection-editor-container' class="row">
-            {# {% include 'components/modification_selection_editor.templ' %} #}
         </div>
         <div class='row'>
             <div class='col s4' id='enzyme-container'>
@@ -113,7 +112,16 @@ $("#protein-list-file").on("change", function(event){
     }
     var file = this.files[0]
     identifyProteomicsFormat(file, function(format){
-        $("#proteomics-file-type").val(format)
+        if (format.format == ProteomicsFileFormats.mzIdentML) {
+            if (format.version !== undefined) {
+                let minor = format.version[1]
+                if (minor === 0) {
+                    format.format = ProteomicsFileFormats.error
+                    format.version = undefined
+                }
+            }
+        }
+        $("#proteomics-file-type").val(format.format)
         updateFormatOptions(format, file)
     })
     var nameInput = $("#hypothesis_name")
@@ -133,13 +141,39 @@ materialTooltip()
 
 mzIdentMLHandle = undefined;
 
+
+function setProteinListErrorState(message) {
+    if (message === "" || message === undefined || message === null) {
+        var handle = $("#protein-list-file")
+        handle[0].setCustomValidity("")
+        handle = $("#protein-list-file-container input.file-path")
+        handle[0].setCustomValidity("")
+        handle.addClass("valid")
+        handle.removeClass("invalid")
+        $("#protein-list-file-container .btn").removeClass("red")
+    } else {
+        var handle = $("#protein-list-file")
+        handle[0].setCustomValidity(message)
+        handle = $("#protein-list-file-container input.file-path")
+        handle[0].setCustomValidity(message)
+        handle.addClass("invalid")
+        handle.removeClass("valid")
+        $("#protein-list-file-container .btn").addClass("red")
+    }
+}
+
+
 function updateFormatOptions(format, file){
     console.log(format)
-    if(format === "fasta"){
-        var handle = $("#variable-modifications-container")
-        handle.find("select").removeAttr("disabled").css("cursor", "default")
-        handle.find("h6").removeClass("grey-text")
-        handle.find("span.message").text("")
+    //Clear existing error
+    var handle = $("#protein-list-file")
+    setProteinListErrorState(null)
+    $("#mzid-protein-list-container").hide()
+    if(mzIdentMLHandle !== undefined) {
+        mzIdentMLHandle.clearContainer()
+    }
+    if(format.format === ProteomicsFileFormats.fasta){
+        modificationSelectionEditor.show()
 
         handle = $("#enzyme-container")
         handle.find("select").removeAttr("disabled").css("cursor", "default")
@@ -148,12 +182,10 @@ function updateFormatOptions(format, file){
         handle.find("span.message").text("")
         $("#mzid-protein-list-container").hide()
         mzIdentMLHandle = undefined
+
     }
-    else {
-        var handle = $("#variable-modifications-container")
-        handle.find("select").attr("disabled", true).css("cursor", "not-allowed")
-        handle.find("h6").addClass("grey-text")
-        handle.find("span.message").text("Informed Hypotheses do not need variable modification rules")
+    else if (format.format === ProteomicsFileFormats.mzIdentML) {
+        modificationSelectionEditor.hide()
 
         handle = $("#enzyme-container")
         handle.find("select").attr("disabled", true).css("cursor", "not-allowed")
@@ -162,6 +194,10 @@ function updateFormatOptions(format, file){
         handle.find("span.message").text("Informed Hypotheses do not need proteolytic enzyme rules")
         $("#mzid-protein-list-container").show()
         mzIdentMLHandle = new MzIdentMLProteinSelector(file, "#mzid-protein-list-container")
+    }
+    else if (format.format === ProteomicsFileFormats.error) {
+        setProteinListErrorState("File Format Could Not Be Recognized")
+        Materialize.toast("Protein List File Format Could Not Be Recognized")
     }
 }
 
