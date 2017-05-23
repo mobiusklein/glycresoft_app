@@ -14,6 +14,8 @@ from glycresoft_app.task.task_process import Message
 from glycresoft_app.task.combinatorial_glycan_hypothesis import BuildCombinatorialGlycanHypothesis
 from glycresoft_app.task.text_file_glycan_hypothesis import BuildTextFileGlycanHypothesis
 from glycresoft_app.task.merge_glycan_hypotheses import MergeGlycanHypotheses
+from glycan_profiling.cli.validators import (
+    validate_reduction, validate_derivatization)
 
 
 app = make_glycan_hypothesis = register_service("make_glycan_hypothesis", __name__)
@@ -61,6 +63,17 @@ def build_glycan_search_space_process():
         reduction_type = None
     if derivatization_type in ("", "native"):
         derivatization_type = None
+
+    try:
+        reduction_type = validate_reduction(None, reduction_type)
+    except Exception:
+        g.manager.add_message(Message("Could not validate reduction type %r" % reduction_type, 'update'))
+        return Response("Task Not Scheduled")
+    try:
+        derivatization_type = validate_derivatization(None, derivatization_type)
+    except Exception:
+        g.manager.add_message(Message("Could not validate derivatization type %r" % derivatization_type, 'update'))
+        return Response("Task Not Scheduled")
 
     selected_method = data.get("selected-method", 'combinatorial')
 
