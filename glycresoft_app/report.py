@@ -3,13 +3,16 @@ import urllib
 
 from glycopeptidepy import PeptideSequence
 from glycopeptidepy.utils.collectiontools import groupby
-from glypy.composition.glycan_composition import FrozenGlycanComposition
+from glypy.composition.glycan_composition import GlycanComposition
+from ms_deisotope import mass_charge_ratio
+
+from glycan_profiling.symbolic_expression import GlycanSymbolContext
 
 from jinja2 import Environment, PackageLoader, FileSystemLoader, escape
 
 try:
     from cStringIO import StringIO
-except:
+except ImportError:
     from io import StringIO
 
 from lxml import etree
@@ -115,7 +118,10 @@ def formula(composition):
 
 
 def glycan_composition_string(composition):
-    composition = FrozenGlycanComposition.parse(composition)
+    composition = GlycanComposition.parse(
+        GlycanSymbolContext(
+            GlycanComposition.parse(
+                composition)).serialize())
     parts = []
     template = ("<span class='monosaccharide-name'"
                 "style='background-color:%s;padding:2px;border-radius:2px;'>"
@@ -162,7 +168,7 @@ def prepare_environment(env=None):
         raise Exception()
         loader = PackageLoader("glycresoft_app", "html")
         loader.list_templates()
-    except:
+    except Exception:
         loader = FileSystemLoader(os.path.join(os.path.dirname(__file__), 'html'))
     if env is None:
         env = Environment(loader=loader)
@@ -177,4 +183,5 @@ def prepare_environment(env=None):
     env.filters['glycan_composition_string'] = glycan_composition_string
     env.filters["formula"] = formula
     env.filters["sort_peak_match_pairs"] = sort_peak_match_pairs
+    env.filters["mass_charge_ratio"] = mass_charge_ratio
     return env
