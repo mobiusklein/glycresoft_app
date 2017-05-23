@@ -58,7 +58,7 @@ def analyze_glycan_composition(database_connection, sample_path, hypothesis_iden
     try:
         hypothesis = get_by_name_or_id(
             database_connection, GlycanHypothesis, hypothesis_identifier)
-    except:
+    except Exception:
         channel.send(Message("Could not locate hypothesis %r" % hypothesis_identifier, "error"))
         return
 
@@ -71,9 +71,7 @@ def analyze_glycan_composition(database_connection, sample_path, hypothesis_iden
         for adduct, multiplicity in adducts:
             adduct_out.append(validate_adduct(adduct, multiplicity))
         expanded = []
-        for adduct, mult in adduct_out:
-            for i in range(1, mult + 1):
-                expanded.append(adduct * i)
+        expanded = MzMLGlycanChromatogramAnalyzer.expand_adducts(dict(adduct_out))
         adducts = expanded
     except Abort:
         channel.send(Message.traceback())
