@@ -90,14 +90,18 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
 
     ms1_deconvolution_args = {
         "scorer": ms_deisotope.scoring.PenalizedMSDeconVFitter(score_threshold, 2.),
+        "averagine": averagine,
         "max_missed_peaks": missed_peaks,
-        "averagine": averagine
+        "truncate_after": SampleConsumer.MS1_ISOTOPIC_PATTERN_WIDTH,
+        "ignore_below": SampleConsumer.MS1_IGNORE_BELOW
     }
 
     msn_deconvolution_args = {
         "scorer": ms_deisotope.scoring.MSDeconVFitter(msn_score_threshold),
         "averagine": msn_averagine,
         "max_missed_peaks": missed_peaks,
+        "truncate_after": SampleConsumer.MSN_ISOTOPIC_PATTERN_WIDTH,
+        "ignore_below": SampleConsumer.MSN_IGNORE_BELOW
     }
 
     consumer = SampleConsumer(
