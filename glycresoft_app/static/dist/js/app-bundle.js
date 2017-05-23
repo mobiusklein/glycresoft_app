@@ -852,7 +852,7 @@ var MassShiftInputWidget;
 
 MassShiftInputWidget = (function() {
   var addEmptyRowOnEdit, counter, template;
-  template = "<div class='mass-shift-row row'>\n    <div class='input-field col s3'>\n        <label for='mass_shift_name'>Name or Formula</label>\n        <input class='mass-shift-name' type='text' name='mass_shift_name' placeholder='Name/Formula'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='mass_shift_max_count'>Maximum Count</label>    \n        <input class='max-count' type='number' min='0' placeholder='Maximum Count' name='mass_shift_max_count'>\n    </div>\n</div>";
+  template = "<div class='mass-shift-row row'>\n    <div class='input-field col s3' style='margin-right:55px; margin-left:30px;'>\n        <label for='mass_shift_name'>Name or Formula</label>\n        <input class='mass-shift-name' type='text' name='mass_shift_name' placeholder='Name/Formula'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='mass_shift_max_count'>Maximum Count</label>    \n        <input class='max-count' type='number' min='0' placeholder='Maximum Count' name='mass_shift_max_count'>\n    </div>\n</div>";
   counter = 0;
   addEmptyRowOnEdit = function(container, addHeader) {
     var callback, row;
@@ -1001,7 +1001,7 @@ MonosaccharideFilter = (function() {
       this.rules[residue] = rule;
     }
     residue.name = residue;
-    residue.sanitizeName = sanitizeName = residue.replace(/[\(\),#.@]/g, "_");
+    residue.sanitizeName = sanitizeName = residue.replace(/[\(\),#.@\^]/g, "_");
     template = "<span class=\"col s2 monosaccharide-filter\" data-name='" + residue + "'>\n    <p style='margin: 0px; margin-bottom: -10px;'>\n        <input type=\"checkbox\" id=\"" + sanitizeName + "_include\" name=\"" + sanitizeName + "_include\"/>\n        <label for=\"" + sanitizeName + "_include\"><b>" + residue + "</b></label>\n    </p>\n    <p style='margin-top: 0px; margin-bottom: 0px;'>\n        <input id=\"" + sanitizeName + "_min\" type=\"number\" placeholder=\"Minimum " + residue + "\" style='width: 45px;' min=\"0\"\n               value=\"" + rule.minimum + "\" max=\"" + rule.maximum + "\" name=\"" + sanitizeName + "_min\"/> : \n        <input id=\"" + sanitizeName + "_max\" type=\"number\" placeholder=\"Maximum " + residue + "\" style='width: 45px;' min=\"0\"\n               value=\"" + rule.maximum + "\" name=\"" + sanitizeName + "_max\"/>\n    </p>\n</span>";
     self = this;
     rendered = $(template);
@@ -1341,16 +1341,26 @@ ModificationSelectionEditor = (function() {
   }
 
   ModificationSelectionEditor.prototype.initialize = function(callback) {
+    this.hide();
     return this.fullListing.updateFromAPI((function(_this) {
       return function(content) {
         console.log("Finished Update From API");
         _this.fullListing.render();
         _this.setupHandlers();
+        _this.show();
         if (callback != null) {
           return callback(_this);
         }
       };
     })(this));
+  };
+
+  ModificationSelectionEditor.prototype.hide = function() {
+    return this.container.hide();
+  };
+
+  ModificationSelectionEditor.prototype.show = function() {
+    return this.container.show();
   };
 
   ModificationSelectionEditor.prototype.getSelectedModifications = function(listing, sourceListing) {
@@ -1985,7 +1995,7 @@ viewGlycanCompositionHypothesis = function(hypothesisId) {
 
 //# sourceMappingURL=view-glycan-composition-hypothesis.js.map
 
-var GlycanCompositionLCMSSearchController, GlycanCompositionLCMSSearchPaginator, GlycanCompositionLCMSSearchTabView,
+var GlycanCompositionLCMSSearchController, GlycanCompositionLCMSSearchPaginator, GlycanCompositionLCMSSearchTabView, GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator,
   bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
@@ -2024,6 +2034,43 @@ GlycanCompositionLCMSSearchPaginator = (function(superClass) {
   };
 
   return GlycanCompositionLCMSSearchPaginator;
+
+})(PaginationBase);
+
+GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator = (function(superClass) {
+  extend(GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator, superClass);
+
+  GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator.prototype.pageUrl = "/view_glycan_lcms_analysis/{analysisId}/page_unidentified/{page}";
+
+  GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator.prototype.tableSelector = ".unidentified-chromatogram-table";
+
+  GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator.prototype.tableContainerSelector = "#unidentified-chromatograms-table";
+
+  GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator.prototype.rowSelector = ".unidentified-row";
+
+  function GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator(analysisId, handle1, controller) {
+    this.analysisId = analysisId;
+    this.handle = handle1;
+    this.controller = controller;
+    this.rowClickHandler = bind(this.rowClickHandler, this);
+    GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator.__super__.constructor.call(this, 1);
+  }
+
+  GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator.prototype.getPageUrl = function(page) {
+    if (page == null) {
+      page = 1;
+    }
+    return this.pageUrl.format({
+      "page": page,
+      "analysisId": this.analysisId
+    });
+  };
+
+  GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator.prototype.rowClickHandler = function(row) {
+    return this.controller.showUnidentifiedDetailsModal(row);
+  };
+
+  return GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator;
 
 })(PaginationBase);
 
@@ -2066,6 +2113,8 @@ GlycanCompositionLCMSSearchController = (function() {
 
   GlycanCompositionLCMSSearchController.prototype.detailUrl = "/view_glycan_lcms_analysis/{analysisId}/details_for/{chromatogramId}";
 
+  GlycanCompositionLCMSSearchController.prototype.detailUnidentifiedUrl = "/view_glycan_lcms_analysis/{analysisId}/details_for_unidentified/{chromatogramId}";
+
   GlycanCompositionLCMSSearchController.prototype.saveCSVURL = "/view_glycan_lcms_analysis/{analysisId}/to-csv";
 
   GlycanCompositionLCMSSearchController.prototype.monosaccharideFilterContainerSelector = '#monosaccharide-filters';
@@ -2083,10 +2132,12 @@ GlycanCompositionLCMSSearchController = (function() {
     this.showExportMenu = bind(this.showExportMenu, this);
     this.handle = $(this.containerSelector);
     this.paginator = new GlycanCompositionLCMSSearchPaginator(this.analysisId, this.handle, this);
+    this.unidentifiedPaginator = new GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator(this.analysisId, this.handle, this);
     updateHandlers = [
       (function(_this) {
         return function() {
-          return _this.paginator.setupTable();
+          _this.paginator.setupTable();
+          return _this.unidentifiedPaginator.setupTable();
         };
       })(this), (function(_this) {
         return function() {
@@ -2126,6 +2177,10 @@ GlycanCompositionLCMSSearchController = (function() {
     })(this));
   };
 
+  GlycanCompositionLCMSSearchController.prototype.noResultsHandler = function() {
+    return $(this.tabView.containerSelector).html('<h5 class=\'red-text center\' style=\'margin: 50px;\'>\nYou don\'t appear to have any results to show. Your filters may be set too high. <br>\nTo lower your filters, please go to the Preferences menu in the upper right corner <br>\nof the screen and set the <code>"Minimum MS1 Score Filter"</code> to be lower and try again.<br>\n</h5>');
+  };
+
   GlycanCompositionLCMSSearchController.prototype.showExportMenu = function() {
     return $.get("/view_glycan_lcms_analysis/" + this.analysisId + "/export").success((function(_this) {
       return function(formContent) {
@@ -2144,6 +2199,22 @@ GlycanCompositionLCMSSearchController = (function() {
     id = handle.attr('data-target');
     modal = this.getModal();
     url = this.detailUrl.format({
+      analysisId: this.analysisId,
+      chromatogramId: id
+    });
+    return $.get(url).success(function(doc) {
+      modal.find('.modal-content').html(doc);
+      $(".lean-overlay").remove();
+      return modal.openModal();
+    });
+  };
+
+  GlycanCompositionLCMSSearchController.prototype.showUnidentifiedDetailsModal = function(row) {
+    var handle, id, modal, url;
+    handle = $(row);
+    id = handle.attr('data-target');
+    modal = this.getModal();
+    url = this.detailUnidentifiedUrl.format({
       analysisId: this.analysisId,
       chromatogramId: id
     });
