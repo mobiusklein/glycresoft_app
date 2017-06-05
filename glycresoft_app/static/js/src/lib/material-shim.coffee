@@ -31,10 +31,10 @@ materialFileInput = ->
         file_names = []
         i = 0
         while i < files.length
-            file_names.push files[i].name
+            file_names.push(files[i].name)
             i++
-        path_input.val file_names.join(', ')
-        path_input.trigger 'change'
+        path_input.val(file_names.join(', '))
+        path_input.trigger('change')
         return
     return
 
@@ -46,3 +46,9 @@ materialCheckbox = (selector) ->
 
 clearTooltip = () ->
     $('.material-tooltip').hide()
+
+
+$ ->
+    $("body").on "click", ".lean-overlay", ->
+        $(".lean-overlay").remove()
+        console.log("Removing the overlay")

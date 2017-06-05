@@ -118,10 +118,14 @@ def formula(composition):
 
 
 def glycan_composition_string(composition):
-    composition = GlycanComposition.parse(
-        GlycanSymbolContext(
-            GlycanComposition.parse(
-                composition)).serialize())
+    try:
+        composition = GlycanComposition.parse(
+            GlycanSymbolContext(
+                GlycanComposition.parse(
+                    composition)).serialize())
+    except ValueError:
+        return "<code>%s</code>" % composition
+
     parts = []
     template = ("<span class='monosaccharide-name'"
                 "style='background-color:%s;padding:2px;border-radius:2px;'>"

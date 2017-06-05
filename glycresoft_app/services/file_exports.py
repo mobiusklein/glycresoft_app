@@ -41,6 +41,7 @@ def download_file(b64name):
         return Response(yielder(), mimetype="application/octet-stream",
                         headers={"Content-Disposition": "attachment; filename=%s" % name})
     else:
+        logger.info("Requested path %r, but file not found" % (path,))
         return abort(404)
 
 

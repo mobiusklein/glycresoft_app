@@ -15829,9 +15829,13 @@ Mass Shift Input
 }
 
 .mass-shift-input-table{
-    margin-top: 11px;
+    margin-top: -2.5%;
 }
 
+.section-title {
+    font-weight: 400;
+    color: #9e9e9e;
+}
 
 /*
 

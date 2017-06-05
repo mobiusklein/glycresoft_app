@@ -185,7 +185,7 @@ def get_current_user_id():
 @app.before_request
 def before_request():
     if has_comtypes:
-        comtypes.CoInitialize()
+        comtypes.CoInitializeEx(0x0)
     # In multi-user mode, the user id should be read from the session cookie, though if
     # not we should use the null user.
     if MULTIUSER_MODE:
@@ -320,6 +320,8 @@ def server(context, database_connection, base_path, external=False, port=None, n
 
     if MULTIUSER_MODE:
         click.secho("Multi-User Mode Enabled", fg='yellow')
+    if NATIVE_CLIENT_KEY:
+        click.secho("Native Key Provided: %r. Extension Activated." % (NATIVE_CLIENT_KEY,))
 
     manager.configuration["allow_external_connections"] |= external
     manager.max_running_tasks = max_tasks

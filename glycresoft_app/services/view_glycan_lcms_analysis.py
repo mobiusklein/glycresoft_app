@@ -1,6 +1,4 @@
-from weakref import WeakValueDictionary
-
-from flask import Response, g, request, render_template, jsonify
+from flask import g, request, render_template, jsonify
 from .service_module import register_service
 from .collection_view import CollectionViewBase, ViewCache
 
@@ -11,19 +9,25 @@ from glycresoft_app.utils.pagination import SequencePagination
 from glycresoft_app.task import Message
 
 from glycan_profiling.serialize import (
-    DatabaseBoundOperation,
-    Analysis, GlycanComposition, GlycanHypothesis,
+    Analysis,
+    GlycanComposition,
     GlycanCompositionChromatogram,
-    UnidentifiedChromatogram, func)
+    UnidentifiedChromatogram)
 
 from glycan_profiling.chromatogram_tree import ChromatogramFilter
 from glycan_profiling.scoring.chromatogram_solution import logitsum
 
+from glycan_profiling.database.composition_network import (
+    make_n_glycan_neighborhoods,
+    normalize_composition)
+
 from glycan_profiling.database.glycan_composition_filter import (
-    GlycanCompositionFilter, InclusionFilter)
+    GlycanCompositionFilter,
+    InclusionFilter)
 
 from glycan_profiling.plotting.summaries import (
-    GlycanChromatographySummaryGraphBuilder, SmoothingChromatogramArtist,
+    GlycanChromatographySummaryGraphBuilder,
+    SmoothingChromatogramArtist,
     figax)
 
 from glycan_profiling.plotting import ArtistBase
@@ -32,7 +36,8 @@ from glycan_profiling.plotting.chromatogram_artist import ChargeSeparatingSmooth
 
 
 from glycan_profiling.output import (
-    GlycanLCMSAnalysisCSVSerializer, ImportableGlycanHypothesisCSVSerializer)
+    GlycanLCMSAnalysisCSVSerializer,
+    ImportableGlycanHypothesisCSVSerializer)
 
 app = view_glycan_lcms_analysis = register_service("view_glycan_lcms_analysis", __name__)
 
@@ -41,26 +46,49 @@ VIEW_CACHE = ViewCache()
 
 
 class GlycanChromatographySnapShot(object):
-    def __init__(self, score_threshold, glycan_filters, glycan_chromatograms, unidentified_chromatograms):
+    def __init__(self, score_threshold, glycan_filters, glycan_chromatograms,
+                 unidentified_chromatograms, start_time=0, end_time=float('inf'),
+                 omit_used_as_adduct=False):
         self.score_threshold = score_threshold
         self.glycan_filters = glycan_filters
+        self.start_time = start_time
+        self.end_time = end_time
+        self.omit_used_as_adduct = omit_used_as_adduct
+
         self.glycan_chromatograms = sorted(
-            glycan_chromatograms, key=lambda x: (x.score, x.total_signal), reverse=True)
+            [x for x in glycan_chromatograms
+             if (len(x.used_as_adduct) == 0 if self.omit_used_as_adduct else True) and
+                (x.start_time > self.start_time) and (x.start_time < self.end_time)
+             ], key=lambda x: (x.score, x.total_signal),
+            reverse=True)
         self.unidentified_chromatograms = sorted(
-            unidentified_chromatograms, key=lambda x: (x.score, x.total_signal), reverse=True)
+            [x for x in unidentified_chromatograms
+             if (len(x.used_as_adduct) == 0 if self.omit_used_as_adduct else True) and
+                (x.start_time > self.start_time) and (x.start_time < self.end_time)
+             ], key=lambda x: (x.score, x.total_signal),
+            reverse=True)
         self.figure_axes = {}
         self._make_summary_graphics()
+
         self.member_id_map = {
             x.id: x for x in self.glycan_chromatograms
         }
+
         self.unidentified_id_map = {
             x.id: x for x in self.unidentified_chromatograms
         }
 
-    def is_valid(self, score_threshold, glycan_filters):
+    def is_valid(self, score_threshold, glycan_filters, start_time=0, end_time=float('inf'),
+                 omit_used_as_adduct=False):
         if self.score_threshold != score_threshold:
             return False
         if self.glycan_filters != glycan_filters:
+            return False
+        if self.start_time != start_time:
+            return False
+        if self.end_time != end_time:
+            return False
+        if self.omit_used_as_adduct != omit_used_as_adduct:
             return False
         return True
 
@@ -110,13 +138,16 @@ class GlycanChromatographyAnalysisView(CollectionViewBase):
         CollectionViewBase.__init__(self, storage_record)
         self.analysis_id = analysis_id
 
+        self.start_time = 0
+        self.end_time = float("inf")
+        self.omit_used_as_adduct = False
         self.glycan_composition_filter = None
         self.monosaccharide_bounds = FilterSpecificationSet()
         self.score_threshold = 0.4
         self.analysis = None
         self.hypothesis = None
-
-        self._converted_cache = WeakValueDictionary()
+        self.neighborhoods = make_n_glycan_neighborhoods()
+        self._converted_cache = dict()
 
         self._snapshot_lock = RLock()
         self._snapshot = None
@@ -163,14 +194,18 @@ class GlycanChromatographyAnalysisView(CollectionViewBase):
         snapshot = GlycanChromatographySnapShot(
             self.score_threshold, self.monosaccharide_bounds,
             self._get_glycan_chromatograms(),
-            self._get_unidentified_chromatograms())
+            self._get_unidentified_chromatograms(),
+            self.start_time, self.end_time,
+            self.omit_used_as_adduct)
         return snapshot
 
     def get_items_for_display(self):
         with self._snapshot_lock:
             if self._snapshot is None:
                 self._snapshot = self._build_snapshot()
-            elif not self._snapshot.is_valid(self.score_threshold, self.monosaccharide_bounds):
+            elif not self._snapshot.is_valid(
+                    self.score_threshold, self.monosaccharide_bounds,
+                    self.start_time, self.end_time, self.omit_used_as_adduct):
                 self._snapshot = self._build_snapshot()
         return self._snapshot
 
@@ -183,9 +218,14 @@ class GlycanChromatographyAnalysisView(CollectionViewBase):
     def update_connection(self):
         self.connect()
 
-    def update_threshold(self, score_threshold, monosaccharide_bounds):
+    def update_threshold(self, score_threshold, monosaccharide_bounds,
+                         start_time=0, end_time=float('inf'),
+                         omit_used_as_adduct=False):
         self.score_threshold = score_threshold
         self.monosaccharide_bounds = monosaccharide_bounds
+        self.start_time = start_time
+        self.end_time = end_time
+        self.omit_used_as_adduct = omit_used_as_adduct
 
 
 def get_view(analysis_uuid):
@@ -204,7 +244,12 @@ def index(analysis_uuid):
     view = get_view(analysis_uuid)
     with view:
         args, state = request_arguments_and_context()
-        view.update_threshold(state.settings['minimum_ms1_score'], state.monosaccharide_filters)
+        view.update_threshold(
+            state.settings['minimum_ms1_score'],
+            state.monosaccharide_filters,
+            start_time=state.settings.get("start_time", 0),
+            end_time=state.settings.get("end_time", float('inf')),
+            omit_used_as_adduct=state.settings.get("omit_used_as_adduct", False))
         return render_template("/view_glycan_search/overview.templ", analysis=view.analysis)
 
 
@@ -256,10 +301,16 @@ def details_for(analysis_uuid, chromatogram_id):
     with view:
         snapshot = view.get_items_for_display()
         chroma = snapshot[chromatogram_id]
-        plot = SmoothingChromatogramArtist([chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
+        plot = SmoothingChromatogramArtist(
+            [chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
             label_function=lambda *a, **k: "", legend=False).ax
         plot.set_title("Aggregated\nExtracted Ion Chromatogram", fontsize=24)
-        chroma_svg = report.svg_plot(plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
+        chroma_svg = report.svg_plot(
+            plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
+
+        glycan_composition = normalize_composition(chroma.glycan_composition)
+
+        membership = [neigh.name for neigh in view.neighborhoods if neigh(glycan_composition)]
 
         adduct_separation = ""
         if len(chroma.adducts) > 1:
@@ -292,7 +343,9 @@ def details_for(analysis_uuid, chromatogram_id):
         return render_template(
             "/view_glycan_search/detail_modal.templ", chromatogram=chroma,
             chromatogram_svg=chroma_svg, adduct_separation_svg=adduct_separation,
-            charge_chromatogram_svg=charge_separation, logitscore=logitsum(chroma.score_components()))
+            charge_chromatogram_svg=charge_separation,
+            logitscore=logitsum(chroma.score_components()),
+            membership=membership)
 
 
 @app.route("/view_glycan_lcms_analysis/<analysis_uuid>/details_for_unidentified/<int:chromatogram_id>")
@@ -301,7 +354,8 @@ def details_for_unidentified(analysis_uuid, chromatogram_id):
     with view:
         snapshot = view.get_items_for_display()
         chroma = snapshot.unidentified_id_map[chromatogram_id]
-        plot = SmoothingChromatogramArtist([chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
+        plot = SmoothingChromatogramArtist(
+            [chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
             label_function=lambda *a, **k: "", legend=False).ax
         plot.set_title("Aggregated\nExtracted Ion Chromatogram", fontsize=24)
         chroma_svg = report.svg_plot(plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
@@ -328,15 +382,20 @@ def details_for_unidentified(analysis_uuid, chromatogram_id):
         if len(chroma.charge_states) > 1:
             charge_separating_plot = ChargeSeparatingSmoothingChromatogramArtist(
                 [chroma], ax=figax()).draw(
+                legend=False,
                 label_function=lambda x, *a, **kw: str(tuple(x.charge_states)[0])).ax
-            charge_separating_plot.set_title("Charge-Separated\nExtracted Ion Chromatogram", fontsize=24)
+            charge_separating_plot.set_title(
+                "Charge-Separated\nExtracted Ion Chromatogram", fontsize=24)
             charge_separation = report.svg_plot(
-                charge_separating_plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
+                charge_separating_plot, bbox_inches='tight', height=5, width=9,
+                svg_width="100%")
 
         return render_template(
             "/view_glycan_search/detail_modal.templ", chromatogram=chroma,
             chromatogram_svg=chroma_svg, adduct_separation_svg=adduct_separation,
-            charge_chromatogram_svg=charge_separation, logitscore=logitsum(chroma.score_components()))
+            charge_chromatogram_svg=charge_separation,
+            logitscore=logitsum(chroma.score_components()),
+            membership=[])
 
 
 def _export_csv(analysis_uuid):
@@ -398,4 +457,3 @@ def export_data(analysis_uuid):
             file_names.extend(
                 work_task(analysis_uuid))
     return jsonify(status='success', filenames=file_names)
-

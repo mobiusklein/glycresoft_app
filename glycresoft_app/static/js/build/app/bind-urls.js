@@ -1,4 +1,4 @@
-var ActionBook, AnalysisAPI, ErrorLogURL, HypothesisAPI, SampleAPI, TaskAPI, User, makeAPIGet, makeParameterizedAPIGet;
+var ActionBook, AnalysisAPI, ErrorLogURL, HypothesisAPI, MassShiftAPI, SampleAPI, TaskAPI, User, makeAPIGet, makeParameterizedAPIGet;
 
 ActionBook = {
   home: {
@@ -79,6 +79,10 @@ User = {
       "user_id": user_id
     }).success(callback);
   }
+};
+
+MassShiftAPI = {
+  all: makeAPIGet("/api/mass-shift")
 };
 
 //# sourceMappingURL=bind-urls.js.map

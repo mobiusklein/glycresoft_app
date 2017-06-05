@@ -971,6 +971,13 @@ clearTooltip = function() {
   return $('.material-tooltip').hide();
 };
 
+$(function() {
+  return $("body").on("click", ".lean-overlay", function() {
+    $(".lean-overlay").remove();
+    return console.log("Removing the overlay");
+  });
+});
+
 //# sourceMappingURL=material-shim.js.map
 
 var PaginationBase,

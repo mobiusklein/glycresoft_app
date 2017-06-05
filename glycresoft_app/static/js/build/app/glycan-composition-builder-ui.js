@@ -10,7 +10,7 @@ MonosaccharideInputWidgetGrid = (function() {
   }
 
   MonosaccharideInputWidgetGrid.prototype.update = function() {
-    var entry, i, len, monosaccharides, notif, notify, pos, ref, row;
+    var continuation, entry, i, len, monosaccharides, notif, notify, pos, ref, row;
     monosaccharides = {};
     ref = this.container.find(".monosaccharide-row");
     for (i = 0, len = ref.length; i < len; i++) {
@@ -22,12 +22,22 @@ MonosaccharideInputWidgetGrid = (function() {
         upper_bound: row.find(".upper-bound").val()
       };
       if (entry.name === "") {
+        row.removeClass("warning");
+        if (row.data("tinyNotification") != null) {
+          notif = row.data("tinyNotification");
+          notif.dismiss();
+          row.data("tinyNotification", void 0);
+        }
         continue;
       }
       if (entry.name in monosaccharides) {
         row.addClass("warning");
         pos = row.position();
-        notify = new TinyNotification(pos.top + 50, pos.left, "This monosaccharide is already present.", row);
+        if (row.data("tinyNotification") != null) {
+          notif = row.data("tinyNotification");
+          notif.dismiss();
+        }
+        notify = new TinyNotification(pos.top + 50, pos.left, "This residue is already present.", row);
         row.data("tinyNotification", notify);
       } else {
         row.removeClass("warning");
@@ -37,6 +47,32 @@ MonosaccharideInputWidgetGrid = (function() {
           row.data("tinyNotification", void 0);
         }
         monosaccharides[entry.name] = entry;
+        continuation = function(gridRow) {
+          return $.post("/api/validate-iupac", {
+            "target_string": entry.name
+          }).then(function(validation, message, query) {
+            if (validation.valid) {
+              if (!(entry.name in monosaccharides)) {
+                gridRow.removeClass("warning");
+                if (gridRow.data("tinyNotification") != null) {
+                  notif = gridRow.data("tinyNotification");
+                  notif.dismiss();
+                  return gridRow.data("tinyNotification", void 0);
+                }
+              }
+            } else {
+              gridRow.addClass("warning");
+              pos = gridRow.position();
+              if (gridRow.data("tinyNotification") != null) {
+                notif = gridRow.data("tinyNotification");
+                notif.dismiss();
+              }
+              notify = new TinyNotification(pos.top + 50, pos.left, validation.message, gridRow);
+              return gridRow.data("tinyNotification", notify);
+            }
+          });
+        };
+        continuation(row);
       }
     }
     return this.monosaccharides = monosaccharides;

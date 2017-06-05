@@ -4,7 +4,7 @@ from math import ceil
 
 try:
     range = xrange
-except:
+except NameError:
     pass
 
 

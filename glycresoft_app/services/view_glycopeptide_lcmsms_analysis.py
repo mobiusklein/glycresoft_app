@@ -417,7 +417,7 @@ def search_by_scan(analysis_uuid, scan_id):
                 ident.id, top.scan.id)
         else:
             return Response('''
-<h3>
+<h3 style="text-align: center;">
     No Match
 </h3>
                 ''')
@@ -437,17 +437,26 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
             gp = view.get_glycopeptide(glycopeptide_id)
 
         matched_scans = []
+
         for solution_set in gp.spectrum_matches:
-            if solution_set.best_solution().target != gp.structure:
+
+            best_solution = solution_set.best_solution()
+            try:
+                selected_solution = solution_set.solution_for(gp.structure)
+            except KeyError:
                 continue
-            psm = solution_set[0]
-            if isinstance(psm.scan, SpectrumReference):
+            pass_threshold = abs(selected_solution.score - best_solution.score) < 1e-6
+
+            if not pass_threshold:
+                continue
+
+            if isinstance(selected_solution.scan, SpectrumReference):
                 scan = session.query(MSScan).filter(
-                    MSScan.scan_id == psm.scan.id,
+                    MSScan.scan_id == selected_solution.scan.id,
                     MSScan.sample_run_id == view.analysis.sample_run_id).first().convert()
             else:
-                scan = psm.scan
-            scan.score = psm.score
+                scan = selected_solution.scan
+            scan.score = selected_solution.score
             matched_scans.append(scan)
 
         if scan_id is None:
@@ -504,6 +513,8 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
             fig_g = root.find(".//{http://www.w3.org/2000/svg}g[@id=\"figure_1\"]")
             fig_g.attrib["transform"] = "scale(1.0, 1.0)"
             return root
+
+        print("\nEnd Glycopeptide Detail View\n\n")
 
         return render_template(
             "/view_glycopeptide_search/components/glycopeptide_detail.templ",

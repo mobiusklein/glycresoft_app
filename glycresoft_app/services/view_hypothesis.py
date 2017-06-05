@@ -1,12 +1,16 @@
 import logging
-from flask import request, g, render_template, Response, Blueprint, jsonify
+from flask import request, g, render_template, Response, jsonify
 
 from glycan_profiling.serialize import (
     GlycanHypothesis, GlycopeptideHypothesis, Protein,
     GlycanComposition, Glycopeptide, func, DatabaseBoundOperation,
     object_session)
+
+from glycan_profiling.output.csv_format import ImportableGlycanHypothesisCSVSerializer
+
 from glycresoft_app.utils.pagination import paginate
 from glycresoft_app.utils.state_transfer import request_arguments_and_context
+from glycresoft_app.task import Message
 
 from .service_module import register_service
 
@@ -18,7 +22,7 @@ def _locate_hypothesis(uuid):
     try:
         hypothesis_record = g.manager.hypothesis_manager.get(uuid)
         return hypothesis_record
-    except:
+    except Exception:
         return None
 
 
@@ -117,6 +121,19 @@ def view_glycan_composition_hypothesis_table(uuid, page=1):
         paginator=paginator, base_index=(page - 1) * page_size)
     session.close()
     return response
+
+
+@app.route("/view_glycan_composition_hypothesis/<uuid>/download-text")
+def export_glycan_composition_hypothesis_as_text(uuid):
+    hypothesis = get_glycan_hypothesis(uuid)
+    entity_iterable = hypothesis.glycans
+    g.add_message(Message("Building Export", "update"))
+    file_name = "%s-glycan-compositions.txt" % (hypothesis.name)
+    path = g.manager.get_temp_path(file_name)
+    with open(path, 'wb') as handle:
+        ImportableGlycanHypothesisCSVSerializer(handle, entity_iterable).start()
+    file_names = [(file_name)]
+    return jsonify(status='success', filenames=file_names)
 
 
 def protein_index(session, hypothesis_id):

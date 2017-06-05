@@ -50,8 +50,7 @@ class GlycanCompositionLCMSSearchController
     detailModalSelector: '#glycan-detail-modal'
     detailUrl: "/view_glycan_lcms_analysis/{analysisId}/details_for/{chromatogramId}"
     detailUnidentifiedUrl: "/view_glycan_lcms_analysis/{analysisId}/details_for_unidentified/{chromatogramId}"
-    saveCSVURL: "/view_glycan_lcms_analysis/{analysisId}/to-csv"
-
+    saveCSVURL: "/view_glycan_lcms_analysis/{analysisId}/to-csv"    
     monosaccharideFilterContainerSelector: '#monosaccharide-filters'
 
     constructor: (@analysisId, @hypothesisUUID, @monosaccharides={"Hex": 10, "HexNAc":10, "Fuc": 10, "Neu5Ac": 10}) ->
@@ -78,7 +77,29 @@ class GlycanCompositionLCMSSearchController
     setup: ->
         @handle.find(".tooltipped").tooltip()
         self = @
-
+        @handle.find("#omit_used_as_adduct").prop(
+            "checked", GlycReSoft.settings.omit_used_as_adduct)
+        @handle.find("#omit_used_as_adduct").change (event) ->
+            handle = $ @
+            isChecked = handle.prop("checked")
+            GlycReSoft.settings.omit_used_as_adduct = isChecked
+            GlycReSoft.emit("update_settings")
+        @handle.find("#end_time").val(GlycReSoft.settings.end_time)
+        @handle.find("#end_time").change (event) ->
+            handle = $ @
+            value = parseFloat(handle.val())
+            if isNaN(value) or not value?
+                value = Infinity
+            GlycReSoft.settings.end_time = value
+            GlycReSoft.emit("update_settings")
+        @handle.find("#start_time").val(GlycReSoft.settings.start_time)
+        @handle.find("#start_time").change (event) ->
+            handle = $ @
+            value = parseFloat(handle.val())
+            if isNaN(value) or not value?
+                value = 0
+            GlycReSoft.settings.start_time = value
+            GlycReSoft.emit("update_settings")
         @handle.find("#save-csv-btn").click (event) ->
             self.showExportMenu()
         @updateView()

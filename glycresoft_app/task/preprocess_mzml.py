@@ -4,6 +4,7 @@ from glycresoft_app.project import sample
 from glycresoft_app.utils import json_serializer
 from .task_process import Task, Message
 
+
 from glycan_profiling.cli.validators import (
     validate_averagine, validate_sample_run_name,
     validate_database_unlocked)
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 def preprocess(mzml_file, database_connection, averagine=None, start_time=None, end_time=None,
                maximum_charge=None, name=None, msn_averagine=None, score_threshold=35.,
-               msn_score_threshold=5., missed_peaks=1, n_processes=5, storage_path=None,
+               msn_score_threshold=5., missed_peaks=1, msn_missed_peaks=1, n_processes=5, storage_path=None,
                extract_only_tandem_envelopes=False, ms1_background_reduction=5.,
                msn_background_reduction=0, channel=None):
 
@@ -99,7 +100,7 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
     msn_deconvolution_args = {
         "scorer": ms_deisotope.scoring.MSDeconVFitter(msn_score_threshold),
         "averagine": msn_averagine,
-        "max_missed_peaks": missed_peaks,
+        "max_missed_peaks": msn_missed_peaks,
         "truncate_after": SampleConsumer.MSN_ISOTOPIC_PATTERN_WIDTH,
         "ignore_below": SampleConsumer.MSN_IGNORE_BELOW
     }
@@ -145,12 +146,15 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
 
 class PreprocessMSTask(Task):
     def __init__(self, mzml_file, database_connection, averagine, start_time, end_time, maximum_charge,
-                 name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, n_processes,
-                 storage_path, extract_only_tandem_envelopes, ms1_background_reduction, msn_background_reduction,
+                 name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, msn_missed_peaks,
+                 n_processes, storage_path, extract_only_tandem_envelopes, ms1_background_reduction,
+                 msn_background_reduction,
                  callback, **kwargs):
         args = (mzml_file, database_connection, averagine, start_time, end_time, maximum_charge,
-                name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, n_processes,
-                storage_path, extract_only_tandem_envelopes, ms1_background_reduction, msn_background_reduction)
+                name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, msn_missed_peaks,
+                n_processes, storage_path, extract_only_tandem_envelopes, ms1_background_reduction,
+                msn_background_reduction,
+                )
         job_name = "Preprocess MS %s" % (name,)
         kwargs.setdefault('name', job_name)
         Task.__init__(self, preprocess, args, callback, **kwargs)

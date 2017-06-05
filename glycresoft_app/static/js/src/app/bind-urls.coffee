@@ -53,3 +53,7 @@ ErrorLogURL = "/log_js_error"
 User =
     get: makeAPIGet("/users/current_user")
     set: (user_id, callback) -> $.post("/users/login", {"user_id": user_id}).success(callback)
+
+
+MassShiftAPI = 
+    all: makeAPIGet("/api/mass-shift")

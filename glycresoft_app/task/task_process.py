@@ -59,9 +59,6 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel):
     handler.setFormatter(formatter)
     logging.captureWarnings(True)
 
-    # mp_logger = mp_get_logger()
-    # mp_logger.addHandler(handler)
-
     warner = logging.getLogger('py.warnings')
     warner.setLevel("CRITICAL")
 
@@ -93,7 +90,7 @@ class CallInterval(object):
     Attributes
     ----------
     stopped: threading.Event
-        A semaphore lock that controls when to run `call_target`
+        A synchronization point that controls when to run `call_target`
     call_target: callable
         The thing to call every `interval` seconds
     args: iterable

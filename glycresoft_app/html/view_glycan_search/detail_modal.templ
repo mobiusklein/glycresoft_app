@@ -19,15 +19,39 @@
                 </li>
             {% endfor %}
             </ul>
+            {% if membership|length > 0 %}
+                <b>Group Membership</b><br>
+                {{membership|join(", ")}}
+            {% endif %}
         </div>
         <div class='col s4'>
             <b>Charge States</b>: {{chromatogram.charge_states | join(", ")}} <br/>
             <b>Chromatogram Score</b>: {{chromatogram.score}} | {{"%0.4g" % logitscore}} <br/>
             <ul style='margin-top: 1px;'>
-                {% for facet_score, value in chromatogram.score_components()._asdict().items() %}
+                {% for facet_score, value in chromatogram.score_components().items() %}
                     <li>{{facet_score.replace("_", " ").title()}}: {{"%0.4g" % value}} </li>
                 {% endfor %}
             </ul>
+            {% if chromatogram.ambiguous_with|length > 0%}
+                <b>Ambiguous Mass Shifts</b>
+                <ul>
+                {% for pair in chromatogram.ambiguous_with %}
+                    <li style='margin-bottom: 5px;'>
+                        {{pair[0] | glycan_composition_string}} ~ {{pair[1].name}}
+                    </li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+            {% if chromatogram.used_as_adduct|length > 0 %}
+                <b>Used As Adduct</b>
+                <ul>
+                    {% for pair in chromatogram.used_as_adduct %}
+                        <li style='margin-bottom: 5px;'>
+                            {{pair[0] | glycan_composition_string}} ~ {{pair[1].name}}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
         </div>
         <div class='col s4'>
         </div>

@@ -236,6 +236,8 @@ class Application extends ActionLayerManager
                 d[key] = Task.create(data)
             @tasks = d
             @updateTaskList()
+        MassShiftAPI.all (d) =>
+            @massShifts = d
         @colors.update()
 
     downloadFile: (filePath) ->
@@ -244,6 +246,7 @@ class Application extends ActionLayerManager
     displayMessageModal: (message, modalArgs) ->
         container = $("#message-modal")
         container.find('.modal-content').html message
+        $(".lean-overlay").remove()
         container.openModal(modalArgs)
 
     closeMessageModal: ->

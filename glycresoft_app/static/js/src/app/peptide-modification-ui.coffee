@@ -403,7 +403,7 @@ makeModificationSelectionEditor = (uid, callback) ->
 <div class='modification-selection-editor' id='modification-selection-editor-#{uid}'>
     <div class='modification-listing-container'>
         <div class='row'>
-            <h5>Select Modifications</h5>
+            <h5 class='section-title'>Select Modifications</h5>
         </div>
         <div class='row'>
             <div class='col s6'>
@@ -453,7 +453,7 @@ makeModificationSelectionEditor = (uid, callback) ->
     </div>
     <div class='modification-creation-container'>
         <div class='row'>
-            <h5>Create Modification</h5>
+            <h5 class='section-title'>Create Modification</h5>
         </div>
         <div class='modification-creation row'>
             <div class='col s3 input-field'>

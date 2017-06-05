@@ -363,6 +363,11 @@ Application = (function(superClass) {
         return _this.updateTaskList();
       };
     })(this));
+    MassShiftAPI.all((function(_this) {
+      return function(d) {
+        return _this.massShifts = d;
+      };
+    })(this));
     return this.colors.update();
   };
 
@@ -374,6 +379,7 @@ Application = (function(superClass) {
     var container;
     container = $("#message-modal");
     container.find('.modal-content').html(message);
+    $(".lean-overlay").remove();
     return container.openModal(modalArgs);
   };
 
@@ -464,7 +470,7 @@ renderTask = function(task) {
 
 //# sourceMappingURL=Application-common.js.map
 
-var ActionBook, AnalysisAPI, ErrorLogURL, HypothesisAPI, SampleAPI, TaskAPI, User, makeAPIGet, makeParameterizedAPIGet;
+var ActionBook, AnalysisAPI, ErrorLogURL, HypothesisAPI, MassShiftAPI, SampleAPI, TaskAPI, User, makeAPIGet, makeParameterizedAPIGet;
 
 ActionBook = {
   home: {
@@ -547,6 +553,10 @@ User = {
   }
 };
 
+MassShiftAPI = {
+  all: makeAPIGet("/api/mass-shift")
+};
+
 //# sourceMappingURL=bind-urls.js.map
 
 var ConstraintInputGrid, MonosaccharideInputWidgetGrid;
@@ -561,7 +571,7 @@ MonosaccharideInputWidgetGrid = (function() {
   }
 
   MonosaccharideInputWidgetGrid.prototype.update = function() {
-    var entry, i, len, monosaccharides, notif, notify, pos, ref, row;
+    var continuation, entry, i, len, monosaccharides, notif, notify, pos, ref, row;
     monosaccharides = {};
     ref = this.container.find(".monosaccharide-row");
     for (i = 0, len = ref.length; i < len; i++) {
@@ -573,12 +583,22 @@ MonosaccharideInputWidgetGrid = (function() {
         upper_bound: row.find(".upper-bound").val()
       };
       if (entry.name === "") {
+        row.removeClass("warning");
+        if (row.data("tinyNotification") != null) {
+          notif = row.data("tinyNotification");
+          notif.dismiss();
+          row.data("tinyNotification", void 0);
+        }
         continue;
       }
       if (entry.name in monosaccharides) {
         row.addClass("warning");
         pos = row.position();
-        notify = new TinyNotification(pos.top + 50, pos.left, "This monosaccharide is already present.", row);
+        if (row.data("tinyNotification") != null) {
+          notif = row.data("tinyNotification");
+          notif.dismiss();
+        }
+        notify = new TinyNotification(pos.top + 50, pos.left, "This residue is already present.", row);
         row.data("tinyNotification", notify);
       } else {
         row.removeClass("warning");
@@ -588,6 +608,32 @@ MonosaccharideInputWidgetGrid = (function() {
           row.data("tinyNotification", void 0);
         }
         monosaccharides[entry.name] = entry;
+        continuation = function(gridRow) {
+          return $.post("/api/validate-iupac", {
+            "target_string": entry.name
+          }).then(function(validation, message, query) {
+            if (validation.valid) {
+              if (!(entry.name in monosaccharides)) {
+                gridRow.removeClass("warning");
+                if (gridRow.data("tinyNotification") != null) {
+                  notif = gridRow.data("tinyNotification");
+                  notif.dismiss();
+                  return gridRow.data("tinyNotification", void 0);
+                }
+              }
+            } else {
+              gridRow.addClass("warning");
+              pos = gridRow.position();
+              if (gridRow.data("tinyNotification") != null) {
+                notif = gridRow.data("tinyNotification");
+                notif.dismiss();
+              }
+              notify = new TinyNotification(pos.top + 50, pos.left, validation.message, gridRow);
+              return gridRow.data("tinyNotification", notify);
+            }
+          });
+        };
+        continuation(row);
       }
     }
     return this.monosaccharides = monosaccharides;
@@ -852,10 +898,10 @@ var MassShiftInputWidget;
 
 MassShiftInputWidget = (function() {
   var addEmptyRowOnEdit, counter, template;
-  template = "<div class='mass-shift-row row'>\n    <div class='input-field col s3' style='margin-right:55px; margin-left:30px;'>\n        <label for='mass_shift_name'>Name or Formula</label>\n        <input class='mass-shift-name' type='text' name='mass_shift_name' placeholder='Name/Formula'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='mass_shift_max_count'>Maximum Count</label>    \n        <input class='max-count' type='number' min='0' placeholder='Maximum Count' name='mass_shift_max_count'>\n    </div>\n</div>";
+  template = "<div class='mass-shift-row row'>\n    <div class='input-field col s3' style='margin-right:55px; margin-left:30px;'>\n        <label for='mass_shift_name'>Name or Formula</label>\n        <input class='mass-shift-name' type='text' name='mass_shift_name' placeholder='Name/Formula'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='mass_shift_max_count'>Up To Count</label>    \n        <input class='max-count' type='number' min='0' placeholder='Maximum Count' name='mass_shift_max_count'>\n    </div>\n</div>";
   counter = 0;
   addEmptyRowOnEdit = function(container, addHeader) {
-    var callback, row;
+    var autocompleteValues, callback, name, row;
     if (addHeader == null) {
       addHeader = true;
     }
@@ -874,7 +920,20 @@ MassShiftInputWidget = (function() {
       }
       return $(this).parent().find("label").removeClass("active");
     };
-    return row.find("input").change(callback);
+    row.find("input").change(callback);
+    autocompleteValues = {};
+    for (name in GlycReSoft.massShifts) {
+      if (name === "Unmodified") {
+        continue;
+      }
+      autocompleteValues[name] = null;
+    }
+    return row.find(".mass-shift-name").autocomplete({
+      data: autocompleteValues,
+      onAutocomplete: function(value) {
+        return console.log(value, this);
+      }
+    });
   };
   return addEmptyRowOnEdit;
 })();
@@ -1579,7 +1638,7 @@ ModificationSelectionEditor = (function() {
 
 makeModificationSelectionEditor = function(uid, callback) {
   var handle, inst, template;
-  template = "<div class='modification-selection-editor' id='modification-selection-editor-" + uid + "'>\n    <div class='modification-listing-container'>\n        <div class='row'>\n            <h5>Select Modifications</h5>\n        </div>\n        <div class='row'>\n            <div class='col s6'>\n                <div class='modification-listing-header row'>\n                    <div class='col s4'>Name</div>\n                    <div class='col s2'>Target</div>\n                    <div class='col s3'>Formula</div>\n                    <div class='col s3'>Mass</div>\n                </div>\n                <div class='modification-listing'>\n                </div>\n                <input id='modification-listing-search' type=\"text\" name=\"modification-listing-search\"\n                       placeholder=\"Search by name\"/>\n            </div>\n            <div class='col s2'>\n                <div class='modification-choice-controls'>\n                    <a class='btn add-constant-btn tooltipped'\n                       data-tooltip=\"Add Selected Modification Rules to Constant List\">\n                       + Constant</a><br>\n                    <a class='btn add-variable-btn tooltipped'\n                       data-tooltip=\"Add Selected Modification Rules to Variable List\">\n                       + Variable</a><br>\n                    <a class='btn remove-selected-btn tooltipped'\n                       data-tooltip=\"Remove Selected Rules From Constant and/or Variable List\">\n                       - Selection</a><br>\n                    <a class='btn create-custom-btn tooltipped' data-tooltip=\"Create New Modification Rule\">\n                        Create Custom</a><br>\n                </div>\n            </div>\n            <div class='modification-choices-container col s4'>\n                <div class='modification-choices'>\n                    <div class='choice-list-header'>\n                        Constant\n                    </div>\n                    <div class='constant-modification-choices'>\n                        \n                    </div>\n                    <div class='choice-list-header' style='border-top: 1px solid lightgrey'>\n                        Variable\n                    </div>\n                    <div class='variable-modification-choices'>\n                        \n                    </div>\n                </div>\n            </div>\n        </div>\n    </div>\n    <div class='modification-creation-container'>\n        <div class='row'>\n            <h5>Create Modification</h5>\n        </div>\n        <div class='modification-creation row'>\n            <div class='col s3 input-field'>\n                <label for='new-modification-name'>New Modification Name</label>\n                <input id='new-modification-name' name=\"new-modification-name\"\n                       type=\"text\" class=\"validate\">\n            </div>\n            <div class='col s3 input-field'>\n                <label for='new-modification-formula'>New Modification Formula</label>\n                <input id='new-modification-formula' name=\"new-modification-formula\"\n                       type=\"text\" class=\"validate\" pattern=\"^[A-Za-z0-9\-\(\)]+$\">\n            </div>\n            <div class='col s3 input-field'>\n                <label for='new-modification-target'>New Modification Target</label>\n                <input id='new-modification-target' name=\"new-modification-target\"\n                       type=\"text\" class=\"validate\" pattern=\"([A-Z]*)(?: @ ([NC]-term))?\">\n            </div>\n        </div>\n        <div class='modification-choice-controls row'>\n            <a class='btn submit-creation-btn'>Create</a><br>\n            <a class='btn cancel-creation-btn'>Cancel</a><br>\n        </div>\n    </div>\n    <div class='modification-editor-disabled'>\n        Modification Specification Not Permitted\n    </div>\n</div>";
+  template = "<div class='modification-selection-editor' id='modification-selection-editor-" + uid + "'>\n    <div class='modification-listing-container'>\n        <div class='row'>\n            <h5 class='section-title'>Select Modifications</h5>\n        </div>\n        <div class='row'>\n            <div class='col s6'>\n                <div class='modification-listing-header row'>\n                    <div class='col s4'>Name</div>\n                    <div class='col s2'>Target</div>\n                    <div class='col s3'>Formula</div>\n                    <div class='col s3'>Mass</div>\n                </div>\n                <div class='modification-listing'>\n                </div>\n                <input id='modification-listing-search' type=\"text\" name=\"modification-listing-search\"\n                       placeholder=\"Search by name\"/>\n            </div>\n            <div class='col s2'>\n                <div class='modification-choice-controls'>\n                    <a class='btn add-constant-btn tooltipped'\n                       data-tooltip=\"Add Selected Modification Rules to Constant List\">\n                       + Constant</a><br>\n                    <a class='btn add-variable-btn tooltipped'\n                       data-tooltip=\"Add Selected Modification Rules to Variable List\">\n                       + Variable</a><br>\n                    <a class='btn remove-selected-btn tooltipped'\n                       data-tooltip=\"Remove Selected Rules From Constant and/or Variable List\">\n                       - Selection</a><br>\n                    <a class='btn create-custom-btn tooltipped' data-tooltip=\"Create New Modification Rule\">\n                        Create Custom</a><br>\n                </div>\n            </div>\n            <div class='modification-choices-container col s4'>\n                <div class='modification-choices'>\n                    <div class='choice-list-header'>\n                        Constant\n                    </div>\n                    <div class='constant-modification-choices'>\n                        \n                    </div>\n                    <div class='choice-list-header' style='border-top: 1px solid lightgrey'>\n                        Variable\n                    </div>\n                    <div class='variable-modification-choices'>\n                        \n                    </div>\n                </div>\n            </div>\n        </div>\n    </div>\n    <div class='modification-creation-container'>\n        <div class='row'>\n            <h5 class='section-title'>Create Modification</h5>\n        </div>\n        <div class='modification-creation row'>\n            <div class='col s3 input-field'>\n                <label for='new-modification-name'>New Modification Name</label>\n                <input id='new-modification-name' name=\"new-modification-name\"\n                       type=\"text\" class=\"validate\">\n            </div>\n            <div class='col s3 input-field'>\n                <label for='new-modification-formula'>New Modification Formula</label>\n                <input id='new-modification-formula' name=\"new-modification-formula\"\n                       type=\"text\" class=\"validate\" pattern=\"^[A-Za-z0-9\-\(\)]+$\">\n            </div>\n            <div class='col s3 input-field'>\n                <label for='new-modification-target'>New Modification Target</label>\n                <input id='new-modification-target' name=\"new-modification-target\"\n                       type=\"text\" class=\"validate\" pattern=\"([A-Z]*)(?: @ ([NC]-term))?\">\n            </div>\n        </div>\n        <div class='modification-choice-controls row'>\n            <a class='btn submit-creation-btn'>Create</a><br>\n            <a class='btn cancel-creation-btn'>Cancel</a><br>\n        </div>\n    </div>\n    <div class='modification-editor-disabled'>\n        Modification Specification Not Permitted\n    </div>\n</div>";
   handle = $(template);
   handle.find("#modification-selection-editor-" + uid);
   inst = new ModificationSelectionEditor(handle);
@@ -1946,52 +2005,82 @@ Application.initializers.push(function() {
 
 //# sourceMappingURL=sample-ui.js.map
 
-var viewGlycanCompositionHypothesis;
+var GlycanCompositionHypothesisController, GlycanCompositionHypothesisPaginator,
+  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  hasProp = {}.hasOwnProperty;
 
-viewGlycanCompositionHypothesis = function(hypothesisId) {
-  var currentPage, detailModal, displayTable, setup, setupGlycanCompositionTablePageHandler, updateCompositionTablePage;
-  detailModal = void 0;
-  displayTable = void 0;
-  currentPage = 1;
-  setup = function() {
-    displayTable = $("#composition-table-container");
-    return updateCompositionTablePage(1);
-  };
-  setupGlycanCompositionTablePageHandler = function(page) {
+GlycanCompositionHypothesisPaginator = (function(superClass) {
+  extend(GlycanCompositionHypothesisPaginator, superClass);
+
+  GlycanCompositionHypothesisPaginator.prototype.tableSelector = "#composition-table-container";
+
+  GlycanCompositionHypothesisPaginator.prototype.tableContainerSelector = "#composition-table-container";
+
+  GlycanCompositionHypothesisPaginator.prototype.rowSelector = "#composition-table-container tbody tr";
+
+  GlycanCompositionHypothesisPaginator.prototype.pageUrl = "/view_glycan_composition_hypothesis/{hypothesisId}/{page}";
+
+  function GlycanCompositionHypothesisPaginator(hypothesisId, handle, controller) {
+    this.hypothesisId = hypothesisId;
+    this.handle = handle;
+    this.controller = controller;
+    this.rowClickHandler = bind(this.rowClickHandler, this);
+    GlycanCompositionHypothesisPaginator.__super__.constructor.call(this, 1);
+  }
+
+  GlycanCompositionHypothesisPaginator.prototype.getPageUrl = function(page) {
     if (page == null) {
       page = 1;
     }
-    $('.display-table tbody tr').click(function() {});
-    $(':not(.disabled) .next-page').click(function() {
-      return updateCompositionTablePage(page + 1);
-    });
-    $(':not(.disabled) .previous-page').click(function() {
-      return updateCompositionTablePage(page - 1);
-    });
-    return $('.pagination li :not(.active)').click(function() {
-      var nextPage;
-      nextPage = $(this).attr("data-index");
-      if (nextPage != null) {
-        nextPage = parseInt(nextPage);
-        return updateCompositionTablePage(nextPage);
-      }
+    return this.pageUrl.format({
+      "page": page,
+      "hypothesisId": this.hypothesisId
     });
   };
-  updateCompositionTablePage = function(page) {
+
+  GlycanCompositionHypothesisPaginator.prototype.rowClickHandler = function(row) {
+    return console.log(row);
+  };
+
+  return GlycanCompositionHypothesisPaginator;
+
+})(PaginationBase);
+
+GlycanCompositionHypothesisController = (function() {
+  GlycanCompositionHypothesisController.prototype.containerSelector = '#glycan-composition-hypothesis-container';
+
+  GlycanCompositionHypothesisController.prototype.saveTxtURL = "/view_glycan_composition_hypothesis/{hypothesisId}/download-text";
+
+  function GlycanCompositionHypothesisController(hypothesisId) {
+    this.hypothesisId = hypothesisId;
+    this.handle = $(this.containerSelector);
+    this.paginator = new GlycanCompositionHypothesisPaginator(this.hypothesisId, this.handle, this);
+    this.setup();
+  }
+
+  GlycanCompositionHypothesisController.prototype.setup = function() {
+    var self;
+    self = this;
+    this.paginator.setupTable();
+    return this.handle.find("#save-text-btn").click(function() {
+      return self.downloadTxt();
+    });
+  };
+
+  GlycanCompositionHypothesisController.prototype.downloadTxt = function() {
     var url;
-    if (page == null) {
-      page = 1;
-    }
-    url = "/view_glycan_composition_hypothesis/" + hypothesisId + "/" + page;
-    console.log(url);
-    return GlycReSoft.ajaxWithContext(url).success(function(doc) {
-      currentPage = page;
-      displayTable.html(doc);
-      return setupGlycanCompositionTablePageHandler(page);
+    url = this.saveTxtURL.format({
+      "hypothesisId": this.hypothesisId
+    });
+    return $.get(url).then(function(payload) {
+      return GlycReSoft.downloadFile(payload.filenames[0]);
     });
   };
-  return setup();
-};
+
+  return GlycanCompositionHypothesisController;
+
+})();
 
 //# sourceMappingURL=view-glycan-composition-hypothesis.js.map
 
@@ -2164,6 +2253,36 @@ GlycanCompositionLCMSSearchController = (function() {
     var filterContainer, self;
     this.handle.find(".tooltipped").tooltip();
     self = this;
+    this.handle.find("#omit_used_as_adduct").prop("checked", GlycReSoft.settings.omit_used_as_adduct);
+    this.handle.find("#omit_used_as_adduct").change(function(event) {
+      var handle, isChecked;
+      handle = $(this);
+      isChecked = handle.prop("checked");
+      GlycReSoft.settings.omit_used_as_adduct = isChecked;
+      return GlycReSoft.emit("update_settings");
+    });
+    this.handle.find("#end_time").val(GlycReSoft.settings.end_time);
+    this.handle.find("#end_time").change(function(event) {
+      var handle, value;
+      handle = $(this);
+      value = parseFloat(handle.val());
+      if (isNaN(value) || (value == null)) {
+        value = Infinity;
+      }
+      GlycReSoft.settings.end_time = value;
+      return GlycReSoft.emit("update_settings");
+    });
+    this.handle.find("#start_time").val(GlycReSoft.settings.start_time);
+    this.handle.find("#start_time").change(function(event) {
+      var handle, value;
+      handle = $(this);
+      value = parseFloat(handle.val());
+      if (isNaN(value) || (value == null)) {
+        value = 0;
+      }
+      GlycReSoft.settings.start_time = value;
+      return GlycReSoft.emit("update_settings");
+    });
     this.handle.find("#save-csv-btn").click(function(event) {
       return self.showExportMenu();
     });

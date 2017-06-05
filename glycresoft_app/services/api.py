@@ -4,6 +4,7 @@ from flask import g, jsonify, current_app, request
 from glycresoft_app.utils import json_serializer
 from glycan_profiling.serialize import IdentifiedGlycopeptide
 from glycan_profiling.plotting import colors
+from glycan_profiling.chromatogram_tree import mass_shift
 from glypy.composition import formula
 from glypy.composition.glycan_composition import from_iupac_lite, IUPACError
 from glycopeptidepy.structure.modification import ModificationTable, ModificationCategory
@@ -112,3 +113,10 @@ def api_validate_iupac():
         return jsonify(valid=True, message=str(residue), query=payload)
     except IUPACError as e:
         return jsonify(valid=False, message=str(e), query=payload)
+
+
+@api.route("/api/mass-shift")
+def mass_shifts():
+    d = {}
+    d.update(mass_shift.mass_shift_index)
+    return jsonify(**d)

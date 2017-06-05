@@ -26,7 +26,6 @@ def post_add_sample():
     sample_name = request.values['sample-name']
     if sample_name == "":
         sample_name = request.files['observed-ions-file'].filename
-
     # If no sample name could be constructed at this point
     # and we are not running a native client, stop now.
     if sample_name == "" and not g.has_native_client:
@@ -52,12 +51,13 @@ def post_add_sample():
         sample_name = g.manager.make_unique_sample_name(
             sample_name)
         secure_name = secure_filename(sample_name)
-        current_app.logger.info("Preparing to run with native path: %r, %r, %r", path, sample_name, secure_name)
+        current_app.logger.info(
+            "Preparing to run with native path: %r, %r, %r", path, sample_name, secure_name)
     else:
+        file_name = request.files['observed-ions-file'].filename
         sample_name = g.manager.make_unique_sample_name(
             sample_name)
-
-        secure_name = secure_filename(sample_name)
+        secure_name = secure_filename(file_name)
         path = g.manager.get_temp_path(secure_name)
         request.files['observed-ions-file'].save(path)
 
@@ -95,6 +95,7 @@ def post_add_sample():
     msn_score_threshold = float(request.values['msn-minimum-isotopic-score'])
 
     missed_peaks = int(request.values['missed-peaks'])
+    msn_missed_peaks = int(request.values['msn-missed-peaks'])
     maximum_charge_state = int(request.values['maximum-charge-state'])
 
     ms1_background_reduction = float(request.values.get(
@@ -110,7 +111,7 @@ def post_add_sample():
         path, g.manager.connection_bridge,
         averagine, start_time, end_time, maximum_charge_state,
         sample_name, msn_averagine, ms1_score_threshold,
-        msn_score_threshold, missed_peaks, n_processes=n_workers,
+        msn_score_threshold, missed_peaks, msn_missed_peaks, n_processes=n_workers,
         storage_path=storage_path, extract_only_tandem_envelopes=extract_only_tandem_envelopes,
         ms1_background_reduction=ms1_background_reduction,
         msn_background_reduction=msn_background_reduction,

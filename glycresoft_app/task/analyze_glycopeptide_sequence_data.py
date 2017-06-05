@@ -72,6 +72,7 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
             peak_shape_scoring_model=peak_shape_scoring_model,
             oxonium_threshold=minimum_oxonium_threshold)
         gps, unassigned, target_hits, decoy_hits = analyzer.start()
+
         analysis = analyzer.analysis
         record = project_analysis.AnalysisRecord(
             name=analysis.name, id=analysis.id, uuid=analysis.uuid, path=output_path,
