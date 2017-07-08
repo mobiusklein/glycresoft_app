@@ -138,12 +138,14 @@ class GlycanChromatographyAnalysisView(CollectionViewBase):
         CollectionViewBase.__init__(self, storage_record)
         self.analysis_id = analysis_id
 
+        # Filters (Should be Analysis specific, but are global in request state)
         self.start_time = 0
         self.end_time = float("inf")
         self.omit_used_as_adduct = False
         self.glycan_composition_filter = None
         self.monosaccharide_bounds = FilterSpecificationSet()
         self.score_threshold = 0.4
+
         self.analysis = None
         self.hypothesis = None
         self.neighborhoods = make_n_glycan_neighborhoods()

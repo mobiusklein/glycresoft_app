@@ -1663,7 +1663,7 @@ samplePreprocessingPresets = [
   }, {
     name: "LC-MS/MS Glycoproteomics",
     max_charge: 12,
-    max_missing_peaks: 1,
+    max_missing_peaks: 3,
     ms1_score_threshold: 35,
     ms1_averagine: "glycopeptide",
     msn_score_threshold: 10,
