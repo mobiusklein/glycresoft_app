@@ -7,13 +7,12 @@ from glypy.composition.glycan_composition import GlycanComposition
 from ms_deisotope import mass_charge_ratio
 
 from glycan_profiling.symbolic_expression import GlycanSymbolContext
+from glycan_profiling.scoring.chromatogram_solution import logit
 
 from jinja2 import Environment, PackageLoader, FileSystemLoader, escape
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import StringIO
+
+from io import BytesIO
 
 from lxml import etree
 
@@ -50,6 +49,11 @@ def svg_plot(figure, svg_width=None, xml_transform=None, **kwargs):
         return data_buffer.getvalue()
 
 
+def svguri_plot(figure, **kwargs):
+    svg_string = svg_plot(figure, **kwargs)
+    return "<img src='data:image/svg+xml;utf-8,%s'>" % urllib.quote(svg_string)
+
+
 def render_plot(figure, **kwargs):
     if isinstance(figure, Axes):
         figure = figure.get_figure()
@@ -60,7 +64,7 @@ def render_plot(figure, **kwargs):
     if kwargs.get("bbox_inches") != 'tight' or kwargs.get("patchless"):
         figure.patch.set_alpha(0)
         figure.axes[0].patch.set_alpha(0)
-    data_buffer = StringIO()
+    data_buffer = BytesIO()
     figure.savefig(data_buffer, **kwargs)
     plt.close(figure)
     return data_buffer
@@ -183,9 +187,11 @@ def prepare_environment(env=None):
     env.filters['highlight_sequence_site'] = highlight_sequence_site
     env.filters['svg_plot'] = svg_plot
     env.filters['png_plot'] = png_plot
+    env.filters['svguri_plot'] = svguri_plot
     env.filters['glycopeptide_string'] = glycopeptide_string
     env.filters['glycan_composition_string'] = glycan_composition_string
     env.filters["formula"] = formula
     env.filters["sort_peak_match_pairs"] = sort_peak_match_pairs
     env.filters["mass_charge_ratio"] = mass_charge_ratio
+    env.filters["logit"] = logit
     return env
