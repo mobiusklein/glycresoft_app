@@ -282,7 +282,7 @@ def chromatograms_chart(analysis_uuid):
     with view:
         snapshot = view.get_items_for_display()
         with snapshot.bind(view.session):
-            return report.svg_plot(snapshot.chromatograms_chart().ax, bbox_inches='tight')
+            return report.svguri_plot(snapshot.chromatograms_chart().ax, bbox_inches='tight')
 
 
 @app.route("/view_glycan_lcms_analysis/<analysis_uuid>/page/<int:page>", methods=['POST'])
@@ -315,7 +315,7 @@ def abundance_bar_chart(analysis_uuid):
     with view:
         snapshot = view.get_items_for_display()
         with snapshot.bind(view.session):
-            return report.svg_plot(snapshot.abundance_bar_chart().ax, bbox_inches='tight',
+            return report.svguri_plot(snapshot.abundance_bar_chart().ax, bbox_inches='tight',
                                    width=12, height=6)
 
 
@@ -330,7 +330,7 @@ def details_for(analysis_uuid, chromatogram_id):
                 [chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
                 label_function=lambda *a, **k: "", legend=False).ax
             plot.set_title("Aggregated\nExtracted Ion Chromatogram", fontsize=24)
-            chroma_svg = report.svg_plot(
+            chroma_svg = report.svguri_plot(
                 plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
 
             glycan_composition = normalize_composition(chroma.glycan_composition)
@@ -352,7 +352,7 @@ def details_for(analysis_uuid, chromatogram_id):
                     legend=False).ax
                 adduct_plot.set_title(
                     "Adduct-Separated\nExtracted Ion Chromatogram", fontsize=24)
-                adduct_separation = report.svg_plot(
+                adduct_separation = report.svguri_plot(
                     adduct_plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
 
             charge_separation = ""
@@ -361,7 +361,7 @@ def details_for(analysis_uuid, chromatogram_id):
                     [chroma], ax=figax()).draw(
                     label_function=lambda x, *a, **kw: str(tuple(x.charge_states)[0]), legend=False).ax
                 charge_separating_plot.set_title("Charge-Separated\nExtracted Ion Chromatogram", fontsize=24)
-                charge_separation = report.svg_plot(
+                charge_separation = report.svguri_plot(
                     charge_separating_plot, bbox_inches='tight', height=5, width=9,
                     svg_width="100%")
 
@@ -384,7 +384,7 @@ def details_for_unidentified(analysis_uuid, chromatogram_id):
                 [chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
                 label_function=lambda *a, **k: "", legend=False).ax
             plot.set_title("Aggregated\nExtracted Ion Chromatogram", fontsize=24)
-            chroma_svg = report.svg_plot(plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
+            chroma_svg = report.svguri_plot(plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
 
             adduct_separation = ""
             if len(chroma.adducts) > 1:
@@ -401,7 +401,7 @@ def details_for_unidentified(analysis_uuid, chromatogram_id):
                     legend=False).ax
                 adduct_plot.set_title(
                     "Adduct-Separated\nExtracted Ion Chromatogram", fontsize=24)
-                adduct_separation = report.svg_plot(
+                adduct_separation = report.svguri_plot(
                     adduct_plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
 
             charge_separation = ""
@@ -412,7 +412,7 @@ def details_for_unidentified(analysis_uuid, chromatogram_id):
                     label_function=lambda x, *a, **kw: str(tuple(x.charge_states)[0])).ax
                 charge_separating_plot.set_title(
                     "Charge-Separated\nExtracted Ion Chromatogram", fontsize=24)
-                charge_separation = report.svg_plot(
+                charge_separation = report.svguri_plot(
                     charge_separating_plot, bbox_inches='tight', height=5, width=9,
                     svg_width="100%")
 

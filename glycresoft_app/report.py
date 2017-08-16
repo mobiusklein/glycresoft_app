@@ -131,9 +131,9 @@ def glycan_composition_string(composition):
         return "<code>%s</code>" % composition
 
     parts = []
-    template = ("<span class='monosaccharide-name'"
-                "style='background-color:%s;padding:2px;border-radius:2px;'>"
-                "%s %d</span>")
+    template = ("<span class='monosaccharide-composition-name'"
+                "style='background-color:%s'>"
+                "%s&nbsp;%d</span>")
     for k, v in sorted(composition.items(), key=lambda x: x[0].mass()):
         name = str(k)
         color = colors.get_color(str(name))
@@ -141,7 +141,7 @@ def glycan_composition_string(composition):
     reduced = composition.reducing_end
     if reduced:
         reducing_end_template = (
-            "<span class='monosaccharide-name'"
+            "<span class='monosaccharide-composition-name'"
             "style='background-color:%s;padding:2px;border-radius:2px;'>"
             "%s</span>")
         name = formula(reduced.composition)

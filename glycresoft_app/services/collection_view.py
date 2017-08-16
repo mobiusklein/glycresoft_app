@@ -92,7 +92,7 @@ class SnapshotBase(object):
 
     @contextlib.contextmanager
     def bind(self, session):
-        self._update_bindings(session)
         with self._instance_lock:
+            self._update_bindings(session)
             yield
             self._clear_bindings()
