@@ -5,7 +5,7 @@ from threading import RLock
 from glycan_profiling.serialize import (
     DatabaseBoundOperation)
 
-from glycan_profiling.database import lru
+from glycan_profiling.structure import lru
 
 logger = logging.getLogger("glycresoft_app.view_services")
 

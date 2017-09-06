@@ -79,7 +79,6 @@ class GlycanChromatographySnapShot(SnapshotBase):
             x.id: x for x in self.unidentified_chromatograms
         }
 
-
     def _update_bindings(self, session):
         super(GlycanChromatographySnapShot, self)._update_bindings(session)
         for c in self.member_id_map.values():

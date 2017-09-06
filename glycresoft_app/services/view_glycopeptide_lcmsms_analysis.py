@@ -230,7 +230,6 @@ class GlycopeptideAnalysisView(CollectionViewBase):
             index[protein_id] = {
                 "protein_name": protein_name,
                 "protein_id": protein_id,
-                "theoretical_count": glycopeptide_count
             }
         for protein_name, protein_id, glycopeptide_count in matched_counts:
             entry = index[protein_id]
@@ -380,8 +379,6 @@ def page(analysis_uuid, protein_id, page):
         snapshot = view.get_items_for_display(protein_id)
         with snapshot.bind(view.session):
             paginator = snapshot.paginate(page, 25)
-            # import IPython
-            # IPython.embed()
             return render_template(
                 "view_glycopeptide_search/components/glycopeptide_match_table.templ", paginator=paginator)
 
@@ -527,8 +524,6 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
                 fig_g = root.find(".//{http://www.w3.org/2000/svg}g[@id=\"figure_1\"]")
                 fig_g.attrib["transform"] = "scale(1.0, 1.0)"
                 return root
-
-            print("\nEnd Glycopeptide Detail View\n\n")
 
             return render_template(
                 "/view_glycopeptide_search/components/glycopeptide_detail.templ",

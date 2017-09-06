@@ -124,3 +124,8 @@ def post_add_sample():
 @sample_management.route("/add_sample")
 def add_sample():
     return render_template("add_sample_form.templ")
+
+
+@sample_management.route("/add_bulk_sample")
+def add_bulk_sample():
+    return render_template("add_bulk_sample_form.templ")

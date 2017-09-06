@@ -7,7 +7,7 @@ from glycan_profiling.plotting.lcms_map import LCMSMapArtist
 
 from glycan_profiling.trace import ChromatogramExtractor
 from glycan_profiling.chromatogram_tree import SimpleChromatogram
-from glycan_profiling.tandem.spectrum_matcher_base import standard_oxonium_ions
+from glycan_profiling.tandem.oxonium_ions import standard_oxonium_ions
 
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
 
