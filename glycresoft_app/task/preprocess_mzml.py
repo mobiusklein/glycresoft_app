@@ -91,6 +91,7 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
     ms1_deconvolution_args = {
         "scorer": ms_deisotope.scoring.PenalizedMSDeconVFitter(score_threshold, 2.),
         "averagine": averagine,
+        "charge_range": charge_range,
         "max_missed_peaks": missed_peaks,
         "truncate_after": SampleConsumer.MS1_ISOTOPIC_PATTERN_WIDTH,
         "ignore_below": SampleConsumer.MS1_IGNORE_BELOW
@@ -99,6 +100,7 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
     msn_deconvolution_args = {
         "scorer": ms_deisotope.scoring.MSDeconVFitter(msn_score_threshold),
         "averagine": msn_averagine,
+        "charge_range": charge_range,
         "max_missed_peaks": msn_missed_peaks,
         "truncate_after": SampleConsumer.MSN_ISOTOPIC_PATTERN_WIDTH,
         "ignore_below": SampleConsumer.MSN_IGNORE_BELOW
@@ -106,8 +108,6 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
 
     consumer = SampleConsumer(
         mzml_file,
-        averagine=averagine,
-        charge_range=charge_range,
         ms1_peak_picking_args=ms1_peak_picking_args,
         ms1_deconvolution_args=ms1_deconvolution_args,
         msn_peak_picking_args=msn_peak_picking_args,
