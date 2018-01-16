@@ -4,7 +4,7 @@ from glycan_profiling.cli.tools import tools
 from glycan_profiling.cli.base import cli, HiddenOption
 
 
-@cli.command()
+@cli.command(short_help="Launch the application web server")
 @click.pass_context
 @click.argument("project-store-root")
 @click.option("-b", "--base-path", default=None, help='Location to store application instance information')
@@ -24,10 +24,54 @@ def server(context, project_store_root, base_path, external=False, port=None, no
              max_tasks=max_tasks, native_client_key=native_client_key)
 
 
-@cli.command("project")
+@cli.group("project")
+def project():
+    pass
+
+
+@project.command("init", short_help="Create an empty project structure")
 @click.argument("path")
 def project_init(path):
     from glycresoft_app.project.project import Project
     proj = Project(path)
     click.secho("%r" % (proj,))
     proj.force_build_indices()
+
+
+@project.command("add-analysis", short_help='Add an existing analysis to the project')
+@click.argument("project-path")
+@click.argument("analysis-path")
+def add_analysis(project_path, analysis_path):
+    from glycresoft_app.project.project import Project
+    from glycresoft_app.project.analysis import AnalysisRecordSet
+    project = Project(project_path)
+    analyses = AnalysisRecordSet(analysis_path)
+    for record in analyses:
+        project.analysis_manager.put(record)
+    project.analysis_manager.dump()
+
+
+@project.command("add-sample", short_help='Add an existing sample to the project')
+@click.argument("project-path")
+@click.argument("sample-path")
+def add_sample(project_path, sample_path):
+    from glycresoft_app.project.project import Project
+    from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
+    project = Project(project_path)
+    reader = ProcessedMzMLDeserializer(sample_path)
+    record = project.sample_manager.make_record(reader)
+    project.sample_manager.put(record)
+    project.sample_manager.dump()
+
+
+@project.command("add-hypothesis", short_help="Add an existing hypothesis to the project")
+@click.argument("project-path")
+@click.argument("hypothesis-path")
+def add_hypothesis(project_path, hypothesis_path):
+    from glycresoft_app.project.project import Project
+    from glycresoft_app.project.hypothesis import HypothesisRecordSet
+    project = Project(project_path)
+    hypotheses = HypothesisRecordSet(hypothesis_path)
+    for record in hypotheses:
+        project.hypothesis_manager.put(record)
+    project.hypothesis_manager.dump()

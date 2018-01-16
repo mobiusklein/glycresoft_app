@@ -64,7 +64,7 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel):
 
     logger.handlers = []
     logger.addHandler(handler)
-    logger.setLevel("DEBUG")
+    logger.setLevel("INFO")
     logger.propagate = False
     current_process = multiprocessing.current_process()
 
@@ -76,10 +76,14 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel):
     except Exception:
         channel.send(Message.traceback())
         import sys
+
+        # exterminate children of failing task process
         proc_handle = psutil.Process(current_process.pid)
         with proc_handle.oneshot():
             for child in proc_handle.children(True):
                 child.kill()
+
+        # quit with error code
         sys.exit(1)
 
 

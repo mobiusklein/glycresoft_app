@@ -12,6 +12,11 @@ with open("glycresoft_app/version.py") as version_file:
         print("Cannot determine version")
 
 
+requirements = []
+with open("requirements.txt") as requirements_file:
+    requirements.extend(requirements_file.readlines())
+
+
 def run_setup(include_cext=True):
     setup(
         name='glycresoft_app',
@@ -21,6 +26,7 @@ def run_setup(include_cext=True):
         author_email=["jaklein@bu.edu"],
         include_package_data=True,
         zip_safe=False,
+        install_requires=requirements,
         classifiers=[
             'Development Status :: 3 - Alpha',
             'Intended Audience :: Science/Research',

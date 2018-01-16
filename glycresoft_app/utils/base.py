@@ -124,3 +124,16 @@ class SyncableStore(object):
         base_path = os.path.dirname(self.storefile)
         self.build(base_path, self.storefile)
         self.load()
+
+    def find(self, **kwargs):
+        matches = []
+        for record in self:
+            passed = False
+            for key, value in kwargs.items():
+                if getattr(record, key) != value:
+                    break
+            else:
+                passed = True
+            if passed:
+                matches.append(record)
+        return matches

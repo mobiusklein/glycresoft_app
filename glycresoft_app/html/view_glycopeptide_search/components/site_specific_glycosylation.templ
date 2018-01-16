@@ -1,7 +1,7 @@
-{% for site, axis in axes_map.items() %}
+{% for type_site, axis in axes_map.items() %}
     <div>
-        <h4>Site {{site}}</h4>
-        {{axis | png_plot(bbox_inches='tight', width=12, height=8)}}
+        <h4>{{type_site[0].name}} Site {{type_site[1]}}</h4>
+        {{axis | svg_plot(bbox_inches='tight', width=12, height=8)}}
     </div>
 
 {% endfor %}

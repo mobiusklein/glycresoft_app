@@ -207,7 +207,13 @@ Application = (function(superClass) {
           status = taskListContainer.find("li[data-id='" + id + "']").attr('data-status');
           if (status === "running") {
             return $.get("/internal/log/" + name + "-" + created_at).success(function(message) {
-              return modal.find(".modal-content").html(message);
+              var modalContent;
+              console.log("Updating Log Window...");
+              modalContent = modal.find(".modal-content");
+              modalContent.html(message);
+              return modal.animate({
+                scrollTop: modal[0].scrollHeight
+              }, "fast");
             });
           }
         };
@@ -1654,7 +1660,7 @@ samplePreprocessingPresets = [
   {
     name: "MS Glycomics Profiling",
     max_charge: 9,
-    ms1_score_threshold: 35,
+    ms1_score_threshold: 20,
     ms1_averagine: "glycan",
     max_missing_peaks: 3,
     msn_score_threshold: 10,
@@ -1664,7 +1670,7 @@ samplePreprocessingPresets = [
     name: "LC-MS/MS Glycoproteomics",
     max_charge: 12,
     max_missing_peaks: 3,
-    ms1_score_threshold: 35,
+    ms1_score_threshold: 20,
     ms1_averagine: "glycopeptide",
     msn_score_threshold: 10,
     msn_averagine: 'peptide',

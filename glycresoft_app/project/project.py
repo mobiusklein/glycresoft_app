@@ -9,7 +9,7 @@ from glycan_profiling.serialize import (
 from glycresoft_app.vendor import sqlitedict
 from glycresoft_app.utils.message_queue import null_user, has_access
 
-from . import samples as sample, hypothesis, analysis
+from . import sample, hypothesis, analysis
 
 
 class Project(object):

@@ -121,14 +121,15 @@ class GlycopeptideSnapShot(SnapshotBase):
         except KeyError:
             glycoprot = self.get_glycoprotein(session)
             axes = OrderedDict()
-            for site in sorted(glycoprot.glycosylation_sites):
-                spanning_site = glycoprot.site_map[site]
-                if len(spanning_site) == 0:
-                    continue
-                bundle = BundledGlycanComposition.aggregate(spanning_site)
-                ax = figax()
-                AggregatedAbundanceArtist(bundle, ax=ax).draw()
-                axes[site] = ax
+            for glycotype in glycoprot.glycosylation_types:
+                for site in sorted(glycoprot.glycosylation_sites_for(glycotype)):
+                    spanning_site = glycoprot.site_map[glycotype][site]
+                    if len(spanning_site) == 0:
+                        continue
+                    bundle = BundledGlycanComposition.aggregate(spanning_site)
+                    ax = figax()
+                    AggregatedAbundanceArtist(bundle, ax=ax).draw()
+                    axes[(glycotype, site)] = ax
             return axes
 
 
@@ -161,6 +162,7 @@ class GlycopeptideAnalysisView(CollectionViewBase):
     def peak_loader(self):
         if self._peak_loader is None:
             try:
+                by_name = g.manager.sample_manager.find(name=self.analysis.parameters['sample_name'])
                 if os.path.exists(self.analysis.parameters['sample_path']):
                     log_handle.log("Reading spectra from %r" % self.analysis.parameters['sample_path'])
                     self._peak_loader = ProcessedMzMLDeserializer(self.analysis.parameters['sample_path'])
@@ -172,6 +174,9 @@ class GlycopeptideAnalysisView(CollectionViewBase):
                     self._peak_loader = ProcessedMzMLDeserializer(
                         os.path.join(
                             g.manager.base_path, self.analysis.parameters['sample_path']))
+                elif by_name:
+                    log_handle.log("Reading spectra from %r" % by_name[0].path)
+                    self._peak_loader = ProcessedMzMLDeserializer(by_name[0].path)
                 else:
                     raise IOError("Could not locate file")
             except KeyError:

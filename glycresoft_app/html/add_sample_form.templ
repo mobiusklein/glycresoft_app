@@ -61,6 +61,14 @@
                 <input type="checkbox" id="msms-features-only" name="msms-features-only" />
                 <label for='msms-features-only'>Fit MS/MS Features Only</label>
             </div>
+            <div class='col s2 tooltipped' data-position='bottom' data-tooltip='Average each MS1 scan with this many scans before and after it to improve precrusor signal quality'>
+                <div class='input-field'>
+                    <label for='ms1-averaging'>MS1 Scan Averaging</label>
+                    <input type="number" id="ms1-averaging" name="ms1-averaging" required
+                           min='0' value="0" step='1' placeholder="MS1 Averaging"
+                           class='numeric-entry'>
+                </div>
+            </div>
         </div>
         <div class='row'>
             <div class='col s6'>

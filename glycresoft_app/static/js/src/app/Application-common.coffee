@@ -140,7 +140,10 @@ class Application extends ActionLayerManager
                     if status == "running"
                         $.get("/internal/log/#{name}-#{created_at}").success(
                             (message) ->
-                                modal.find(".modal-content").html message
+                                console.log "Updating Log Window..."
+                                modalContent = modal.find(".modal-content")
+                                modalContent.html message
+                                modal.animate({scrollTop: modal[0].scrollHeight},"fast");
                             )
                 state.intervalId = setInterval(updater, 5000)
             completer = ->

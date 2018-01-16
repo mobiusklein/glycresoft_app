@@ -15,7 +15,7 @@ from ms_deisotope.processor import MSFileLoader
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
 
 from glycan_profiling.profiler import SampleConsumer
-from glycan_profiling.serialize import DatabaseBoundOperation, SampleRun
+from glycan_profiling.serialize import SampleRun
 from glycan_profiling.scan_cache import ThreadedMzMLScanCacheHandler
 
 import logging
@@ -26,7 +26,7 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
                maximum_charge=None, name=None, msn_averagine=None, score_threshold=35.,
                msn_score_threshold=5., missed_peaks=1, msn_missed_peaks=1, n_processes=5, storage_path=None,
                extract_only_tandem_envelopes=False, ms1_background_reduction=5.,
-               msn_background_reduction=0, channel=None):
+               msn_background_reduction=0, ms1_averaging=0, channel=None):
 
     minimum_charge = 1 if maximum_charge > 0 else -1
     charge_range = (minimum_charge, maximum_charge)
@@ -118,14 +118,15 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
         end_scan_id=end_scan_id,
         n_processes=n_processes,
         extract_only_tandem_envelopes=extract_only_tandem_envelopes,
+        ms1_averaging=ms1_averaging,
         cache_handler_type=ThreadedMzMLScanCacheHandler)
 
     try:
         consumer.start()
-        sample_run_data = consumer.sample_run
         logger.info("Updating New Sample Run")
         reader = ProcessedMzMLDeserializer(storage_path, use_index=False)
         reader.read_index_file()
+        sample_run_data = reader.sample_run
         if reader.extended_index.msn_ids:
             sample_type = "MS/MS Sample"
         else:
@@ -147,12 +148,12 @@ class PreprocessMSTask(Task):
     def __init__(self, mzml_file, database_connection, averagine, start_time, end_time, maximum_charge,
                  name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, msn_missed_peaks,
                  n_processes, storage_path, extract_only_tandem_envelopes, ms1_background_reduction,
-                 msn_background_reduction,
+                 msn_background_reduction, ms1_averaging,
                  callback, **kwargs):
         args = (mzml_file, database_connection, averagine, start_time, end_time, maximum_charge,
                 name, msn_averagine, score_threshold, msn_score_threshold, missed_peaks, msn_missed_peaks,
                 n_processes, storage_path, extract_only_tandem_envelopes, ms1_background_reduction,
-                msn_background_reduction,
+                msn_background_reduction, ms1_averaging
                 )
         job_name = "Preprocess MS %s" % (name,)
         kwargs.setdefault('name', job_name)
