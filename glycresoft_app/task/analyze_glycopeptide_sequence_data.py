@@ -75,14 +75,17 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
         gps, unassigned, target_hits, decoy_hits = analyzer.start()
 
         analysis = analyzer.analysis
-        record = project_analysis.AnalysisRecord(
-            name=analysis.name, id=analysis.id, uuid=analysis.uuid, path=output_path,
-            analysis_type=analysis.analysis_type,
-            hypothesis_uuid=analysis.hypothesis.uuid,
-            hypothesis_name=analysis.hypothesis.name,
-            sample_name=analysis.parameters['sample_name'],
-            user_id=channel.user.id)
-        channel.send(Message(record.to_json(), 'new-analysis'))
+        if analysis is not None and len(gps) > 0:
+            record = project_analysis.AnalysisRecord(
+                name=analysis.name, id=analysis.id, uuid=analysis.uuid, path=output_path,
+                analysis_type=analysis.analysis_type,
+                hypothesis_uuid=analysis.hypothesis.uuid,
+                hypothesis_name=analysis.hypothesis.name,
+                sample_name=analysis.parameters['sample_name'],
+                user_id=channel.user.id)
+            channel.send(Message(record.to_json(), 'new-analysis'))
+        else:
+            channel.send("No glycopeptides were identified for \"%s\"" % (analysis_name,))
 
     except Exception:
         channel.send(Message.traceback())
