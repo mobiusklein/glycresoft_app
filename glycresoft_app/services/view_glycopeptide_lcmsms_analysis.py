@@ -580,14 +580,18 @@ def _export_spectrum_match_csv(analysis_uuid):
         file_name = "%s-glycopeptide-spectrum-matches.csv" % (view.analysis.name)
         path = g.manager.get_temp_path(file_name)
 
-        gen = (
-            sm for protein_id in protein_name_resolver for gp in
-            view.get_items_for_display(protein_id).members
-            for ss in gp.spectrum_matches
-            for sm in ss
-            if sm.target.protein_relation.protein_id in protein_name_resolver)
+        def generate_entities():
+            for protein_id in protein_name_resolver:
+                snapshot = view.get_items_for_display(protein_id)
+                with snapshot.bind(view.session):
+                    for gp in snapshot.members:
+                        for ss in gp.spectrum_matches:
+                            for sm in ss:
+                                if sm.target.protein_relation.protein_id in protein_name_resolver:
+                                    yield sm
+
         GlycopeptideSpectrumMatchAnalysisCSVSerializer(
-            open(path, 'wb'), gen, protein_name_resolver).start()
+            open(path, 'wb'), generate_entities(), protein_name_resolver).start()
     return [file_name]
 
 
@@ -602,6 +606,9 @@ def _export_mzid(analysis_uuid):
             gp for protein_id in protein_name_resolver for gp in
             view.get_items_for_display(protein_id).members
         ]
+        for glycopeptide in glycopeptides:
+            view.session.merge(glycopeptide)
+            list(map(view.session.merge, glycopeptide.spectrum_matches))
         writer = MzIdentMLSerializer(
             open(path, 'wb'), glycopeptides, view.analysis, view.connection)
         writer.start()
