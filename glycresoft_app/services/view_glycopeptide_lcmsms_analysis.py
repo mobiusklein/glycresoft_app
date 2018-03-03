@@ -45,7 +45,7 @@ from glycan_profiling.output import (
     MzIdentMLSerializer, ImportableGlycanHypothesisCSVSerializer)
 
 
-from glycan_profiling.plotting.spectral_annotation import SpectrumMatchAnnotator
+from glycan_profiling.plotting.spectral_annotation import TidySpectrumMatchAnnotator
 from glycan_profiling.plotting.plot_glycoforms import plot_glycoforms_svg
 from glycan_profiling.plotting.sequence_fragment_logo import glycopeptide_match_logo
 
@@ -506,7 +506,7 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
                 ax.text(0.5, 0.5, "No Chromatogram Extracted", ha='center')
                 ax.set_axis_off()
 
-            specmatch_artist = SpectrumMatchAnnotator(match, ax=figax())
+            specmatch_artist = TidySpectrumMatchAnnotator(match, ax=figax())
             specmatch_artist.draw(fontsize=10, pretty=True)
             annotated_match_ax = specmatch_artist.ax
 
@@ -655,7 +655,7 @@ def chromatogram_group_plot(analysis_uuid, protein_id):
 serialization_formats = {
     "glycopeptides (csv)": _export_csv,
     "glycopeptide spectrum matches (csv)": _export_spectrum_match_csv,
-    "mzIdentML (mzid 1.1.0)": _export_mzid,
+    # "mzIdentML (mzid 1.1.0)": _export_mzid,
     "associated glycans (txt)": _export_associated_glycan_compositions
 }
 
@@ -667,7 +667,7 @@ def export_menu(analysis_uuid):
         options = [
             "glycopeptides (csv)",
             "glycopeptide spectrum matches (csv)",
-            "mzIdentML (mzid 1.1.0)",
+            # "mzIdentML (mzid 1.1.0)",
             "associated glycans (txt)"
         ]
         return render_template(
