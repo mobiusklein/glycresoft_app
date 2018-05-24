@@ -8,7 +8,7 @@ MassShiftInputWidget = (()->
             <input class='mass-shift-name' type='text' name='mass_shift_name' placeholder='Name/Formula'>
         </div>
         <div class='input-field col s2'>
-            <label for='mass_shift_max_count'>Up To Count</label>    
+            <label for='mass_shift_max_count'>Count</label>    
             <input class='max-count' type='number' min='0' placeholder='Maximum Count' name='mass_shift_max_count'>
         </div>
     </div>

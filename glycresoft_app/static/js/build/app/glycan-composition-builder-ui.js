@@ -1,3 +1,4 @@
+"use strict";
 var ConstraintInputGrid, MonosaccharideInputWidgetGrid;
 
 MonosaccharideInputWidgetGrid = (function() {
@@ -7,10 +8,12 @@ MonosaccharideInputWidgetGrid = (function() {
     this.counter = 0;
     this.container = $(container);
     this.monosaccharides = {};
+    this.validatedMonosaccharides = new Set();
   }
 
   MonosaccharideInputWidgetGrid.prototype.update = function() {
-    var continuation, entry, i, len, monosaccharides, notif, notify, pos, ref, row;
+    var continuation, entry, i, len, monosaccharides, notif, notify, pos, ref, row, validatedMonosaccharides;
+    validatedMonosaccharides = new Set();
     monosaccharides = {};
     ref = this.container.find(".monosaccharide-row");
     for (i = 0, len = ref.length; i < len; i++) {
@@ -47,34 +50,39 @@ MonosaccharideInputWidgetGrid = (function() {
           row.data("tinyNotification", void 0);
         }
         monosaccharides[entry.name] = entry;
-        continuation = function(gridRow) {
-          return $.post("/api/validate-iupac", {
-            "target_string": entry.name
-          }).then(function(validation, message, query) {
-            if (validation.valid) {
-              if (!(entry.name in monosaccharides)) {
-                gridRow.removeClass("warning");
+        continuation = (function(_this) {
+          return function(gridRow, entry, validatedMonosaccharides) {
+            return $.post("/api/validate-iupac", {
+              "target_string": entry.name
+            }).then(function(validation) {
+              console.log("Validation of", entry.name, validation);
+              if (validation.valid) {
+                validatedMonosaccharides.add(validation.message);
+                if (!(entry.name in monosaccharides)) {
+                  gridRow.removeClass("warning");
+                  if (gridRow.data("tinyNotification") != null) {
+                    notif = gridRow.data("tinyNotification");
+                    notif.dismiss();
+                    return gridRow.data("tinyNotification", void 0);
+                  }
+                }
+              } else {
+                gridRow.addClass("warning");
+                pos = gridRow.position();
                 if (gridRow.data("tinyNotification") != null) {
                   notif = gridRow.data("tinyNotification");
                   notif.dismiss();
-                  return gridRow.data("tinyNotification", void 0);
                 }
+                notify = new TinyNotification(pos.top + 50, pos.left, validation.message, gridRow);
+                return gridRow.data("tinyNotification", notify);
               }
-            } else {
-              gridRow.addClass("warning");
-              pos = gridRow.position();
-              if (gridRow.data("tinyNotification") != null) {
-                notif = gridRow.data("tinyNotification");
-                notif.dismiss();
-              }
-              notify = new TinyNotification(pos.top + 50, pos.left, validation.message, gridRow);
-              return gridRow.data("tinyNotification", notify);
-            }
-          });
-        };
-        continuation(row);
+            });
+          };
+        })(this);
+        continuation(row, entry, validatedMonosaccharides);
       }
     }
+    this.validatedMonosaccharides = validatedMonosaccharides;
     return this.monosaccharides = monosaccharides;
   };
 
@@ -197,18 +205,58 @@ ConstraintInputGrid = (function() {
       row = ref[i];
       row = $(row);
       console.log(row);
+      this.clearError(row);
       entry = {
         lhs: row.find("input[name='left_hand_side']").val(),
         operator: row.find("select[name='operator']").val(),
-        rhs: row.find("input[name='right_hand_side']").val()
+        rhs: row.find("input[name='right_hand_side']").val(),
+        "row": row
       };
       if (entry.lhs === "" || entry.rhs === "") {
         continue;
       }
+      this.updateSymbols(entry);
       constraints.push(entry);
     }
     console.log(constraints);
     return this.constraints = constraints;
+  };
+
+  ConstraintInputGrid.prototype.clearError = function(row) {
+    row.find("input[name='left_hand_side']")[0].setCustomValidity("");
+    return row.find("input[name='right_hand_side']")[0].setCustomValidity("");
+  };
+
+  ConstraintInputGrid.prototype.updateSymbols = function(entry) {
+    return $.post("/api/parse-expression", {
+      "expressions": [entry.lhs, entry.rhs]
+    }).then((function(_this) {
+      return function(response) {
+        var knownSymbols, lhsSymbols, ref, rhsSymbols, undefinedSymbolsLeft, undefinedSymbolsRight;
+        console.log("Expression Symbols", response.symbols);
+        ref = response.symbols, lhsSymbols = ref[0], rhsSymbols = ref[1];
+        entry.lhsSymbols = lhsSymbols;
+        entry.rhsSymbols = rhsSymbols;
+        console.log(entry, lhsSymbols, rhsSymbols);
+        knownSymbols = new Set(_this.monosaccharideGrid.validatedMonosaccharides);
+        undefinedSymbolsLeft = new Set(Array.from(entry.lhsSymbols).filter(function(x) {
+          return !knownSymbols.has(x);
+        }));
+        if (undefinedSymbolsLeft.size > 0) {
+          entry.row.find("input[name='left_hand_side']")[0].setCustomValidity("Symbols (" + (Array.from(undefinedSymbolsLeft)) + ") are not in the hypothesis");
+        } else {
+          entry.row.find("input[name='left_hand_side']")[0].setCustomValidity("");
+        }
+        undefinedSymbolsRight = new Set(Array.from(entry.rhsSymbols).filter(function(x) {
+          return !knownSymbols.has(x);
+        }));
+        if (undefinedSymbolsRight.size > 0) {
+          return entry.row.find("input[name='right_hand_side']")[0].setCustomValidity("Symbols (" + (Array.from(undefinedSymbolsRight)) + ") are not in the hypothesis");
+        } else {
+          return entry.row.find("input[name='right_hand_side']")[0].setCustomValidity("");
+        }
+      };
+    })(this));
   };
 
   return ConstraintInputGrid;

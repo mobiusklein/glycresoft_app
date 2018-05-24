@@ -215,6 +215,7 @@ class GlycopeptideAnalysisView(CollectionViewBase):
             return case
 
     def _resolve_sources(self):
+        log_handle.log("Resolving Analysis (analysis_id=%r)" % (self.analysis_id,))
         self.analysis = self.session.query(Analysis).get(self.analysis_id)
         self.hypothesis = self.analysis.hypothesis
         self.parameters = self.analysis.parameters

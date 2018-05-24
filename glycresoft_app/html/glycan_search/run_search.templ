@@ -6,13 +6,13 @@
         </div>
         <div class='row'>
             <div class='input-field col s6'>    
-                <label for="hypothesis_choice">Choose a Hypothesis</label>
-                <br>
-                <select id="hypothesis_choice" name="hypothesis_choice" class='browser-default'>
-                    {% for hypothesis in manager.glycan_hypotheses(user) %}
-                        <option value="{{hypothesis.uuid}}">{{hypothesis.name}}</option>
-                    {% endfor %}
-                </select>
+                    <label for="hypothesis_choice">Choose a Hypothesis</label>
+                    <br>
+                    <select id="hypothesis_choice" name="hypothesis_choice" required class='browser-default'>
+                        {% for hypothesis in manager.glycan_hypotheses(user) %}
+                            <option value="{{hypothesis.uuid}}">{{hypothesis.name}}</option>
+                        {% endfor %}
+                    </select>                    
             </div>
         </div>
         <div class='row'>
@@ -43,12 +43,34 @@
                         <input class='numeric-entry' type='number' value='9000' id='maximum-mass' name='maximum-mass'>
                     </div> #}
                 </div>
-            </div>  
-            <div class='mass-shift-input-table col s5'>
-                <div class='section-title' style='margin-left: 25%;'>Variable Adducts</div><br>
+                <div class='row'>
+                    <div class='col s6'>
+                        <button class='btn'>Submit</button>
+                    </div>
+                </div>
+            </div>
+            <div class='col s6'>
+                <div class='row'>
+                    <div class='mass-shift-input-table col s12'>
+                        <div class='section-title' style='margin-left: 25%;'>Variable Adducts</div><br>
+                    </div>                    
+                </div>
+                <div class='row'>
+                    <div class='col s12'>
+                        <label for="model-features">Additional Model Features</label>
+                        <br>
+                        <select id="model-features" name="model-features" multiple class='browser-default' style='height: 100px;'>
+                            {% for feature_name, feature_obj in extra_features.items() %}
+                                <option value="{{feature_name}}" data-score-type="{{feature_obj.get_feature_type()}}">
+                                    {{feature_name | replace("_", " ") | title}}
+                                    ({{feature_obj.get_feature_type() | replace("_", " ") | title}})
+                                </option>
+                            {% endfor %}
+                        </select>                    
+                    </div>
+                </div>
             </div>
         </div>
-        <button class='btn'>Submit</button>
     </form>
 <script>
 MassShiftInputWidget($(".mass-shift-input-table"))
@@ -59,6 +81,31 @@ ajaxForm($("form#search-form"), function(){
 }, function(err){
     console.log(arguments)
 })
+
+$(function(){
+    var errorNotificationToast = undefined
+    $("#model-features").change(function(event){
+        console.log(event, this)
+        var handle = $(this)
+        var isSelected = handle.find("option:selected")
+        var counter = {}
+        for(var i = 0; i < isSelected.length; i++) {
+            var opt = isSelected[i]
+            var scoreType = opt.dataset.scoreType
+            var count = counter[scoreType]
+            counter[scoreType] = (count === undefined) ? 1 : count + 1;
+        }
+        for(var tp in counter){
+            if(counter[tp] > 1){
+                handle[0].setCustomValidity("You cannot select more than one of the same type of score")
+                GlycReSoft.notifyUser("You cannot select more than one of the same type of score", 2500)
+                return
+            }
+        }
+        handle[0].setCustomValidity("")
+    })
+})
+
 materialRefresh()
 </script>
 </div>

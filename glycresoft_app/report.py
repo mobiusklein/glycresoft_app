@@ -3,7 +3,7 @@ import urllib
 
 from glycopeptidepy import PeptideSequence
 from glycopeptidepy.utils.collectiontools import groupby
-from glypy.composition.glycan_composition import GlycanComposition
+from glypy.structure.glycan_composition import GlycanComposition
 from ms_deisotope import mass_charge_ratio
 
 from glycan_profiling.symbolic_expression import GlycanSymbolContext

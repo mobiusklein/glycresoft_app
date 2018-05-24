@@ -9,6 +9,8 @@ PositionClassifier = {
 
 parseModificationRuleSpecification = (specString) ->
     match = /(.*)\s\((.+)\)$/.exec(specString)
+    if not match?
+        return [null, null]
     return [match[1], ModificationTarget.parse(match[2])]
 
 
@@ -32,6 +34,22 @@ class ModificationTarget
         return new ModificationTarget(match[1].split(""), match[2])
 
 
+formatModificationNameEntry = (name) ->
+    nameEntry = """
+    <div class="modification-rule-entry-name col s4" title="#{name}" data-modification-name="#{name}">
+        #{name}
+    </div>
+    """
+    return nameEntry
+
+formatFormula = (formula) ->
+    formulaEntry = """
+    <div class="modification-rule-entry-formula col s3" title="#{formula}">
+        #{formula}
+    </div>
+    """
+    return formulaEntry
+
 class ModificationRule
     constructor: (@name, @formula, @mass, targets, @hidden=false, @category=0, @recent=false) ->
         @targets = []
@@ -54,37 +72,13 @@ class ModificationRule
         return specs
 
     render: (container) ->
-        if @name.length < 20
-            name = @name
-            nameEntry = """
-            <div class="modification-rule-entry-name col s4" data-modification-name="#{@name}">
-                #{name}
-            </div>
-            """
-        else
-            name = @name.slice(0, 17) + "..."
-            nameEntry = """
-            <div class="modification-rule-entry-name col s4 tooltipped" data-tooltip="#{@name}" data-modification-name="#{@name}">
-                #{name}
-            </div>
-            """
-        if @formula.length < 13
-            formula = @formula
-            formulaEntry = """
-            <div class="modification-rule-entry-formula col s3">
-                #{formula}
-            </div>
-            """
-        else
-            formula = @formula.slice(0, 10) + '...'
-            formulaEntry = """
-            <div class="modification-rule-entry-formula col s3 tooltipped" data-tooltip="#{@formula}">
-                #{formula}
-            </div>
-            """
+        name = @name
+        nameEntry = formatModificationNameEntry(name)
+        formula = @formula
+        formulaEntry = formatFormula(formula)
         for target in @targets
             entry = $("""
-                <div class="modification-rule-entry row">
+                <div class="modification-rule-entry row" data-tooltip="#{@name}">
                     #{nameEntry}
                     <div class="modification-rule-entry-target col s2">
                         #{target.serialize()}
@@ -105,34 +99,10 @@ class ModificationSpecification
         @mass = @rule.mass
 
     render: (container) ->
-        if @name.length < 20
-            name = @name
-            nameEntry = """
-            <div class="modification-rule-entry-name col s4" data-modification-name="#{@name}">
-                #{name}
-            </div>
-            """
-        else
-            name = @name.slice(0, 17) + "..."
-            nameEntry = """
-            <div class="modification-rule-entry-name col s4 tooltipped" data-tooltip="#{@name}" data-modification-name="#{@name}">
-                #{name}
-            </div>
-            """
-        if @formula.length < 13
-            formula = @formula
-            formulaEntry = """
-            <div class="modification-rule-entry-formula col s3">
-                #{formula}
-            </div>
-            """
-        else
-            formula = @formula.slice(0, 10) + '...'
-            formulaEntry = """
-            <div class="modification-rule-entry-formula col s3 tooltipped" data-tooltip="#{@formula}">
-                #{formula}
-            </div>
-            """
+        name = @name
+        nameEntry = formatModificationNameEntry(name)
+        formula = @formula
+        formulaEntry = formatFormula(formula)
         entry = $("""
             <div class="modification-rule-entry row" data-key="#{@serialize()}">
                 #{nameEntry}
@@ -167,6 +137,9 @@ class ModificationIndex
 
     updateRuleFromSpecString: (specString) ->
         [name, target] = parseModificationRuleSpecification(specString)
+        if not name?
+            console.log("Could not parse modification specification #{specString}")
+            return
         if @rules[name]?
             @rules[name].addTarget(target)
         else
@@ -186,6 +159,9 @@ class ModificationIndex
             for spec in specificities
                 j += 1
                 [name, target] = parseModificationRuleSpecification spec
+                if not name?
+                    console.log("Could not parse modification specification #{spec}")
+                    continue
                 entry = tempIndex[name]
                 entry.addTarget target
                 j = 0

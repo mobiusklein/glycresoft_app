@@ -314,8 +314,9 @@ def abundance_bar_chart(analysis_uuid):
     with view:
         snapshot = view.get_items_for_display()
         with snapshot.bind(view.session):
-            return report.svguri_plot(snapshot.abundance_bar_chart().ax, bbox_inches='tight',
-                                   width=12, height=6)
+            return report.svguri_plot(
+                snapshot.abundance_bar_chart().ax, bbox_inches='tight',
+                width=12, height=6)
 
 
 @app.route("/view_glycan_lcms_analysis/<analysis_uuid>/details_for/<int:chromatogram_id>")
@@ -324,7 +325,8 @@ def details_for(analysis_uuid, chromatogram_id):
     with view:
         snapshot = view.get_items_for_display()
         with snapshot.bind(view.session):
-            chroma = snapshot[chromatogram_id].convert()
+            model = view.analysis.parameters.get('scoring_model')
+            chroma = snapshot[chromatogram_id].convert(chromatogram_scoring_model=model)
             plot = SmoothingChromatogramArtist(
                 [chroma], colorizer=lambda *a, **k: 'green', ax=figax()).draw(
                 label_function=lambda *a, **k: "", legend=False).ax

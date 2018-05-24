@@ -60,6 +60,7 @@
 
 .modification-choice-controls {
     margin-top: 35px;
+    text-align: center;
 }
 
 .choice-list-header {
@@ -69,4 +70,16 @@
 
 .modification-creation-container {
     display: none;
+}
+
+.modification-rule-entry-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.modification-rule-entry-formula {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

@@ -5,7 +5,18 @@ from .base import SyncableStore, structure
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
 
 
-SampleRunRecord = structure("SampleRunRecord", ["name", "uuid", "path", "completed", "sample_type"])
+_SampleRunRecord = structure("SampleRunRecord", ["name", "uuid", "path", "completed", "sample_type"])
+
+
+class SampleRunRecord(_SampleRunRecord):
+    def is_resolvable(self):
+        if not os.path.exists(self.path):
+            return False
+        reader = ProcessedMzMLDeserializer(self.path)
+        sample_run = reader.sample_run
+        if sample_run.uuid != self.uuid:
+            return False
+        return True
 
 
 class SampleManager(SyncableStore):

@@ -15531,6 +15531,7 @@ button.picker__today:focus, button.picker__clear:focus, button.picker__close:foc
 
 .modification-choice-controls {
     margin-top: 35px;
+    text-align: center;
 }
 
 .choice-list-header {
@@ -15540,6 +15541,18 @@ button.picker__today:focus, button.picker__clear:focus, button.picker__close:foc
 
 .modification-creation-container {
     display: none;
+}
+
+.modification-rule-entry-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.modification-rule-entry-formula {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /*
@@ -15565,7 +15578,8 @@ Monosaccharide Grid
     padding: 0px !important;
 }
 
-.monosaccharide-row.warning input{
+.monosaccharide-row.warning input, .monosaccharide-row input:invalid, .monosaccharide-constraints-row input:invalid{
+    color: red;
     border-bottom: 1px solid red;
     box-shadow: 0 1px 0 0 #000;
 }

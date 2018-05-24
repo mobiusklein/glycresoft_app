@@ -1,3 +1,4 @@
+"use strict"
 # Depends on jQuery
 
 
@@ -24,8 +25,10 @@ class MonosaccharideInputWidgetGrid
         @counter = 0
         @container = $(container)
         @monosaccharides = {}
+        @validatedMonosaccharides = new Set()
 
     update: ->
+        validatedMonosaccharides = new Set()
         monosaccharides = {}
         for row in @container.find(".monosaccharide-row")
             row = $(row)
@@ -62,10 +65,11 @@ class MonosaccharideInputWidgetGrid
                 monosaccharides[entry.name] = entry
                 # Validate that the residue name is parsable. Use a continuation
                 # function to isolate the DOM row.
-                continuation = (gridRow) ->
-                    $.post("/api/validate-iupac", {"target_string": entry.name}).then (validation, message, query) ->
-
+                continuation = (gridRow, entry, validatedMonosaccharides) =>
+                    $.post("/api/validate-iupac", {"target_string": entry.name}).then (validation) ->
+                        console.log("Validation of", entry.name, validation)
                         if validation.valid
+                            validatedMonosaccharides.add(validation.message)
                             # The name must be valid, but may be a duplicate
                             if not (entry.name of monosaccharides)
                                 # If not a duplicate, then remove all error
@@ -85,9 +89,9 @@ class MonosaccharideInputWidgetGrid
                                 notif.dismiss()
                             notify = new TinyNotification(pos.top + 50, pos.left, validation.message, gridRow)
                             gridRow.data("tinyNotification", notify)
-                continuation(row)
+                continuation(row, entry, validatedMonosaccharides)
 
-
+        @validatedMonosaccharides = validatedMonosaccharides
         @monosaccharides = monosaccharides
 
     addEmptyRowOnEdit: (addHeader=false) ->
@@ -179,17 +183,46 @@ class ConstraintInputGrid
         constraints = []
         for row in @container.find(".monosaccharide-constraints-row")
             row = $(row)
-
             console.log(row)
+            @clearError(row)
             entry = {
                 lhs: row.find("input[name='left_hand_side']").val()
                 operator: row.find("select[name='operator']").val()
-                rhs: row.find("input[name='right_hand_side']").val()
+                rhs: row.find("input[name='right_hand_side']").val(),
+                "row": row
             }
 
             if entry.lhs == "" or entry.rhs == ""
                 continue
 
+            @updateSymbols(entry)
             constraints.push(entry)
         console.log(constraints)
         @constraints = constraints
+
+    clearError: (row) ->
+        row.find("input[name='left_hand_side']")[0].setCustomValidity("")
+        row.find("input[name='right_hand_side']")[0].setCustomValidity("")
+
+    updateSymbols: (entry) ->
+        $.post("/api/parse-expression", {"expressions": [entry.lhs, entry.rhs]}).then (response) =>
+            console.log("Expression Symbols", response.symbols)
+            [lhsSymbols, rhsSymbols] = response.symbols
+            entry.lhsSymbols = (lhsSymbols)
+            entry.rhsSymbols = (rhsSymbols)
+
+            console.log(entry, lhsSymbols, rhsSymbols)
+            knownSymbols = new Set(@monosaccharideGrid.validatedMonosaccharides)
+            undefinedSymbolsLeft = new Set(Array.from(entry.lhsSymbols).filter((x) -> !knownSymbols.has(x)))
+            if undefinedSymbolsLeft.size > 0
+                entry.row.find("input[name='left_hand_side']")[0].setCustomValidity(
+                    "Symbols (#{Array.from(undefinedSymbolsLeft)}) are not in the hypothesis")
+            else
+                entry.row.find("input[name='left_hand_side']")[0].setCustomValidity("")
+            undefinedSymbolsRight = new Set(Array.from(entry.rhsSymbols).filter((x) -> !knownSymbols.has(x)))
+            if undefinedSymbolsRight.size > 0
+                entry.row.find("input[name='right_hand_side']")[0].setCustomValidity(
+                    "Symbols (#{Array.from(undefinedSymbolsRight)}) are not in the hypothesis")
+            else
+                entry.row.find("input[name='right_hand_side']")[0].setCustomValidity("")
+

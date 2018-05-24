@@ -1,11 +1,35 @@
 import os
 import glob
+import warnings
 
 from glycan_profiling import serialize
 
 from .base import SyncableStore, structure
 
-HypothesisRecord = structure("HypothesisRecord", ["name", 'id', 'uuid', 'path', 'hypothesis_type', "monosaccharide_bounds"])
+_HypothesisRecord = structure("HypothesisRecord", ["name", 'id', 'uuid', 'path',
+                                                   'hypothesis_type', "monosaccharide_bounds"])
+
+
+class HypothesisRecord(_HypothesisRecord):
+    GLYCAN_COMPOSITION = 'glycan_composition'
+    GLYCOPEPTIDE = 'glycopeptide'
+
+    def is_resolvable(self):
+        if not os.path.exists(self.path):
+            return False
+        conn = serialize.DatabaseBoundOperation(self.path)
+        if self.hypothesis_type == self.GLYCAN_COMPOSITION:
+            obj = conn.query(serialize.GlycanHypothesis).get(self.id)
+        elif self.hypothesis_type == self.GLYCOPEPTIDE:
+            obj = conn.query(serialize.GlycopeptideHypothesis).get(self.id)
+        else:
+            warnings.warn("Unrecognized hypothesis_type %r for %r" % (self.hypothesis_type, self))
+            return False
+        if obj is None:
+            return False
+        if obj.uuid != self.uuid:
+            return False
+        return True
 
 
 class HypothesisRecordSet(object):
@@ -26,7 +50,7 @@ class HypothesisRecordSet(object):
                 id=hypothesis.id,
                 name=hypothesis.name, uuid=hypothesis.uuid, path=self.path,
                 monosaccharide_bounds=hypothesis.monosaccharide_bounds(),
-                hypothesis_type='glycan_composition')
+                hypothesis_type=HypothesisRecord.GLYCAN_COMPOSITION)
             records.append(record)
 
         for hypothesis in connection.query(serialize.GlycopeptideHypothesis):
@@ -34,7 +58,7 @@ class HypothesisRecordSet(object):
                 id=hypothesis.id,
                 name=hypothesis.name, uuid=hypothesis.uuid, path=self.path,
                 monosaccharide_bounds=hypothesis.monosaccharide_bounds(),
-                hypothesis_type='glycopeptide')
+                hypothesis_type=HypothesisRecord.GLYCOPEPTIDE)
             records.append(record)
         self.records = records
 

@@ -105,13 +105,13 @@ class Application extends ActionLayerManager
         for initializer in Application.initializers
             initializer.apply this, null 
 
-    updateSettings: (payload={}) ->
+    updatePreferences: (payload={}) ->
         $.post('/preferences', payload).success((data) =>
             for k, v of data
                 @settings[k] = v
             @emit("update_settings")
         ).error (err) ->
-            console.log "error in updateSettings", err, arguments
+            console.log "error in updatePreferences", err, arguments
 
     updateTaskList: (clearFinished=true) ->
         taskListContainer = @sideNav.find('.task-list-container ul')
@@ -143,7 +143,7 @@ class Application extends ActionLayerManager
                                 console.log "Updating Log Window..."
                                 modalContent = modal.find(".modal-content")
                                 modalContent.html message
-                                modal.animate({scrollTop: modal[0].scrollHeight},"fast");
+                                # modal.animate({scrollTop: modal[0].scrollHeight},"fast");
                             )
                 state.intervalId = setInterval(updater, 5000)
             completer = ->
@@ -284,6 +284,11 @@ class Application extends ActionLayerManager
 
     isNativeClient: ->
         window.nativeClientKey?
+
+    notifyUser: (message, duration) ->
+        if not duration?
+            duration = 4000
+        Materialize.toast(message, duration)
 
 
 createdAtParser = /(\d{4})-(\d{2})-(\d{2})\s(\d+)-(\d+)-(\d+(?:\.\d*)?)/

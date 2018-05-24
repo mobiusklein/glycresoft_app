@@ -3,7 +3,8 @@
         <div class='col s6' data-coverage="{{match.compute_coverage()}}">
             <h6><b>Glycopeptide Sequence</b></h6>
             <div class='sequence-emphasis'>{{glycopeptide.structure|glycopeptide_string(long=True)}}</div>
-            <b>Start Position</b>: {{glycopeptide.start_position}} <b>End Position</b>: {{glycopeptide.end_position}}
+            <b>Start Position</b>: {{glycopeptide.start_position + 1}}
+            <b>End Position</b>: {{glycopeptide.end_position + 1}}
             <table>
                 <thead>
                     <tr>

@@ -2,11 +2,11 @@ from flask import g, jsonify, current_app, request
 
 
 # from glycresoft_app.utils import json_serializer
-from glycan_profiling.serialize import IdentifiedGlycopeptide
 from glycan_profiling.plotting import colors
 from glycan_profiling.chromatogram_tree import mass_shift
+from glycan_profiling import symbolic_expression
 from glypy.composition import formula
-from glypy.composition.glycan_composition import from_iupac_lite, IUPACError
+from glypy.structure.glycan_composition import from_iupac_lite, IUPACError
 from glycopeptidepy.structure.modification import ModificationTable, ModificationCategory
 
 from .service_module import register_service
@@ -14,17 +14,6 @@ from .view_hypothesis import _locate_hypothesis
 
 
 api = register_service("api", __name__)
-
-
-@api.route("/api/identified_glycopeptide/<int:id>")
-def get_glycopeptide_match_api(id):
-    gpm = g.db.query(IdentifiedGlycopeptide).get(id)
-    if gpm:
-        gpm = gpm
-    return jsonify(**{
-        "id": gpm.id, "glycopeptide": str(gpm.structure.glycopeptide_sequence), "ms2_score": gpm.ms2_score,
-        "ms1_score": gpm.ms1_score
-    })
 
 
 @api.route("/api/tasks")
@@ -120,3 +109,23 @@ def mass_shifts():
     d = {}
     d.update(mass_shift.mass_shift_index)
     return jsonify(**d)
+
+
+@api.route("/api/parse-expression", methods=["POST"])
+def api_parse_symbolic_expression():
+    payloads = request.values.getlist("expressions[]")
+    symbols = []
+    for payload in payloads:
+        payload = str(payload).strip()
+        expr = symbolic_expression.parse_expression(payload)
+        expr_symbols = []
+        for sym in expr.get_symbols():
+            sym = str(sym)
+            # use IUPAClite to normalize symbols
+            try:
+                sym = str(from_iupac_lite(sym))
+            except IUPACError:
+                pass
+            expr_symbols.append(sym)
+        symbols.append(expr_symbols)
+    return jsonify(symbols=symbols)

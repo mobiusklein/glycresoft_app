@@ -21,7 +21,8 @@ Monosaccharide Grid
     padding: 0px !important;
 }
 
-.monosaccharide-row.warning input{
+.monosaccharide-row.warning input, .monosaccharide-row input:invalid, .monosaccharide-constraints-row input:invalid{
+    color: red;
     border-bottom: 1px solid red;
     box-shadow: 0 1px 0 0 #000;
 }

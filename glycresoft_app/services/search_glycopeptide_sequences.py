@@ -34,6 +34,8 @@ def run_search_post():
 
     psm_fdr_threshold = float(data.get("q-value-threshold", 0.05))
 
+    use_peptide_mass_filter = bool(data.get("peptide-mass-filter", True))
+
     hypothesis_uuid = (data.get("hypothesis_choice"))
     hypothesis_record = g.manager.hypothesis_manager.get(hypothesis_uuid)
     hypothesis_name = hypothesis_record.name
@@ -58,7 +60,7 @@ def run_search_post():
             mass_error_tolerance=matching_tolerance,
             msn_mass_error_tolerance=ms2_matching_tolerance, psm_fdr_threshold=psm_fdr_threshold,
             minimum_oxonium_threshold=minimum_oxonium_threshold,
-            workload_size=workload_size,
+            workload_size=workload_size, use_peptide_mass_filter=use_peptide_mass_filter,
             job_name_part=job_number)
         g.add_task(task)
         print(task)

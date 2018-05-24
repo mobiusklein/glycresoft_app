@@ -6,6 +6,8 @@ from glycan_profiling.serialize import (
     DatabaseBoundOperation, SampleRun, GlycanHypothesis,
     GlycopeptideHypothesis, Analysis, AnalysisTypeEnum)
 
+from glycan_profiling.task import log_handle
+
 from glycresoft_app.vendor import sqlitedict
 from glycresoft_app.utils.message_queue import null_user, has_access
 
@@ -36,6 +38,7 @@ class Project(object):
         self._data_lock = RLock()
         self.app_data = sqlitedict.SqliteDict(
             self.app_data_path, autocommit=True)
+        self.validate_indices()
 
     def __repr__(self):
         return "Project(%r)" % (self.base_path,)
@@ -187,3 +190,26 @@ class Project(object):
                 job_count = 0
             self.app_data['_job_count'] = job_count + 1
         return job_count
+
+    def is_project_resolved(self, ratio=0.5):
+        n = 0
+        k = 0
+        for record in self.hypotheses():
+            if record.is_resolvable():
+                k += 1
+            n += 1
+        for record in self.samples():
+            if record.is_resolvable():
+                k += 1
+            n += 1
+        for record in self.analyses():
+            if record.is_resolvable():
+                k += 1
+            n += 1
+        return k / float(n) > ratio
+
+    def validate_indices(self, ratio=0.5):
+        with self._data_lock:
+            if not self.is_project_resolved(ratio):
+                log_handle.log("Rebuilding Project Indices")
+                self.force_build_indices()

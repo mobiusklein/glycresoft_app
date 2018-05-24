@@ -2,6 +2,9 @@ import re
 from flask import Response, g, request, render_template
 from werkzeug import secure_filename
 
+from glycan_profiling.models import GeneralScorer, ms1_model_features
+
+
 from .form_cleaners import remove_empty_rows, intify, make_unique_name, touch_file
 from .service_module import register_service
 
@@ -13,7 +16,10 @@ app = search_glycan_composition = register_service("search_glycan_composition", 
 
 @app.route("/search_glycan_composition/run_search")
 def run_search():
-    return render_template("glycan_search/run_search.templ", manager=g.manager)
+    print("Model Features", ms1_model_features)
+    return render_template(
+        "glycan_search/run_search.templ", manager=g.manager,
+        extra_features=ms1_model_features)
 
 
 @app.route("/search_glycan_composition/run_search", methods=["POST"])
@@ -38,6 +44,8 @@ def run_search_post():
     sample_records = list(map(g.manager.sample_manager.get, data.getlist("samples")))
 
     minimum_mass = float(data.get("minimum-mass", 500.))
+    extra_model_features = data.getlist("model-features")
+    extra_model_features = [ms1_model_features[feat] for feat in extra_model_features]
 
     hypothesis_name = hypothesis_record.name
     for sample_record in sample_records:
@@ -49,10 +57,14 @@ def run_search_post():
             secure_filename(cleaned_prefix) + "_%s.analysis.db")
         storage_path = make_unique_name(name_template)
 
+        scoring_model = GeneralScorer.clone()
+        for feat in extra_model_features:
+            scoring_model.add_feature(feat)
+
         task = AnalyzeGlycanCompositionTask(
             hypothesis_record.path, sample_record.path, hypothesis_record.id,
             storage_path, name_prefix, mass_shift_data, grouping_tolerance,
-            matching_tolerance,
+            matching_tolerance, scoring_model=scoring_model,
             minimum_mass=minimum_mass,
             callback=lambda: 0,
             job_name_part=job_number)

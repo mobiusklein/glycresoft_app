@@ -1,0 +1,34 @@
+<div class='configuration-container'>
+    <form id='configuration-form' action='configuration' method="post" accept-charset="utf-8" class="col s12">
+        {% for section in application_config.sections() %}
+            <section id='{{section}}-config' class='row'>
+                <h5>{{section}}</h5>
+                {% for row in application_config.items(section)|batch(3) %}
+                    <div class='row'>
+                        {% for name_value in row %}
+                            {% if name_value is none %}
+                            {% else %}
+                                {% set name = name_value[0] %}
+                                {% set value = name_value[1] %}
+                                <div class='input-field col s3'>
+                                    <label for='{{section}}_{{name}}'>{{name}}</label>
+                                    <input class='numeric-entry' type='text' value='{{value}}'
+                                           id='{{section}}_{{name}}' name='{{section}}_{{name}}'>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </section>
+        {% endfor %}
+        <button class='btn wave-effect'>
+            Okay
+        </button>
+    </form>
+    <script>
+        materialRefresh()
+        ajaxForm("#configuration-form", function(data){
+            GlycReSoft.updatePreferences()
+        })
+    </script>
+</div>

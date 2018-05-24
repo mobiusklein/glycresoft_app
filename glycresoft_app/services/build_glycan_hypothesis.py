@@ -1,5 +1,5 @@
 import re
-from flask import Response, g, request, render_template
+from flask import Response, g, request, render_template, jsonify
 from werkzeug import secure_filename
 
 from .form_cleaners import remove_empty_rows, intify, make_unique_name, touch_file
@@ -16,9 +16,19 @@ from glycresoft_app.task.text_file_glycan_hypothesis import BuildTextFileGlycanH
 from glycresoft_app.task.merge_glycan_hypotheses import MergeGlycanHypotheses
 from glycan_profiling.cli.validators import (
     validate_reduction, validate_derivatization)
+from glycan_profiling.database.prebuilt import hypothesis_register as _prebuilt_hypothesis_register
 
 
 app = make_glycan_hypothesis = register_service("make_glycan_hypothesis", __name__)
+
+
+prebuilt_hypotheses = {}
+for prebuilt_id, builder in _prebuilt_hypothesis_register.items():
+    prebuilt_hypotheses[prebuilt_id] = {
+        "id": prebuilt_id,
+        "name": builder.hypothesis_metadata()['name'],
+        "description": builder.hypothesis_metadata()
+    }
 
 
 @app.route("/glycan_search_space")

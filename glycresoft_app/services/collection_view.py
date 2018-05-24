@@ -1,3 +1,4 @@
+import os
 import logging
 import contextlib
 
@@ -56,6 +57,7 @@ class CollectionViewBase(object):
 
     def connect(self):
         self.connection = DatabaseBoundOperation(self.storage_record.path)
+        logger.debug("Connecting %r to %r (CWD: %r)" % (self, self.storage_record.path, os.getcwd()))
         self.session = self.connection.session
 
     def close(self):

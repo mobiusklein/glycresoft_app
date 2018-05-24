@@ -1,9 +1,5 @@
 <div class='settings-container row'>
     <div id="settings-menu" class="col s12">
-        <h4 class='section-title'>Settings and Internal Options</h4>
-        <div class='row'>
-            
-        </div>
         <h5 class='section-title'>Internal Options</h5>
         <div class='row'>
             <div class='col s4 input-field'>
@@ -22,6 +18,10 @@
             </div>
         </div>
         {% endif %}
+        <h4 class='section-title'>Configuration</h4>
+        <div class='row'>
+            {% include 'components/configuration_form.templ' %}
+        </div>
     </div>
     <script>
 (function(){

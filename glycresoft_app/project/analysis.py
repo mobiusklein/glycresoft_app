@@ -5,8 +5,21 @@ from glycan_profiling import serialize
 
 from .base import SyncableStore, structure
 
-AnalysisRecord = structure("AnalysisRecord", ["name", 'id', 'uuid', 'path', 'analysis_type', 'hypothesis_uuid',
-                                              'hypothesis_name', 'sample_name'])
+_AnalysisRecord = structure("AnalysisRecord", ["name", 'id', 'uuid', 'path', 'analysis_type', 'hypothesis_uuid',
+                                               'hypothesis_name', 'sample_name'])
+
+
+class AnalysisRecord(_AnalysisRecord):
+    def is_resolvable(self):
+        if not os.path.exists(self.path):
+            return False
+        conn = serialize.DatabaseBoundOperation(self.path)
+        obj = conn.query(serialize.Analysis).get(self.id)
+        if obj is None:
+            return False
+        if obj.uuid != self.uuid:
+            return False
+        return True
 
 
 class AnalysisRecordSet(object):

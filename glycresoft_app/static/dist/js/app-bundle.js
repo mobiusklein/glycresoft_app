@@ -156,7 +156,7 @@ Application = (function(superClass) {
     return results;
   };
 
-  Application.prototype.updateSettings = function(payload) {
+  Application.prototype.updatePreferences = function(payload) {
     if (payload == null) {
       payload = {};
     }
@@ -170,7 +170,7 @@ Application = (function(superClass) {
         return _this.emit("update_settings");
       };
     })(this)).error(function(err) {
-      return console.log("error in updateSettings", err, arguments);
+      return console.log("error in updatePreferences", err, arguments);
     });
   };
 
@@ -210,10 +210,7 @@ Application = (function(superClass) {
               var modalContent;
               console.log("Updating Log Window...");
               modalContent = modal.find(".modal-content");
-              modalContent.html(message);
-              return modal.animate({
-                scrollTop: modal[0].scrollHeight
-              }, "fast");
+              return modalContent.html(message);
             });
           }
         };
@@ -438,6 +435,13 @@ Application = (function(superClass) {
     return window.nativeClientKey != null;
   };
 
+  Application.prototype.notifyUser = function(message, duration) {
+    if (duration == null) {
+      duration = 4000;
+    }
+    return Materialize.toast(message, duration);
+  };
+
   return Application;
 
 })(ActionLayerManager);
@@ -565,6 +569,7 @@ MassShiftAPI = {
 
 //# sourceMappingURL=bind-urls.js.map
 
+"use strict";
 var ConstraintInputGrid, MonosaccharideInputWidgetGrid;
 
 MonosaccharideInputWidgetGrid = (function() {
@@ -574,10 +579,12 @@ MonosaccharideInputWidgetGrid = (function() {
     this.counter = 0;
     this.container = $(container);
     this.monosaccharides = {};
+    this.validatedMonosaccharides = new Set();
   }
 
   MonosaccharideInputWidgetGrid.prototype.update = function() {
-    var continuation, entry, i, len, monosaccharides, notif, notify, pos, ref, row;
+    var continuation, entry, i, len, monosaccharides, notif, notify, pos, ref, row, validatedMonosaccharides;
+    validatedMonosaccharides = new Set();
     monosaccharides = {};
     ref = this.container.find(".monosaccharide-row");
     for (i = 0, len = ref.length; i < len; i++) {
@@ -614,34 +621,39 @@ MonosaccharideInputWidgetGrid = (function() {
           row.data("tinyNotification", void 0);
         }
         monosaccharides[entry.name] = entry;
-        continuation = function(gridRow) {
-          return $.post("/api/validate-iupac", {
-            "target_string": entry.name
-          }).then(function(validation, message, query) {
-            if (validation.valid) {
-              if (!(entry.name in monosaccharides)) {
-                gridRow.removeClass("warning");
+        continuation = (function(_this) {
+          return function(gridRow, entry, validatedMonosaccharides) {
+            return $.post("/api/validate-iupac", {
+              "target_string": entry.name
+            }).then(function(validation) {
+              console.log("Validation of", entry.name, validation);
+              if (validation.valid) {
+                validatedMonosaccharides.add(validation.message);
+                if (!(entry.name in monosaccharides)) {
+                  gridRow.removeClass("warning");
+                  if (gridRow.data("tinyNotification") != null) {
+                    notif = gridRow.data("tinyNotification");
+                    notif.dismiss();
+                    return gridRow.data("tinyNotification", void 0);
+                  }
+                }
+              } else {
+                gridRow.addClass("warning");
+                pos = gridRow.position();
                 if (gridRow.data("tinyNotification") != null) {
                   notif = gridRow.data("tinyNotification");
                   notif.dismiss();
-                  return gridRow.data("tinyNotification", void 0);
                 }
+                notify = new TinyNotification(pos.top + 50, pos.left, validation.message, gridRow);
+                return gridRow.data("tinyNotification", notify);
               }
-            } else {
-              gridRow.addClass("warning");
-              pos = gridRow.position();
-              if (gridRow.data("tinyNotification") != null) {
-                notif = gridRow.data("tinyNotification");
-                notif.dismiss();
-              }
-              notify = new TinyNotification(pos.top + 50, pos.left, validation.message, gridRow);
-              return gridRow.data("tinyNotification", notify);
-            }
-          });
-        };
-        continuation(row);
+            });
+          };
+        })(this);
+        continuation(row, entry, validatedMonosaccharides);
       }
     }
+    this.validatedMonosaccharides = validatedMonosaccharides;
     return this.monosaccharides = monosaccharides;
   };
 
@@ -764,18 +776,58 @@ ConstraintInputGrid = (function() {
       row = ref[i];
       row = $(row);
       console.log(row);
+      this.clearError(row);
       entry = {
         lhs: row.find("input[name='left_hand_side']").val(),
         operator: row.find("select[name='operator']").val(),
-        rhs: row.find("input[name='right_hand_side']").val()
+        rhs: row.find("input[name='right_hand_side']").val(),
+        "row": row
       };
       if (entry.lhs === "" || entry.rhs === "") {
         continue;
       }
+      this.updateSymbols(entry);
       constraints.push(entry);
     }
     console.log(constraints);
     return this.constraints = constraints;
+  };
+
+  ConstraintInputGrid.prototype.clearError = function(row) {
+    row.find("input[name='left_hand_side']")[0].setCustomValidity("");
+    return row.find("input[name='right_hand_side']")[0].setCustomValidity("");
+  };
+
+  ConstraintInputGrid.prototype.updateSymbols = function(entry) {
+    return $.post("/api/parse-expression", {
+      "expressions": [entry.lhs, entry.rhs]
+    }).then((function(_this) {
+      return function(response) {
+        var knownSymbols, lhsSymbols, ref, rhsSymbols, undefinedSymbolsLeft, undefinedSymbolsRight;
+        console.log("Expression Symbols", response.symbols);
+        ref = response.symbols, lhsSymbols = ref[0], rhsSymbols = ref[1];
+        entry.lhsSymbols = lhsSymbols;
+        entry.rhsSymbols = rhsSymbols;
+        console.log(entry, lhsSymbols, rhsSymbols);
+        knownSymbols = new Set(_this.monosaccharideGrid.validatedMonosaccharides);
+        undefinedSymbolsLeft = new Set(Array.from(entry.lhsSymbols).filter(function(x) {
+          return !knownSymbols.has(x);
+        }));
+        if (undefinedSymbolsLeft.size > 0) {
+          entry.row.find("input[name='left_hand_side']")[0].setCustomValidity("Symbols (" + (Array.from(undefinedSymbolsLeft)) + ") are not in the hypothesis");
+        } else {
+          entry.row.find("input[name='left_hand_side']")[0].setCustomValidity("");
+        }
+        undefinedSymbolsRight = new Set(Array.from(entry.rhsSymbols).filter(function(x) {
+          return !knownSymbols.has(x);
+        }));
+        if (undefinedSymbolsRight.size > 0) {
+          return entry.row.find("input[name='right_hand_side']")[0].setCustomValidity("Symbols (" + (Array.from(undefinedSymbolsRight)) + ") are not in the hypothesis");
+        } else {
+          return entry.row.find("input[name='right_hand_side']")[0].setCustomValidity("");
+        }
+      };
+    })(this));
   };
 
   return ConstraintInputGrid;
@@ -904,7 +956,7 @@ var MassShiftInputWidget;
 
 MassShiftInputWidget = (function() {
   var addEmptyRowOnEdit, counter, template;
-  template = "<div class='mass-shift-row row'>\n    <div class='input-field col s3' style='margin-right:55px; margin-left:30px;'>\n        <label for='mass_shift_name'>Name or Formula</label>\n        <input class='mass-shift-name' type='text' name='mass_shift_name' placeholder='Name/Formula'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='mass_shift_max_count'>Up To Count</label>    \n        <input class='max-count' type='number' min='0' placeholder='Maximum Count' name='mass_shift_max_count'>\n    </div>\n</div>";
+  template = "<div class='mass-shift-row row'>\n    <div class='input-field col s3' style='margin-right:55px; margin-left:30px;'>\n        <label for='mass_shift_name'>Name or Formula</label>\n        <input class='mass-shift-name' type='text' name='mass_shift_name' placeholder='Name/Formula'>\n    </div>\n    <div class='input-field col s2'>\n        <label for='mass_shift_max_count'>Count</label>    \n        <input class='max-count' type='number' min='0' placeholder='Maximum Count' name='mass_shift_max_count'>\n    </div>\n</div>";
   counter = 0;
   addEmptyRowOnEdit = function(container, addHeader) {
     var autocompleteValues, callback, name, row;
@@ -1116,7 +1168,7 @@ MonosaccharideFilter = (function() {
 
 //# sourceMappingURL=monosaccharide-composition-filter.js.map
 
-var ModificationIndex, ModificationRule, ModificationRuleListing, ModificationSelectionEditor, ModificationSpecification, ModificationTarget, PositionClassifier, makeModificationSelectionEditor, parseModificationRuleSpecification,
+var ModificationIndex, ModificationRule, ModificationRuleListing, ModificationSelectionEditor, ModificationSpecification, ModificationTarget, PositionClassifier, formatFormula, formatModificationNameEntry, makeModificationSelectionEditor, parseModificationRuleSpecification,
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty,
   bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
@@ -1131,6 +1183,9 @@ PositionClassifier = {
 parseModificationRuleSpecification = function(specString) {
   var match;
   match = /(.*)\s\((.+)\)$/.exec(specString);
+  if (match == null) {
+    return [null, null];
+  }
   return [match[1], ModificationTarget.parse(match[2])];
 };
 
@@ -1163,6 +1218,18 @@ ModificationTarget = (function() {
   return ModificationTarget;
 
 })();
+
+formatModificationNameEntry = function(name) {
+  var nameEntry;
+  nameEntry = "<div class=\"modification-rule-entry-name col s4\" title=\"" + name + "\" data-modification-name=\"" + name + "\">\n    " + name + "\n</div>";
+  return nameEntry;
+};
+
+formatFormula = function(formula) {
+  var formulaEntry;
+  formulaEntry = "<div class=\"modification-rule-entry-formula col s3\" title=\"" + formula + "\">\n    " + formula + "\n</div>";
+  return formulaEntry;
+};
 
 ModificationRule = (function() {
   function ModificationRule(name1, formula1, mass, targets, hidden, category, recent) {
@@ -1206,25 +1273,15 @@ ModificationRule = (function() {
 
   ModificationRule.prototype.render = function(container) {
     var entry, formula, formulaEntry, k, len, name, nameEntry, ref, results, target;
-    if (this.name.length < 20) {
-      name = this.name;
-      nameEntry = "<div class=\"modification-rule-entry-name col s4\" data-modification-name=\"" + this.name + "\">\n    " + name + "\n</div>";
-    } else {
-      name = this.name.slice(0, 17) + "...";
-      nameEntry = "<div class=\"modification-rule-entry-name col s4 tooltipped\" data-tooltip=\"" + this.name + "\" data-modification-name=\"" + this.name + "\">\n    " + name + "\n</div>";
-    }
-    if (this.formula.length < 13) {
-      formula = this.formula;
-      formulaEntry = "<div class=\"modification-rule-entry-formula col s3\">\n    " + formula + "\n</div>";
-    } else {
-      formula = this.formula.slice(0, 10) + '...';
-      formulaEntry = "<div class=\"modification-rule-entry-formula col s3 tooltipped\" data-tooltip=\"" + this.formula + "\">\n    " + formula + "\n</div>";
-    }
+    name = this.name;
+    nameEntry = formatModificationNameEntry(name);
+    formula = this.formula;
+    formulaEntry = formatFormula(formula);
     ref = this.targets;
     results = [];
     for (k = 0, len = ref.length; k < len; k++) {
       target = ref[k];
-      entry = $("<div class=\"modification-rule-entry row\">\n    " + nameEntry + "\n    <div class=\"modification-rule-entry-target col s2\">\n        " + (target.serialize()) + "\n    </div>\n    " + formulaEntry + "\n    <div class=\"modification-rule-entry-mass col s3\">\n        " + this.mass + "\n    </div>\n</div>");
+      entry = $("<div class=\"modification-rule-entry row\" data-tooltip=\"" + this.name + "\">\n    " + nameEntry + "\n    <div class=\"modification-rule-entry-target col s2\">\n        " + (target.serialize()) + "\n    </div>\n    " + formulaEntry + "\n    <div class=\"modification-rule-entry-mass col s3\">\n        " + this.mass + "\n    </div>\n</div>");
       results.push(container.append(entry));
     }
     return results;
@@ -1246,20 +1303,10 @@ ModificationSpecification = (function() {
 
   ModificationSpecification.prototype.render = function(container) {
     var entry, formula, formulaEntry, name, nameEntry;
-    if (this.name.length < 20) {
-      name = this.name;
-      nameEntry = "<div class=\"modification-rule-entry-name col s4\" data-modification-name=\"" + this.name + "\">\n    " + name + "\n</div>";
-    } else {
-      name = this.name.slice(0, 17) + "...";
-      nameEntry = "<div class=\"modification-rule-entry-name col s4 tooltipped\" data-tooltip=\"" + this.name + "\" data-modification-name=\"" + this.name + "\">\n    " + name + "\n</div>";
-    }
-    if (this.formula.length < 13) {
-      formula = this.formula;
-      formulaEntry = "<div class=\"modification-rule-entry-formula col s3\">\n    " + formula + "\n</div>";
-    } else {
-      formula = this.formula.slice(0, 10) + '...';
-      formulaEntry = "<div class=\"modification-rule-entry-formula col s3 tooltipped\" data-tooltip=\"" + this.formula + "\">\n    " + formula + "\n</div>";
-    }
+    name = this.name;
+    nameEntry = formatModificationNameEntry(name);
+    formula = this.formula;
+    formulaEntry = formatFormula(formula);
     entry = $("<div class=\"modification-rule-entry row\" data-key=\"" + (this.serialize()) + "\">\n    " + nameEntry + "\n    <div class=\"modification-rule-entry-target col s2\">\n        " + (this.target.serialize()) + "\n    </div>\n    " + formulaEntry + "\n    <div class=\"modification-rule-entry-mass col s3\">\n        " + this.mass + "\n    </div>\n</div>");
     return container.append(entry);
   };
@@ -1296,6 +1343,10 @@ ModificationIndex = (function() {
   ModificationIndex.prototype.updateRuleFromSpecString = function(specString) {
     var name, ref, target;
     ref = parseModificationRuleSpecification(specString), name = ref[0], target = ref[1];
+    if (name == null) {
+      console.log("Could not parse modification specification " + specString);
+      return;
+    }
     if (this.rules[name] != null) {
       return this.rules[name].addTarget(target);
     } else {
@@ -1322,6 +1373,10 @@ ModificationIndex = (function() {
           spec = specificities[l];
           j += 1;
           ref = parseModificationRuleSpecification(spec), name = ref[0], target = ref[1];
+          if (name == null) {
+            console.log("Could not parse modification specification " + spec);
+            continue;
+          }
           entry = tempIndex[name];
           entry.addTarget(target);
           j = 0;

@@ -1,3 +1,5 @@
+import os
+from os.path import abspath
 import click
 
 from glycan_profiling.cli.tools import tools
@@ -31,11 +33,16 @@ def project():
 
 @project.command("init", short_help="Create an empty project structure")
 @click.argument("path")
-def project_init(path):
+@click.option("-r", "--reinitialize-check", is_flag=True, help='Whether to test if the project is already initialized')
+def project_init(path, reinitialize_check=False):
     from glycresoft_app.project.project import Project
     proj = Project(path)
     click.secho("%r" % (proj,))
-    proj.force_build_indices()
+    if reinitialize_check:
+        if not proj.is_project_located():
+            proj.force_build_indices()
+    else:
+        proj.force_build_indices()
 
 
 @project.command("add-analysis", short_help='Add an existing analysis to the project')
@@ -45,7 +52,7 @@ def add_analysis(project_path, analysis_path):
     from glycresoft_app.project.project import Project
     from glycresoft_app.project.analysis import AnalysisRecordSet
     project = Project(project_path)
-    analyses = AnalysisRecordSet(analysis_path)
+    analyses = AnalysisRecordSet(abspath(analysis_path))
     for record in analyses:
         project.analysis_manager.put(record)
     project.analysis_manager.dump()
@@ -58,7 +65,7 @@ def add_sample(project_path, sample_path):
     from glycresoft_app.project.project import Project
     from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
     project = Project(project_path)
-    reader = ProcessedMzMLDeserializer(sample_path)
+    reader = ProcessedMzMLDeserializer(abspath(sample_path))
     record = project.sample_manager.make_record(reader)
     project.sample_manager.put(record)
     project.sample_manager.dump()
@@ -71,7 +78,7 @@ def add_hypothesis(project_path, hypothesis_path):
     from glycresoft_app.project.project import Project
     from glycresoft_app.project.hypothesis import HypothesisRecordSet
     project = Project(project_path)
-    hypotheses = HypothesisRecordSet(hypothesis_path)
+    hypotheses = HypothesisRecordSet(abs(hypothesis_path))
     for record in hypotheses:
         project.hypothesis_manager.put(record)
     project.hypothesis_manager.dump()
