@@ -54,7 +54,7 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel):
     logger = logging.getLogger()
     handler = logging.FileHandler(log_file_path)
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s:%(filename)s:%(lineno)d - %(levelname)s - %(message)s",
+        "%(asctime)s - %(name)s:%(filename)s:%(lineno)-4d - %(levelname)s - %(message)s",
         "%H:%M:%S")
     handler.setFormatter(formatter)
     logging.captureWarnings(True)

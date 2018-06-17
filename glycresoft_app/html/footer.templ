@@ -3,4 +3,10 @@
     {% if has_native_client %}
         <small>Native Client</small>
     {% endif %}
+    <small>
+        (<a id='about-link' style='cursor: pointer;'
+            onclick="fetch('/about').then(resp => resp.text().then(page => GlycReSoft.displayMessageModal(page)))">
+            About
+        </a>)
+    </small>
 </div>

@@ -182,6 +182,11 @@ def get_current_user_id():
     return jsonify(user_id=g.user.id)
 
 
+@app.route("/about")
+def about_page():
+    return render_template("about.html")
+
+
 @app.before_request
 def before_request():
     if has_comtypes:

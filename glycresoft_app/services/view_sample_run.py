@@ -9,6 +9,7 @@ from glycan_profiling.trace import ChromatogramExtractor
 from glycan_profiling.chromatogram_tree import SimpleChromatogram
 from glycan_profiling.tandem.oxonium_ions import standard_oxonium_ions
 
+import ms_deisotope
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
 
 from glycresoft_app.report import png_plot
@@ -23,7 +24,7 @@ VIEW_CACHE = ViewCache()
 
 
 class SampleView(object):
-    def __init__(self, record, minimum_mass=1000):
+    def __init__(self, record, minimum_mass=None, abundance_threshold=None):
         self.record = record
         self.reader = ProcessedMzMLDeserializer(record.path)
         self.scan_levels = {
@@ -31,7 +32,7 @@ class SampleView(object):
             "N": len(self.reader.extended_index.msn_ids)
         }
         self.minimum_mass = minimum_mass
-        self.abundance_threshold = None
+        self.abundance_threshold = abundance_threshold
         self.chromatograms = None
         self.total_ion_chromatogram = None
         self.oxonium_ion_chromatogram = None
@@ -39,12 +40,30 @@ class SampleView(object):
         self.oxonium_ion_artist = None
 
     def _estimate_threshold(self):
-        acc = []
+        intensity_accumulator = []
+        mz_accumulator = []
+        charge_accumulator = []
         for scan_id in self.reader.extended_index.ms1_ids:
             header = self.reader.get_scan_header_by_id(scan_id)
-            acc.extend(header.arrays[1])
+            intensity_accumulator.extend(header.arrays.intensity)
+            mz_accumulator.extend(header.arrays.mz)
+            try:
+                charge_accumulator.extend(header['charge array'])
+            except Exception:
+                charge_accumulator.extend(
+                    np.ones_like(header.arrays.mz) * header.polarity)
 
-        self.abundance_threshold = np.percentile(acc, 90)
+        mass_array = ms_deisotope.neutral_mass(
+            np.array(mz_accumulator),
+            np.array(charge_accumulator))
+        self.mass_array = mass_array
+        self.charge_array = np.array(charge_accumulator, dtype=int)
+        self.intensity_array = np.array(intensity_accumulator)
+        if self.abundance_threshold is None:
+            self.abundance_threshold = np.percentile(intensity_accumulator, 90)
+        if self.minimum_mass is None:
+            counts, bins = np.histogram(self.mass_array)
+            self.minimum_mass = np.average(bins[:-1], weights=counts)
 
     def build_oxonium_ion_chromatogram(self):
         window_width = 0.01
@@ -190,7 +209,8 @@ def render_chromatograms(reader):
 
     threshold = np.percentile(acc, 90)
 
-    ex = ChromatogramExtractor(reader, minimum_intensity=threshold, minimum_mass=300)
+    ex = ChromatogramExtractor(
+        reader, minimum_intensity=threshold, minimum_mass=300)
     chroma = ex.run()
 
     window_width = 0.01

@@ -68,13 +68,11 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
                 ms_peak_picker.scan_filter.FTICRBaselineRemoval(
                     scale=ms1_background_reduction, window_length=2.),
                 ms_peak_picker.scan_filter.SavitskyGolayFilter()
-            ]
+            ],
+            'signal_to_noise_threshold': 1.0,
         }
         if ms1_background_reduction == 0:
-            ms1_peak_picking_args['transforms'] = [
-                ms_peak_picker.scan_filter.FTICRBaselineRemoval(
-                    scale=ms1_background_reduction, window_length=2.)
-            ]
+            ms1_peak_picking_args['transforms'] = []
     else:
         ms1_peak_picking_args = {
             "transforms": [
@@ -82,6 +80,8 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
                     scale=ms1_background_reduction, window_length=2.),
             ]
         }
+        if ms1_background_reduction == 0:
+            ms1_peak_picking_args['transforms'] = []
 
     if msn_background_reduction > 0:
         msn_peak_picking_args = {
@@ -91,7 +91,7 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
             ]
         }
     else:
-        msn_peak_picking_args = None
+        msn_peak_picking_args = {'transforms': []}
 
     ms1_deconvolution_args = {
         "scorer": ms_deisotope.scoring.PenalizedMSDeconVFitter(score_threshold, 2.),

@@ -1,6 +1,8 @@
 import re
-from flask import Response, g, request, render_template, jsonify
+
+from flask import Response, g, request, render_template, jsonify, Markup
 from werkzeug import secure_filename
+import markdown
 
 from .form_cleaners import remove_empty_rows, intify, make_unique_name, touch_file
 from .service_module import register_service
@@ -13,6 +15,7 @@ except ImportError:
 from glycresoft_app.task.task_process import Message
 from glycresoft_app.task.combinatorial_glycan_hypothesis import BuildCombinatorialGlycanHypothesis
 from glycresoft_app.task.text_file_glycan_hypothesis import BuildTextFileGlycanHypothesis
+from glycresoft_app.task.prebuilt_hypothesis import BuildPreBuiltGlycanHypothesis
 from glycresoft_app.task.merge_glycan_hypotheses import MergeGlycanHypotheses
 from glycan_profiling.cli.validators import (
     validate_reduction, validate_derivatization)
@@ -23,17 +26,20 @@ app = make_glycan_hypothesis = register_service("make_glycan_hypothesis", __name
 
 
 prebuilt_hypotheses = {}
-for prebuilt_id, builder in _prebuilt_hypothesis_register.items():
+for prebuilt_id, builder_tp in _prebuilt_hypothesis_register.items():
+    builder = builder_tp()
     prebuilt_hypotheses[prebuilt_id] = {
         "id": prebuilt_id,
-        "name": builder.hypothesis_metadata()['name'],
-        "description": builder.hypothesis_metadata()
+        "name": builder.hypothesis_metadata['name'],
+        "description": Markup(markdown.markdown(
+            builder.hypothesis_metadata.get("description", builder.hypothesis_metadata['name'])))
     }
 
 
 @app.route("/glycan_search_space")
 def build_glycan_search_space():
-    return render_template("glycan_search_space.templ", manager=g.manager)
+    return render_template("glycan_search_space.templ", manager=g.manager,
+                           prebuilt_glycan_databases=prebuilt_hypotheses)
 
 
 def _serialize_rules_to_buffer(rules, constraints, header_comment=""):
@@ -129,14 +135,19 @@ def build_glycan_search_space_process():
             callback=lambda: 0, user=g.user)
         g.add_task(task)
     elif selected_method == "pregenerated":
-        # include_human_n_glycan = data.get("glycomedb-human-n-glycan")
-        # include_human_o_glycan = data.get("glycomedb-human-o-glycan")
-        # include_mammalian_n_glycan = data.get("glycomedb-mammlian-n-glycan")
-        # include_mammalian_o_glycan = data.get("glycomedb-mammlian-o-glycan")
+        recipes = []
+        for key, builder_tp in _prebuilt_hypothesis_register.items():
+            used = data.get(key)
+            if used == 'on':
+                recipes.append(builder_tp())
 
-        g.manager.add_message(Message("This method is not enabled at this time", 'update'))
-        return Response("Task Not Scheduled")
-    # Not yet implemented
+        task = BuildPreBuiltGlycanHypothesis(
+            recipes, storage_path,
+            reduction=custom_reduction_type if has_custom_reduction else reduction_type,
+            derivatization=custom_derivatization_type if has_custom_derivatization else derivatization_type,
+            name=hypothesis_name,
+            callback=lambda: 0, user=g.user)
+        g.add_task(task)
     elif selected_method == "merge-hypotheses":
         id_1 = data.get("merged-hypothesis-1", 0)
         id_2 = data.get("merged-hypothesis-2", 0)
@@ -148,8 +159,6 @@ def build_glycan_search_space_process():
         rec_1 = g.manager.hypothesis_manager.get(id_1)
         rec_2 = g.manager.hypothesis_manager.get(id_2)
 
-        # g.add_message(Message("Not yet implemented."))
-        # return Response("Task Not Scheduled")
         task = MergeGlycanHypotheses(
             g.manager.connection_bridge, [(rec_1.path, rec_1.id), (rec_2.path, rec_2.id)], name=hypothesis_name,
             callback=lambda: 0, user=g.user)

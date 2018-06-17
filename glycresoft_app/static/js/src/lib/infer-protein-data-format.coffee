@@ -73,7 +73,7 @@ getProteinName = (sequence) ->
         if chunk?
             id = /accession="([^"]+)"/.exec chunk
             id = id[1]
-            return id # id.split("_").slice(1).join("_")
+            return id
 
 
 getProteinNamesFromMzIdentML = (file, callback, nameCallback) ->

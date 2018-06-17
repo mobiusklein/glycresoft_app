@@ -206,6 +206,8 @@ class Project(object):
             if record.is_resolvable():
                 k += 1
             n += 1
+        if n == 0:
+            return True
         return k / float(n) > ratio
 
     def validate_indices(self, ratio=0.5):

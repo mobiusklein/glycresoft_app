@@ -51,23 +51,25 @@
                 </ul>
             </div>
             <div class='row' id='pregenerated'>
-                <div class='col s5'>
-                    <h5>Use a Pre-Generated Curated Database:</h5>
-                    <p>
-                        {% for prebuilt_record in prebuilt_glycan_databases %}
-                        <input disabled class="with-gap" name="{{prebuilt_record.id}}" type="checkbox"
-                               id="{{prebuilt_record.id}}"/>    
-                        <label for='{{prebuilt_record.id}}'>{{prebuilt_record.name}}</label><br>
-                        {% endfor %}
-                        {# <input disabled class="with-gap" name="glycomedb-human-n-glycan" type="checkbox" id="glycomedb-human-n-glycan"/>    
-                        <label for='glycomedb-human-n-glycan'>Human N-linked glycan</label><br>
-                        <input disabled class="with-gap" name="glycomedb-human-o-glycan" type="checkbox" id="glycomedb-human-o-glycan"/>    
-                        <label for='glycomedb-human-o-glycan'>Human O-linked glycan</label><br>
-                        <input disabled class="with-gap" name="glycomedb-mammlian-n-glycan" type="checkbox" id="glycomedb-mammlian-n-glycan"/>    
-                        <label for='glycomedb-mammlian-n-glycan'>Mammalian N-linked glycan</label><br>
-                        <input disabled class="with-gap" name="glycomedb-mammlian-o-glycan" type="checkbox" id="glycomedb-mammlian-o-glycan"/>    
-                        <label for='glycomedb-mammlian-o-glycan'>Mammalian O-linked glycan</label><br> #}
-                    </p>
+                <div class='row'>
+                    <h5>Use one or more pre-generated or curated databases</h5>
+                </div>
+                <div class="row">
+                    <div class='col s5'>
+                        <p>
+                            {% for prebuilt_record in prebuilt_glycan_databases.values() %}
+                            <span class='prebuilt-hypothesis-checkbox-container'
+                                  data-label="{{prebuilt_record.description}}">
+                                <input class="with-gap" name="{{prebuilt_record.id}}" type="checkbox"
+                                       id="{{prebuilt_record.id}}"/>    
+                                <label for='{{prebuilt_record.id}}'>{{prebuilt_record.name}}</label>
+                            </span><br>
+                            {% endfor %}
+                        </p>
+                    </div>
+                    <div class='col s5' id='prebuilt-description'>
+                        
+                    </div>                
                 </div>
             </div>
             <div class='row' id='combinatorial'>
@@ -120,6 +122,7 @@
 </div>
 <script>
 (function(){
+
 ajaxForm($("form#glycan-hypothesis-form"), function(){
     var currentAction = GlycReSoft.getShowingLayer()
     GlycReSoft.setShowingLayer("home-layer")
@@ -154,5 +157,10 @@ selectHandles.append($("<option value=\"0\">Select A Hypothesis To Combine</opti
 _.forIn(glycanHypotheses, function(value, key){
     selectHandles.append($("<option value=" + value + ">" + key + "</option>"))
 })
+
+$(".prebuilt-hypothesis-checkbox-container").hover(function(event){
+    $("#pregenerated #prebuilt-description").html(this.dataset.label)
+})
+
 })()
 </script>  
