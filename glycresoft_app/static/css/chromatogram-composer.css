@@ -1,0 +1,36 @@
+.chromatogram-selection-list {
+    height: 300px;
+    overflow-y: auto;
+}
+
+.chromatogram-selection-header {
+    font-weight: 900;
+    font-size: 0.8em;
+    text-align: left;
+}
+
+.chromatogram-entry {
+    margin-bottom: 0px !important;
+    padding-top: 3px !important;
+    padding-bottom: 3px !important;
+    font-size: 0.8em;
+    text-align: left;
+}
+
+.chromatogram-entry-entity {
+    font-size: 1em;
+}
+
+.chromatogram-entry.selected {
+    background-color: lightblue;
+}
+
+#open-chromatogram-composer-btn {
+    display: block;
+    text-align: center;
+    cursor: pointer;
+    font-size: 0.85em;
+    line-height: 1.2em !important;
+    height: fit-content !important;
+    padding: 3px !important;
+}
