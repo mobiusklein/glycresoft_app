@@ -528,5 +528,5 @@ def compose_chromatograms(analysis_uuid):
             artist.draw(legend=False)
             xlim = artist.ax.get_xlim()
             artist.ax.set_xlim(xlim[0] - 0.5, xlim[1] + 0.5)
-            plot = report.svguri_plot(artist.ax, bbox_inches='tight', height=4, width=7, svg_width="100%")
+            plot = report.svg_plot(artist.ax, bbox_inches='tight', height=4, width=7, svg_width="100%")
             return jsonify(status='success', payload=plot)
