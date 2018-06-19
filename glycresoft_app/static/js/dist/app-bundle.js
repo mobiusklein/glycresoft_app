@@ -570,6 +570,182 @@ MassShiftAPI = {
 //# sourceMappingURL=bind-urls.js.map
 
 "use strict";
+var ChromatogramComposer, ChromatogramSelectionList, ChromatogramSpecification, makeChromatogramComposer;
+
+ChromatogramSpecification = (function() {
+  function ChromatogramSpecification(description) {
+    this.entity = description.entity;
+    this.score = description.score;
+    this.id = description.id;
+    this.startTime = description.startTime;
+    this.endTime = description.endTime;
+    this.apexTime = description.apexTime;
+    this.selected = false;
+  }
+
+  ChromatogramSpecification.prototype.render = function(container) {
+    var entry;
+    entry = "<div class=\"chromatogram-entry row\" data-id='" + this.id + "' data-entity='" + this.entity + "'>\n    <div class='col s4 chromatogram-entry-entity'>" + this.entity + "</div>\n    <div class='col s2'>" + (this.score.toFixed(3)) + "</div>\n    <div class='col s2'>" + (this.startTime.toFixed(3)) + "</div>\n    <div class='col s2'>" + (this.apexTime.toFixed(3)) + "</div>\n    <div class='col s2'>" + (this.endTime.toFixed(3)) + "</div>\n</div>";
+    return container.append($(entry));
+  };
+
+  return ChromatogramSpecification;
+
+})();
+
+ChromatogramSelectionList = (function() {
+  function ChromatogramSelectionList(container1, chromatogramSpecifications1) {
+    this.container = container1;
+    this.chromatogramSpecifications = chromatogramSpecifications1;
+    this.selectedChromatograms = {};
+  }
+
+  ChromatogramSelectionList.prototype.getSpecificationByID = function(id) {
+    var i, len, ref, spec;
+    ref = this.chromatogramSpecifications;
+    for (i = 0, len = ref.length; i < len; i++) {
+      spec = ref[i];
+      if (spec.id === id) {
+        return spec;
+      }
+    }
+    return void 0;
+  };
+
+  ChromatogramSelectionList.prototype.initialize = function() {
+    var self;
+    self = this;
+    return this.container.on('click', '.chromatogram-entry', function() {
+      var isSelected, spec;
+      console.log(this, self);
+      spec = self.getSpecificationByID(parseInt(this.dataset.id));
+      isSelected = self.selectedChromatograms[spec.id];
+      if (isSelected == null) {
+        isSelected = false;
+      }
+      if (!isSelected) {
+        self.selectedChromatograms[spec.id] = true;
+        return this.classList.add("selected");
+      } else {
+        self.selectedChromatograms[spec.id] = false;
+        return this.classList.remove("selected");
+      }
+    });
+  };
+
+  ChromatogramSelectionList.prototype.find = function(selector) {
+    return this.container.find(selector);
+  };
+
+  ChromatogramSelectionList.prototype.render = function() {
+    var chromatograms, entry, i, len;
+    this.container.empty();
+    chromatograms = this.chromatogramSpecifications;
+    chromatograms.sort(function(a, b) {
+      a = a.entity;
+      b = b.entity;
+      if (a > b) {
+        return 1;
+      } else if (a < b) {
+        return -1;
+      }
+      return 0;
+    });
+    for (i = 0, len = chromatograms.length; i < len; i++) {
+      entry = chromatograms[i];
+      entry.render(this.container);
+    }
+    return this.initialize();
+  };
+
+  ChromatogramSelectionList.prototype.pack = function() {
+    var id, ref, selected, selectedIds;
+    selectedIds = [];
+    ref = this.selectedChromatograms;
+    for (id in ref) {
+      selected = ref[id];
+      if (selected) {
+        selectedIds.push(id);
+      }
+    }
+    return selectedIds;
+  };
+
+  return ChromatogramSelectionList;
+
+})();
+
+ChromatogramComposer = (function() {
+  function ChromatogramComposer(container1, chromatogramSpecifications1, renderingEndpoint1) {
+    this.container = container1;
+    this.chromatogramSpecifications = chromatogramSpecifications1;
+    this.renderingEndpoint = renderingEndpoint1;
+    this.chromatogramSelectionListContainer = this.container.find(".chromatogram-selection-list");
+    this.chromatogramPlotContainer = this.container.find(".chromatogram-plot");
+    if (this.chromatogramSpecifications == null) {
+      this.chromatogramSpecifications = [];
+    }
+    this.chromatogramSelectionList = new ChromatogramSelectionList(this.chromatogramSelectionListContainer, this.chromatogramSpecifications);
+    this.drawButton = this.container.find(".draw-plot-btn");
+    this.drawButton.click((function(_this) {
+      return function() {
+        return _this.updatePlot();
+      };
+    })(this));
+  }
+
+  ChromatogramComposer.prototype.setChromatograms = function(chromatograms) {
+    this.chromatogramSpecifications = chromatograms.map(function(obj) {
+      return new ChromatogramSpecification(obj);
+    });
+    return this.chromatogramSelectionList.chromatogramSpecifications = this.chromatogramSpecifications;
+  };
+
+  ChromatogramComposer.prototype.updatePlot = function(callback) {
+    return $.post(this.renderingEndpoint, {
+      'selected_ids': this.chromatogramSelectionList.pack()
+    }).then((function(_this) {
+      return function(result) {
+        console.log(result.status);
+        _this.chromatogramPlotContainer.html(result.payload);
+        if (callback != null) {
+          return callback(_this);
+        }
+      };
+    })(this));
+  };
+
+  ChromatogramComposer.prototype.initialize = function(callback) {
+    this.hide();
+    this.chromatogramSelectionList.render();
+    return this.show();
+  };
+
+  ChromatogramComposer.prototype.hide = function() {
+    return this.container.hide();
+  };
+
+  ChromatogramComposer.prototype.show = function() {
+    return this.container.show();
+  };
+
+  return ChromatogramComposer;
+
+})();
+
+makeChromatogramComposer = function(uid, callback, chromatogramSpecifications, renderingEndpoint) {
+  var handle, inst, template;
+  template = "<div class='chromatogram-composer' id='chromatogram-composer-" + uid + "'>\n    <div class='chromatogram-composer-container-inner'>\n        <div class='row'>\n            <h5 class='section-title'>Chromatogram Plot Composer</h5>\n        </div>\n        <div class='row'>\n            <div class='col s6'>\n                <div class='chromatogram-selection-header row'>\n                    <div class='col s4'>Entity</div>\n                    <div class='col s2'>Score</div>\n                    <div class='col s2'>Start Time</div>\n                    <div class='col s2'>Apex Time</div>\n                    <div class='col s2'>End Time</div>\n                </div>\n                <div class='chromatogram-selection-list'>\n                </div>\n            </div>\n            <div class='col s6'>\n                <div class='chromatogram-plot'>\n                </div>\n            </div>\n        </div>\n        <div class='row'>\n            <a class='btn draw-plot-btn'>Draw</a>\n        </div>\n    </div>\n</div>";
+  handle = $(template);
+  inst = new ChromatogramComposer(handle, [], renderingEndpoint);
+  inst.setChromatograms(chromatogramSpecifications);
+  inst.initialize(callback);
+  return inst;
+};
+
+//# sourceMappingURL=chromatogram-composer.js.map
+
+"use strict";
 var ConstraintInputGrid, MonosaccharideInputWidgetGrid;
 
 MonosaccharideInputWidgetGrid = (function() {
@@ -2201,6 +2377,8 @@ GlycanCompositionLCMSSearchController = (function() {
 
   GlycanCompositionLCMSSearchController.prototype.saveCSVURL = "/view_glycan_lcms_analysis/{analysisId}/to-csv";
 
+  GlycanCompositionLCMSSearchController.prototype.chromatogramComposerURL = "/view_glycan_lcms_analysis/{analysisId}/chromatogram_composer";
+
   GlycanCompositionLCMSSearchController.prototype.monosaccharideFilterContainerSelector = '#monosaccharide-filters';
 
   function GlycanCompositionLCMSSearchController(analysisId, hypothesisUUID, monosaccharides) {
@@ -2281,6 +2459,9 @@ GlycanCompositionLCMSSearchController = (function() {
     this.handle.find("#save-csv-btn").click(function(event) {
       return self.showExportMenu();
     });
+    this.handle.find("#open-chromatogram-composer-btn").click(function(event) {
+      return self.showChromatogramComposer();
+    });
     this.updateView();
     filterContainer = this.find(this.monosaccharideFilterContainerSelector);
     return GlycReSoft.monosaccharideFilterState.update(this.hypothesisUUID, (function(_this) {
@@ -2345,6 +2526,22 @@ GlycanCompositionLCMSSearchController = (function() {
 
   GlycanCompositionLCMSSearchController.prototype.unload = function() {
     return GlycReSoft.removeCurrentLayer();
+  };
+
+  GlycanCompositionLCMSSearchController.prototype.showChromatogramComposer = function() {
+    var modal, self, url;
+    self = this;
+    url = this.chromatogramComposerURL.format({
+      analysisId: this.analysisId
+    });
+    modal = this.getModal();
+    return $.get(url).then(function(payload) {
+      var composer;
+      composer = makeChromatogramComposer(self.analysisId, (function() {}), payload.chromatogramSpecifications, url);
+      modal.find('.modal-content').html(composer.container);
+      $(".lean-overlay").remove();
+      return modal.openModal();
+    });
   };
 
   return GlycanCompositionLCMSSearchController;

@@ -492,3 +492,41 @@ def export_data(analysis_uuid):
             file_names.extend(
                 work_task(analysis_uuid))
     return jsonify(status='success', filenames=file_names)
+
+
+@app.route('/view_glycan_lcms_analysis/<analysis_uuid>/chromatogram_composer', methods=['GET'])
+def compose_chromatograms_setup(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        snapshot = view.get_items_for_display()
+        with snapshot.bind(view.session):
+            payload = []
+            for gc in snapshot.glycan_chromatograms:
+                payload.append({
+                    'id': gc.id,
+                    'entity': str(gc.glycan_composition),
+                    'startTime': gc.start_time,
+                    'endTime': gc.end_time,
+                    'apexTime': gc.apex_time,
+                    'score': gc.score,
+                })
+            return jsonify(chromatogramSpecifications=payload)
+
+
+@app.route("/view_glycan_lcms_analysis/<analysis_uuid>/chromatogram_composer", methods=["POST"])
+def compose_chromatograms(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        ids = set(map(int, request.values.getlist('selected_ids[]')))
+        snapshot = view.get_items_for_display()
+        with snapshot.bind(view.session):
+            selected = []
+            for gc in snapshot.glycan_chromatograms:
+                if gc.id in ids:
+                    selected.append(gc)
+            artist = SmoothingChromatogramArtist(selected, ax=figax())
+            artist.draw(legend=False)
+            xlim = artist.ax.get_xlim()
+            artist.ax.set_xlim(xlim[0] - 0.5, xlim[1] + 0.5)
+            plot = report.svguri_plot(artist.ax, bbox_inches='tight', height=4, width=7, svg_width="100%")
+            return jsonify(status='success', payload=plot)

@@ -5,8 +5,7 @@ from glycresoft_app.project import analysis as project_analysis
 from .task_process import Task, Message
 
 from glycan_profiling.serialize import (
-    DatabaseBoundOperation, GlycanHypothesis,
-    SampleRun)
+    DatabaseBoundOperation, GlycanHypothesis)
 
 from glycan_profiling.profiler import (
     MzMLGlycanChromatogramAnalyzer)
@@ -38,7 +37,8 @@ def get_by_name_or_id(session, model_type, name_or_id):
 def analyze_glycan_composition(database_connection, sample_path, hypothesis_identifier,
                                output_path, analysis_name, adducts, grouping_error_tolerance=1.5e-5,
                                mass_error_tolerance=1e-5, scoring_model=None,
-                               minimum_mass=500.,
+                               minimum_mass=500., smoothing_factor=None,
+                               regularization_model=None,
                                channel=None, **kwargs):
     if scoring_model is None:
         scoring_model = GeneralScorer
@@ -108,12 +108,12 @@ class AnalyzeGlycanCompositionTask(Task):
     def __init__(self, database_connection, sample_path, hypothesis_identifier,
                  output_path, analysis_name, adducts, grouping_error_tolerance=1.5e-5,
                  mass_error_tolerance=1e-5, scoring_model=None,
-                 minimum_mass=500.,
+                 minimum_mass=500., smoothing_factor=None, regularization_model=None,
                  callback=lambda: 0, **kwargs):
         args = (database_connection, sample_path, hypothesis_identifier,
                 output_path, analysis_name, adducts, grouping_error_tolerance,
-                mass_error_tolerance, scoring_model,
-                minimum_mass)
+                mass_error_tolerance, scoring_model, minimum_mass,
+                smoothing_factor, regularization_model)
         if analysis_name is None:
             name_part = kwargs.pop("job_name_part", self.count)
             self.count += 1

@@ -50,7 +50,8 @@ class GlycanCompositionLCMSSearchController
     detailModalSelector: '#glycan-detail-modal'
     detailUrl: "/view_glycan_lcms_analysis/{analysisId}/details_for/{chromatogramId}"
     detailUnidentifiedUrl: "/view_glycan_lcms_analysis/{analysisId}/details_for_unidentified/{chromatogramId}"
-    saveCSVURL: "/view_glycan_lcms_analysis/{analysisId}/to-csv"    
+    saveCSVURL: "/view_glycan_lcms_analysis/{analysisId}/to-csv"
+    chromatogramComposerURL: "/view_glycan_lcms_analysis/{analysisId}/chromatogram_composer"
     monosaccharideFilterContainerSelector: '#monosaccharide-filters'
 
     constructor: (@analysisId, @hypothesisUUID, @monosaccharides={"Hex": 10, "HexNAc":10, "Fuc": 10, "Neu5Ac": 10}) ->
@@ -102,13 +103,15 @@ class GlycanCompositionLCMSSearchController
             GlycReSoft.emit("update_settings")
         @handle.find("#save-csv-btn").click (event) ->
             self.showExportMenu()
+        @handle.find("#open-chromatogram-composer-btn").click (event) ->
+            self.showChromatogramComposer()
+
         @updateView()
 
         filterContainer = @find(@monosaccharideFilterContainerSelector)
         GlycReSoft.monosaccharideFilterState.update @hypothesisUUID, (bounds) =>
             @monosaccharideFilter = new MonosaccharideFilter(filterContainer)
             @monosaccharideFilter.render()
-
 
     noResultsHandler: ->
         $(@tabView.containerSelector).html('''
@@ -153,3 +156,14 @@ class GlycanCompositionLCMSSearchController
 
     unload: ->
         GlycReSoft.removeCurrentLayer()
+
+    showChromatogramComposer: ->
+        self = @
+        url = @chromatogramComposerURL.format {analysisId: @analysisId}
+        modal = @getModal()
+        $.get(url).then (payload) ->
+            composer = makeChromatogramComposer(
+                self.analysisId, (->), payload.chromatogramSpecifications, url)
+            modal.find('.modal-content').html composer.container
+            $(".lean-overlay").remove()
+            modal.openModal()

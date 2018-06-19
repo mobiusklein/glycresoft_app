@@ -16,7 +16,6 @@ app = search_glycan_composition = register_service("search_glycan_composition", 
 
 @app.route("/search_glycan_composition/run_search")
 def run_search():
-    print("Model Features", ms1_model_features)
     return render_template(
         "glycan_search/run_search.templ", manager=g.manager,
         extra_features=ms1_model_features)
@@ -46,6 +45,10 @@ def run_search_post():
     minimum_mass = float(data.get("minimum-mass", 500.))
     extra_model_features = data.getlist("model-features")
     extra_model_features = [ms1_model_features[feat] for feat in extra_model_features]
+
+    import IPython
+    IPython.embed()
+    raise ValueError()
 
     hypothesis_name = hypothesis_record.name
     for sample_record in sample_records:
