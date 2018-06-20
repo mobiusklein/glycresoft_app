@@ -1,6 +1,7 @@
 import logging
 import traceback
 import multiprocessing
+import dill
 
 from multiprocessing.forking import ForkingPickler
 
@@ -50,6 +51,9 @@ def make_log_path(name, created_at):
 
 
 def configure_log_wrapper(log_file_path, task_callable, args, channel):
+    args = dill.loads(args)
+    args = list(args)
+    args.append(channel)
     import logging
     logger = logging.getLogger()
     handler = logging.FileHandler(log_file_path)
@@ -228,7 +232,6 @@ class Task(object):
         self.state = QUEUED
         self.process = None
         self.args = list(args)
-        self.args.append(control_context)
         self.callback = callback
         self.name = kwargs.get('name', self.id)
         self.log_file_path = kwargs.get("log_file_path", "%s-%s.log" % (self.name, self.created_at))
@@ -254,7 +257,7 @@ class Task(object):
 
     def start(self):
         self.process = Process(target=configure_log_wrapper, args=(
-            self.log_file_path, self.task_fn, self.args, self.control_context))
+            self.log_file_path, self.task_fn, dill.dumps(self.args), self.control_context))
         self.state = RUNNING
         self.process.start()
 
