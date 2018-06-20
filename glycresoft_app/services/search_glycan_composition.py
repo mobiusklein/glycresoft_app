@@ -46,10 +46,6 @@ def run_search_post():
     extra_model_features = data.getlist("model-features")
     extra_model_features = [ms1_model_features[feat] for feat in extra_model_features]
 
-    import IPython
-    IPython.embed()
-    raise ValueError()
-
     hypothesis_name = hypothesis_record.name
     for sample_record in sample_records:
         sample_name = sample_record.name
