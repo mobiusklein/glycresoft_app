@@ -160,7 +160,7 @@ def build_glycan_search_space_process():
         rec_2 = g.manager.hypothesis_manager.get(id_2)
 
         task = MergeGlycanHypotheses(
-            g.manager.connection_bridge, [(rec_1.path, rec_1.id), (rec_2.path, rec_2.id)], name=hypothesis_name,
+            storage_path, [(rec_1.path, rec_1.id), (rec_2.path, rec_2.id)], name=hypothesis_name,
             callback=lambda: 0, user=g.user)
         g.add_task(task)
     else:
