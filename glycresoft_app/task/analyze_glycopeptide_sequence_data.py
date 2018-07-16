@@ -7,7 +7,9 @@ from glycan_profiling.serialize import (
     DatabaseBoundOperation, GlycopeptideHypothesis)
 
 from glycan_profiling.profiler import (
-    MzMLGlycopeptideLCMSMSAnalyzer, GeneralScorer)
+    MzMLGlycopeptideLCMSMSAnalyzer)
+
+from glycan_profiling.models import GeneralScorer, get_feature
 
 from glycan_profiling.cli.validators import (
     validate_analysis_name)
@@ -39,8 +41,8 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
                                    use_peptide_mass_filter=True,
                                    channel=None, **kwargs):
     if peak_shape_scoring_model is None:
-        peak_shape_scoring_model = chromatogram_solution.ChromatogramScorer(
-            shape_fitter_model=shape_fitter.ChromatogramShapeModel)
+        peak_shape_scoring_model = GeneralScorer.clone()
+        peak_shape_scoring_model.add_feature(get_feature("null_charge"))
     database_connection = DatabaseBoundOperation(database_connection)
 
     if not os.path.exists(sample_path):
