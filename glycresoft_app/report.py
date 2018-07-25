@@ -7,7 +7,7 @@ from glypy.structure.glycan_composition import GlycanComposition
 from ms_deisotope import mass_charge_ratio
 
 from glycan_profiling.symbolic_expression import GlycanSymbolContext
-from glycan_profiling.scoring.chromatogram_solution import logit
+from glycan_profiling.scoring import logit
 
 from jinja2 import Environment, PackageLoader, FileSystemLoader, escape
 

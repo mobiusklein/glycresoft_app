@@ -1,12 +1,13 @@
 import json
 import random
 import logging
+import traceback
 
 from flask import Response, g, request
 
-from ..task.task_process import QueueEmptyException, Message, identity_provider
+from ..task.task_process import QueueEmptyException, Message
+from ..utils.message_queue import identity_provider
 from .service_module import register_service
-
 
 server_sent_events = register_service("server_sent_events", __name__)
 
@@ -47,7 +48,7 @@ def message_queue_stream(manager, user):
                     id=i, event_name=message.type,
                     data=json.dumps(message.message))
                 i += 1
-                print message, event
+                print(message, event)
                 yield event
             except KeyboardInterrupt:
                 break
@@ -62,7 +63,6 @@ def message_queue_stream(manager, user):
         try:
             queue.close()
         except Exception as e:
-            import traceback
             traceback.print_exc(e)
             raise
 

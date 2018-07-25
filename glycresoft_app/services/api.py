@@ -59,7 +59,10 @@ def api_hypotheses():
 @api.route("/api/hypotheses/<uuid>")
 def get_hypothesis(uuid):
     hypothesis = _locate_hypothesis(uuid)
-    return jsonify(hypothesis=hypothesis.to_json())
+    d = {}
+    if hypothesis is not None:
+        d = hypothesis.to_json()
+    return jsonify(hypothesis=d)
 
 
 @api.route("/api/analyses")
