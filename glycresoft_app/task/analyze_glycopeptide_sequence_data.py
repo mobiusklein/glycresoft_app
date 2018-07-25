@@ -89,7 +89,7 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
                 user_id=channel.user.id)
             channel.send(Message(record.to_json(), 'new-analysis'))
         else:
-            channel.send("No glycopeptides were identified for \"%s\"" % (analysis_name,))
+            channel.send(Message("No glycopeptides were identified for \"%s\"" % (analysis_name,)))
 
     except Exception:
         channel.send(Message.traceback())
