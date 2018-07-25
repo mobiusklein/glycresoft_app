@@ -3,28 +3,26 @@ import traceback
 import multiprocessing
 import dill
 
-from multiprocessing.forking import ForkingPickler
-
 from os import path
 from uuid import uuid4
 from collections import defaultdict
 from datetime import datetime
 
-from multiprocessing import Process, Pipe, Event as IPCEvent, Manager as _IPCManager, get_logger as mp_get_logger
+from multiprocessing import Process, Pipe, Event as IPCEvent, Manager as _IPCManager
 
 from threading import Event, Thread, RLock
 try:
     from Queue import Queue, Empty as QueueEmptyException
-except:
+except ImportError:
     from queue import Queue, Empty as QueueEmptyException
 
 
 import psutil
-
+from six import string_types as basestring
 
 from glycan_profiling.task import TaskBase, log_handle
 
-from glycresoft_app.utils.message_queue import identity_provider, make_message_queue, null_user
+from glycresoft_app.utils.message_queue import make_message_queue, null_user
 
 TaskBase.display_fields = True
 
@@ -170,6 +168,8 @@ class TaskControlContext(object):
         raise exc_type(message)
 
     def send(self, message):
+        if isinstance(message, basestring):
+            message = Message(message, user=self.user)
         if message.user == null_user:
             message.user = self.user
         self.pipe.send(message)
