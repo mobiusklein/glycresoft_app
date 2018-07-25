@@ -347,7 +347,7 @@ class ModificationSelectionEditor
 
     filterSelectionList: (pattern) ->
         try
-            pattern = new RegExp(pattern)
+            pattern = new RegExp(pattern, 'ig')
             for key, rule of @fullListing.rules
                 if pattern.test key
                     rule.hidden = false

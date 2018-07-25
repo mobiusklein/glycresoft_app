@@ -1832,7 +1832,7 @@ ModificationSelectionEditor = (function() {
   ModificationSelectionEditor.prototype.filterSelectionList = function(pattern) {
     var err, key, ref, results, rule;
     try {
-      pattern = new RegExp(pattern);
+      pattern = new RegExp(pattern, 'ig');
       ref = this.fullListing.rules;
       results = [];
       for (key in ref) {
