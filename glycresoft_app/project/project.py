@@ -68,8 +68,11 @@ class Project(object):
         self.analysis_manager.dump()
 
     def force_build_indices(self):
+        log_handle.log("Building Sample Index")
         self.sample_manager.rebuild()
+        log_handle.log("Building Analysis Index")
         self.analysis_manager.rebuild()
+        log_handle.log("Building Hypothesis Index")
         self.hypothesis_manager.rebuild()
 
     def get_sample_path(self, name):
@@ -195,14 +198,17 @@ class Project(object):
         n = 0
         k = 0
         for record in self.hypotheses():
+            log_handle.log("Testing %r" % (record, ))
             if record.is_resolvable():
                 k += 1
             n += 1
         for record in self.samples():
+            log_handle.log("Testing %r" % (record, ))
             if record.is_resolvable():
                 k += 1
             n += 1
         for record in self.analyses():
+            log_handle.log("Testing %r" % (record, ))
             if record.is_resolvable():
                 k += 1
             n += 1

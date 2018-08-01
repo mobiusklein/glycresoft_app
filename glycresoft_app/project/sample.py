@@ -35,7 +35,7 @@ class SampleManager(SyncableStore):
     def open_file(index_file):
         data_file = index_file.rsplit("-", 1)[0]
         reader = ProcessedMzMLDeserializer(data_file, use_index=False)
-        reader.read_index()
+        reader.read_index_file()
         return reader
 
     @classmethod
