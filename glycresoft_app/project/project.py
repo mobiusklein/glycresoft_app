@@ -27,7 +27,7 @@ class Project(object):
 
     project_id = None
 
-    def __init__(self, base_path):
+    def __init__(self, base_path, validate=False):
         self.base_path = os.path.abspath(base_path)
 
         self.ensure_subdirectories()
@@ -38,7 +38,8 @@ class Project(object):
         self._data_lock = RLock()
         self.app_data = sqlitedict.SqliteDict(
             self.app_data_path, autocommit=True)
-        self.validate_indices()
+        if validate:
+            self.validate_indices()
 
     def __repr__(self):
         return "Project(%r)" % (self.base_path,)

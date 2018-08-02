@@ -12,7 +12,7 @@ class SampleRunRecord(_SampleRunRecord):
     def is_resolvable(self):
         if not os.path.exists(self.path):
             return False
-        reader = ProcessedMzMLDeserializer(self.path)
+        reader = ProcessedMzMLDeserializer(self.path, use_index=False)
         sample_run = reader.sample_run
         if sample_run.uuid != self.uuid:
             return False
