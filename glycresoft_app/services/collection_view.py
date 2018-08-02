@@ -12,7 +12,7 @@ logger = logging.getLogger("glycresoft_app.view_services")
 
 
 class ViewCache(object):
-    def __init__(self, size=5):
+    def __init__(self, size=3):
         self.cache = dict()
         self.policy = lru.LRUCache()
         self.size = size
