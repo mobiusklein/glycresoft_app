@@ -30,10 +30,10 @@ class ApplicationManager(Project):
 
     project_id = None
 
-    def __init__(self, database_connection, base_path=None):
+    def __init__(self, database_connection, base_path=None, validate=False):
         if base_path is None:
             base_path = os.getcwd()
-        Project.__init__(self, base_path)
+        Project.__init__(self, base_path, validate=validate)
 
         self.load_configuration()
 
