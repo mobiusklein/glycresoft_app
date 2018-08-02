@@ -14,16 +14,17 @@ from glycan_profiling.cli.base import cli, HiddenOption
 @click.option("-p", "--port", default=8080, type=int, help="The port to listen on")
 @click.option("-m", "--multiuser", is_flag=True, default=False)
 @click.option("-t", "--max-tasks", type=int, default=1)
+@click.option("-v", "--validate-project", is_flag=True, default=False, help="Validate the project structure")
 @click.option("-x", "--native-client-key", type=str, required=False, default=None, cls=HiddenOption)
 def server(context, project_store_root, base_path, external=False, port=None, no_execute_tasks=False,
-           multiuser=False, max_tasks=1, native_client_key=None):
+           multiuser=False, max_tasks=1, validate_project=False, native_client_key=None):
     '''
     Start a web server to allow users to build hypotheses, preprocess MS data, run
     database search analyses, and view results.
     '''
     from glycresoft_app.server import server as inner_fn
     inner_fn(context, project_store_root, base_path, external, port, multi_user=multiuser,
-             max_tasks=max_tasks, native_client_key=native_client_key)
+             max_tasks=max_tasks, native_client_key=native_client_key, validate_project=validate_project)
 
 
 @cli.group("project")
@@ -36,13 +37,8 @@ def project():
 @click.option("-r", "--reinitialize-check", is_flag=True, help='Whether to test if the project is already initialized')
 def project_init(path, reinitialize_check=False):
     from glycresoft_app.project.project import Project
-    proj = Project(path)
+    proj = Project(path, validate=reinitialize_check)
     click.secho("%r" % (proj,))
-    if reinitialize_check:
-        if not proj.is_project_located():
-            proj.force_build_indices()
-    else:
-        proj.force_build_indices()
 
 
 @project.command("add-analysis", short_help='Add an existing analysis to the project')
