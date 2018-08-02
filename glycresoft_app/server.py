@@ -92,10 +92,15 @@ def close_project():
 @app.route("/register_project", methods=["POST"])
 def register_project():
     connection_string = request.values["connection_string"]
+    validate = request.values.get("validate", 'false')
+    if validate == 'true':
+        validate = True
+    else:
+        validate = False
     base_path = request.values.get("basepath", manager.base_path)
-    new_manager = ApplicationManager(connection_string, base_path)
+    new_manager = ApplicationManager(connection_string, base_path, validate=validate)
     project_id = project_multiplexer.register_project(new_manager)
-    return jsonify(project_id=project_id)
+    return jsonify(project_id=project_id, validate=validate)
 
 
 @app.route("/unregister_project", methods=["POST"])
@@ -315,12 +320,12 @@ def _setup_win32_keyboard_interrupt_handler(server, manager):
 
 
 def server(context, database_connection, base_path, external=False, port=None, no_execute_tasks=False,
-           multi_user=False, max_tasks=1, native_client_key=None):
+           multi_user=False, max_tasks=1, native_client_key=None, validate_project=False):
     global manager, SERVER, project_multiplexer, MULTIUSER_MODE, NATIVE_CLIENT_KEY
     MULTIUSER_MODE = multi_user
     NATIVE_CLIENT_KEY = native_client_key
     project_multiplexer = ProjectMultiplexer()
-    manager = ApplicationManager(database_connection, base_path)
+    manager = ApplicationManager(database_connection, base_path, validate=validate_project)
     project_multiplexer.register_project(manager)
 
     if MULTIUSER_MODE:
@@ -339,7 +344,7 @@ def server(context, database_connection, base_path, external=False, port=None, n
     app.secret_key = SECRETKEY
     try:
         _setup_win32_keyboard_interrupt_handler(SERVER, manager)
-    except ImportError:
-        pass
+    except ImportError as ex:
+        print(ex)
     SERVER = ApplicationServerManager.werkzeug_server(app, port, host, DEBUG)
     SERVER.run()
