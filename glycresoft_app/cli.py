@@ -74,7 +74,7 @@ def add_hypothesis(project_path, hypothesis_path):
     from glycresoft_app.project.project import Project
     from glycresoft_app.project.hypothesis import HypothesisRecordSet
     project = Project(project_path)
-    hypotheses = HypothesisRecordSet(abs(hypothesis_path))
+    hypotheses = HypothesisRecordSet(abspath(hypothesis_path))
     for record in hypotheses:
         project.hypothesis_manager.put(record)
     project.hypothesis_manager.dump()
