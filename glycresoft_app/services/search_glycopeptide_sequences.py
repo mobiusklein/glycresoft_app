@@ -34,7 +34,11 @@ def run_search_post():
 
     psm_fdr_threshold = float(data.get("q-value-threshold", 0.05))
 
-    use_peptide_mass_filter = bool(data.get("peptide-mass-filter", True))
+    use_peptide_mass_filter = data.get("peptide-mass-filter")
+    if use_peptide_mass_filter == 'on':
+        use_peptide_mass_filter = True
+    else:
+        use_peptide_mass_filter = False
 
     hypothesis_uuid = (data.get("hypothesis_choice"))
     hypothesis_record = g.manager.hypothesis_manager.get(hypothesis_uuid)
