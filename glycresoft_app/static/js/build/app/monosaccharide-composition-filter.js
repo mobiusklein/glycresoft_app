@@ -10,8 +10,11 @@ makeMonosaccharideRule = function(count) {
 
 makeRuleSet = function(upperBounds) {
   var count, residue, residueNames, rules;
-  residueNames = Object.keys(upperBounds);
   rules = {};
+  if (upperBounds == null) {
+    return rules;
+  }
+  residueNames = Object.keys(upperBounds);
   for (residue in upperBounds) {
     count = upperBounds[residue];
     rules[residue] = makeMonosaccharideRule(count);

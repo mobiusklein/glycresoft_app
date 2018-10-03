@@ -1,6 +1,6 @@
 ajaxForm = (formHandle, success, error, transform, progress) ->
     if !progress?
-        (ev) -> ev
+        progress = (ev) -> ev
     $(formHandle).on 'submit', (event) ->
         event.preventDefault()
         handle = $(this)
@@ -15,7 +15,6 @@ ajaxForm = (formHandle, success, error, transform, progress) ->
             handle.data("locked", locked)
         if !error?
             error = () ->
-                console.log(arguments)
         if !transform?
             transform = (form) -> new FormData(form)
         url = handle.attr('action')
@@ -27,6 +26,7 @@ ajaxForm = (formHandle, success, error, transform, progress) ->
             handle.data("locked", false)
             if success?
                 success(a, b, c)
+            return false
 
         wrappedError = (a, b, c) ->
             handle.data("locked", false)
@@ -47,6 +47,7 @@ ajaxForm = (formHandle, success, error, transform, progress) ->
             'success': wrappedSuccess
             'error': wrappedError
         $.ajax ajaxParams
+        return false
 
 
 setupAjaxForm = (sourceUrl, container) ->

@@ -38,4 +38,4 @@ class TabViewBase
             for updateHandler in @updateHandlers
                 updateHandler()
         ).error (err) ->
-            console.log err
+            GlycReSoft.notifyUser("Could not update view... #{err.statusCode}")

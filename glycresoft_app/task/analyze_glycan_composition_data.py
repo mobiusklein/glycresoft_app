@@ -38,7 +38,7 @@ def analyze_glycan_composition(database_connection, sample_path, hypothesis_iden
                                output_path, analysis_name, adducts, grouping_error_tolerance=1.5e-5,
                                mass_error_tolerance=1e-5, scoring_model=None,
                                minimum_mass=500., smoothing_factor=None,
-                               regularization_model=None,
+                               regularization_model=None, combinatorial_adduct_limit=8,
                                channel=None, **kwargs):
     if scoring_model is None:
         scoring_model = GeneralScorer
@@ -68,7 +68,8 @@ def analyze_glycan_composition(database_connection, sample_path, hypothesis_iden
         for adduct, multiplicity in adducts:
             adduct_out.append(validate_adduct(adduct, multiplicity))
         expanded = []
-        expanded = MzMLGlycanChromatogramAnalyzer.expand_adducts(dict(adduct_out))
+        expanded = MzMLGlycanChromatogramAnalyzer.expand_adducts(
+            dict(adduct_out), limit=combinatorial_adduct_limit)
         adducts = expanded
     except Abort:
         channel.send(Message.traceback())
@@ -109,11 +110,12 @@ class AnalyzeGlycanCompositionTask(Task):
                  output_path, analysis_name, adducts, grouping_error_tolerance=1.5e-5,
                  mass_error_tolerance=1e-5, scoring_model=None,
                  minimum_mass=500., smoothing_factor=None, regularization_model=None,
+                 combinatorial_adduct_limit=8,
                  callback=lambda: 0, **kwargs):
         args = (database_connection, sample_path, hypothesis_identifier,
                 output_path, analysis_name, adducts, grouping_error_tolerance,
                 mass_error_tolerance, scoring_model, minimum_mass,
-                smoothing_factor, regularization_model)
+                smoothing_factor, regularization_model, combinatorial_adduct_limit)
         if analysis_name is None:
             name_part = kwargs.pop("job_name_part", self.count)
             self.count += 1

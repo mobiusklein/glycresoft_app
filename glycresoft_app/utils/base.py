@@ -60,7 +60,7 @@ class SyncableStore(object):
             except TypeError:
                 try:
                     self.recover(data, raw_data[key])
-                except:
+                except Exception:
                     logger.error("Failed to make record for %r in %s" % (
                         key, self.__class__.__name__))
 

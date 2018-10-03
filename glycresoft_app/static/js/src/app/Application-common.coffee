@@ -30,6 +30,8 @@ class Application extends ActionLayerManager
             Materialize.toast data.replace(/"/g, ''), 4000
             return
 
+        @handleMessage 'refresh-index', (data) =>
+            self.loadData()
         @handleMessage 'task-queued', (data) =>
             self.tasks[data.id] = Task.create
                 'id': data.id
@@ -193,12 +195,19 @@ class Application extends ActionLayerManager
                 $("#add-sample").click (event) ->
                     self.addLayer ActionBook.addSample
                     self.setShowingLayer self.lastAdded
+                $("#add-sample-to-workspace").click (event) ->
+                    self.addLayer ActionBook.addSample
+                    self.setShowingLayer self.lastAdded
                 $("#build-glycan-search-space").click (event) ->
                     self.addLayer ActionBook.naiveGlycanSearchSpace
                     self.setShowingLayer self.lastAdded
                 $("#build-glycopeptide-search-space").click (event) ->
                     self.addLayer ActionBook.naiveGlycopeptideSearchSpace
                     self.setShowingLayer self.lastAdded
+                $("#import-existing-hypothesis").click (event) ->
+                    self.uploadHypothesis()
+                $("#import-existing-sample").click (event) ->
+                    self.uploadSample()
         ->
             @loadData()
         ->
@@ -289,6 +298,39 @@ class Application extends ActionLayerManager
         if not duration?
             duration = 4000
         Materialize.toast(message, duration)
+
+    uploadHypothesis: ->
+        fileInput = $("<input type='file' />")
+        self = this
+        fileInput.change (event) ->
+            if @files.length == 0
+                return
+            form = new FormData()
+            if self.isNativeClient()
+                form.append("native-hypothesis-file-path", @files[0].path)
+            else
+                form.append('hypothesis-file', @files[0])
+            rq = new XMLHttpRequest()
+            rq.open("POST", "/import_hypothesis")
+            rq.send(form)
+        fileInput[0].click()
+
+    uploadSample: ->
+        fileInput = $("<input type='file' />")
+        self = this
+        fileInput.change (event) ->
+            if @files.length == 0
+                return
+            form = new FormData()
+            if self.isNativeClient()
+                form.append("native-sample-file-path", @files[0].path)
+            else
+                form.append('sample-file', @files[0])
+            rq = new XMLHttpRequest()
+            rq.open("POST", "/import_sample")
+            rq.send(form)
+        fileInput[0].click()
+
 
 
 createdAtParser = /(\d{4})-(\d{2})-(\d{2})\s(\d+)-(\d+)-(\d+(?:\.\d*)?)/

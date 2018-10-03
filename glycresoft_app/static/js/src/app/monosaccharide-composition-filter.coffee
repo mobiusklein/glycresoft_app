@@ -2,8 +2,10 @@
 makeMonosaccharideRule = (count) -> {minimum: 0, maximum: count, include: true}
 
 makeRuleSet = (upperBounds) ->
-    residueNames = Object.keys upperBounds
     rules = {}
+    if not upperBounds?
+        return rules
+    residueNames = Object.keys upperBounds
     for residue, count of upperBounds
         rules[residue] = makeMonosaccharideRule(count)
     return rules

@@ -40,6 +40,8 @@ class SampleManager(SyncableStore):
 
     @classmethod
     def make_record(cls, reader):
+        if isinstance(reader, basestring):
+            reader = ProcessedMzMLDeserializer(reader, use_index=True)
         sample = reader.sample_run
         if len(reader.extended_index.msn_ids) > 0:
             sample_type = "MS/MS Sample"

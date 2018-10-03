@@ -11,7 +11,10 @@ app = view_analysis = register_service("view_analysis", __name__)
 
 @app.route("/view_analysis/<uuid>", methods=['POST'])
 def view_analysis_dispatch(uuid):
-    analysis = g.manager.analysis_manager.get(uuid)
+    try:
+        analysis = g.manager.analysis_manager.get(uuid)
+    except KeyError:
+        return abort(404)
     if analysis.analysis_type == AnalysisTypeEnum.glycan_lc_ms:
         return view_glycan_lcms_analysis.index(uuid)
     elif analysis.analysis_type == AnalysisTypeEnum.glycopeptide_lc_msms:

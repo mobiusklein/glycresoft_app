@@ -2,9 +2,9 @@ var ajaxForm, setupAjaxForm;
 
 ajaxForm = function(formHandle, success, error, transform, progress) {
   if (progress == null) {
-    (function(ev) {
+    progress = function(ev) {
       return ev;
-    });
+    };
   }
   return $(formHandle).on('submit', function(event) {
     var ajaxParams, data, encoding, handle, locked, method, url, wrappedError, wrappedSuccess;
@@ -21,9 +21,7 @@ ajaxForm = function(formHandle, success, error, transform, progress) {
       handle.data("locked", locked);
     }
     if (error == null) {
-      error = function() {
-        return console.log(arguments);
-      };
+      error = function() {};
     }
     if (transform == null) {
       transform = function(form) {
@@ -37,8 +35,9 @@ ajaxForm = function(formHandle, success, error, transform, progress) {
     wrappedSuccess = function(a, b, c) {
       handle.data("locked", false);
       if (success != null) {
-        return success(a, b, c);
+        success(a, b, c);
       }
+      return false;
     };
     wrappedError = function(a, b, c) {
       handle.data("locked", false);
@@ -62,7 +61,8 @@ ajaxForm = function(formHandle, success, error, transform, progress) {
       'success': wrappedSuccess,
       'error': wrappedError
     };
-    return $.ajax(ajaxParams);
+    $.ajax(ajaxParams);
+    return false;
   });
 };
 

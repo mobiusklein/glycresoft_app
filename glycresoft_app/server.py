@@ -1,10 +1,14 @@
 from __future__ import print_function
 import logging
+import os
 
 from flask import (
     Flask, request, session, g, redirect,
     abort, render_template, jsonify,
     Response, current_app)
+
+from werkzeug import secure_filename
+
 import click
 
 from ms_deisotope.data_source.thermo_raw import determine_if_available as has_thermo
@@ -23,6 +27,10 @@ from glycresoft_app.application_server import (
     ApplicationServerManager,
     StreamConsumingMiddleware,
     AddressFilteringApplication)
+
+from glycresoft_app.task.task_process import Message
+
+from glycresoft_app.project import (hypothesis, sample)
 
 
 from glycresoft_app.services import (
@@ -114,6 +122,73 @@ def unregister_project():
         current_app.logger.error(
             "An error occurred while unregistering project %r." % project_id, exc_info=True)
 
+
+@app.route("/selectable_collection")
+def selectable_collection():
+    from collections import namedtuple
+    record_type = namedtuple("record_type", ('name', 'id', 'description'))
+    records = [
+        record_type('Spam', 1, "A lot"),
+        record_type("Green Eggs", 2, "To go with the spam"),
+    ]
+    return render_template(
+        "components/selectable_collection.templ",
+        selectable_collection_items=records,
+        form_id=1232,
+        action='/echo')
+
+
+@app.route("/echo", methods=["POST"])
+def echo_back_post():
+    print(request.form)
+    return Response("Echo")
+
+
+@app.route("/import_hypothesis", methods=['POST'])
+def import_hypothesis_from_file():
+    manager = g.manager
+
+    if g.has_native_client:
+        path = request.values.get("native-hypothesis-file-path")
+    else:
+        upload_file = request.files['hypothesis-file']
+        file_name = upload_file.filename
+        secure_name = secure_filename(file_name)
+        path = manager.get_hypothesis_path(
+            manager.make_unique_hypothesis_name(secure_name))
+        upload_file.save(path)
+        print(path)
+    # records = hypothesis.HypothesisRecordSet(native_path)
+    records = manager.hypothesis_manager.make_record(path)
+    # import IPython
+    # IPython.embed()
+    for record in records:
+        manager.hypothesis_manager.put(record)
+    manager.hypothesis_manager.dump()
+    message = Message(path, 'refresh-index', user=g.user)
+    manager.add_message(message)
+    return Response(str(records))
+
+
+@app.route("/import_sample", methods=['POST'])
+def import_sample_from_file():
+    manager = g.manager
+
+    if g.has_native_client:
+        path = request.values.get("native-sample-file-path")
+    else:
+        upload_file = request.files['sample-file']
+        file_name = upload_file.filename
+        secure_name = secure_filename(file_name)
+        path = manager.get_sample_path(
+            manager.make_unique_sample_name(secure_name))
+        upload_file.save(path)
+    record = manager.sample_manager.make_record(path)
+    manager.sample_manager.put(record)
+    manager.sample_manager.dump()
+    message = Message(path, 'refresh-index', user=g.user)
+    manager.add_message(message)
+    return Response(str(record))
 
 # ----------------------------------------
 #

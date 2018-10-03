@@ -1,4 +1,5 @@
 import os
+import platform
 import shutil
 import base64
 import zipfile
@@ -12,6 +13,18 @@ from . import form_cleaners
 file_exports = register_service("file_exports", __name__)
 
 logger = logging.getLogger("glycresoft_app.file_exports")
+
+
+def _winapi_path(path):
+    path = os.path.abspath(path)
+    return '\\\\?\\' + path
+
+
+def safepath(path):
+    if platform.system().lower() == 'windows' and len(path) > 259:
+        return _winapi_path(path)
+    else:
+        return path
 
 
 @file_exports.route("/copy-file-form", methods=["GET"])
@@ -62,7 +75,22 @@ def download_multiple_files():
     archive_path = resolve_file_name(archive_name)
     with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED, True) as zip_handle:
         for path in good_names:
-            zip_handle.write(path, os.path.basename(path))
+            if os.path.isfile(path):
+                zip_handle.write((path), os.path.basename(path))
+            elif os.path.isdir(path):
+                base = os.path.basename(path)
+                zip_handle.write(path, base)
+                for dirpath, dirnames, filenames in os.walk(path):
+                    for name in sorted(dirnames):
+                        zip_handle.write((os.path.join(dirpath, name)), os.path.join(base, dirpath, name))
+                    for name in filenames:
+                        try:
+                            zip_handle.write((os.path.join(dirpath, name)), os.path.join(base, dirpath, name))
+                        except (IOError, OSError):
+                            zip_handle.write(
+                                safepath(os.path.join(dirpath, name)), os.path.join(base, dirpath, name))
+            else:
+                print("Unknown name type", path)
     return jsonify(filename=archive_name)
 
 
@@ -86,8 +114,12 @@ def move_files():
             g.add_message("Could not locate file %r" % (str(name),))
 
     for file_path in good_names:
-        shutil.move(
-            file_path, os.path.join(
-                destination,
-                os.path.basename(file_path)))
+        file_dest = (os.path.join(destination, os.path.basename(file_path)))
+        if os.path.exists(file_dest):
+            shutil.rmtree(file_dest, True)
+        try:
+            shutil.move(
+                (file_path), file_dest)
+        except shutil.Error as err:
+            jsonify(status='failure', reason=str(err))
     return jsonify(status="success", reason=None)

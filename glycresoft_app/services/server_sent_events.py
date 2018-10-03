@@ -48,7 +48,6 @@ def message_queue_stream(manager, user):
                     id=i, event_name=message.type,
                     data=json.dumps(message.message))
                 i += 1
-                print(message, event)
                 yield event
             except KeyboardInterrupt:
                 break

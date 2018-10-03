@@ -33,6 +33,11 @@ Application = (function(superClass) {
         Materialize.toast(data.replace(/"/g, ''), 4000);
       };
     })(this));
+    this.handleMessage('refresh-index', (function(_this) {
+      return function(data) {
+        return self.loadData();
+      };
+    })(this));
     this.handleMessage('task-queued', (function(_this) {
       return function(data) {
         self.tasks[data.id] = Task.create({
@@ -282,13 +287,23 @@ Application = (function(superClass) {
           self.addLayer(ActionBook.addSample);
           return self.setShowingLayer(self.lastAdded);
         });
+        $("#add-sample-to-workspace").click(function(event) {
+          self.addLayer(ActionBook.addSample);
+          return self.setShowingLayer(self.lastAdded);
+        });
         $("#build-glycan-search-space").click(function(event) {
           self.addLayer(ActionBook.naiveGlycanSearchSpace);
           return self.setShowingLayer(self.lastAdded);
         });
-        return $("#build-glycopeptide-search-space").click(function(event) {
+        $("#build-glycopeptide-search-space").click(function(event) {
           self.addLayer(ActionBook.naiveGlycopeptideSearchSpace);
           return self.setShowingLayer(self.lastAdded);
+        });
+        $("#import-existing-hypothesis").click(function(event) {
+          return self.uploadHypothesis();
+        });
+        return $("#import-existing-sample").click(function(event) {
+          return self.uploadSample();
         });
       });
     }, function() {
@@ -440,6 +455,50 @@ Application = (function(superClass) {
       duration = 4000;
     }
     return Materialize.toast(message, duration);
+  };
+
+  Application.prototype.uploadHypothesis = function() {
+    var fileInput, self;
+    fileInput = $("<input type='file' />");
+    self = this;
+    fileInput.change(function(event) {
+      var form, rq;
+      if (this.files.length === 0) {
+        return;
+      }
+      form = new FormData();
+      if (self.isNativeClient()) {
+        form.append("native-hypothesis-file-path", this.files[0].path);
+      } else {
+        form.append('hypothesis-file', this.files[0]);
+      }
+      rq = new XMLHttpRequest();
+      rq.open("POST", "/import_hypothesis");
+      return rq.send(form);
+    });
+    return fileInput[0].click();
+  };
+
+  Application.prototype.uploadSample = function() {
+    var fileInput, self;
+    fileInput = $("<input type='file' />");
+    self = this;
+    fileInput.change(function(event) {
+      var form, rq;
+      if (this.files.length === 0) {
+        return;
+      }
+      form = new FormData();
+      if (self.isNativeClient()) {
+        form.append("native-sample-file-path", this.files[0].path);
+      } else {
+        form.append('sample-file', this.files[0]);
+      }
+      rq = new XMLHttpRequest();
+      rq.open("POST", "/import_sample");
+      return rq.send(form);
+    });
+    return fileInput[0].click();
   };
 
   return Application;
@@ -1186,8 +1245,11 @@ makeMonosaccharideRule = function(count) {
 
 makeRuleSet = function(upperBounds) {
   var count, residue, residueNames, rules;
-  residueNames = Object.keys(upperBounds);
   rules = {};
+  if (upperBounds == null) {
+    return rules;
+  }
+  residueNames = Object.keys(upperBounds);
   for (residue in upperBounds) {
     count = upperBounds[residue];
     rules[residue] = makeMonosaccharideRule(count);

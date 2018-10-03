@@ -1,0 +1,35 @@
+{%- extends "layout.templ" %}
+
+{% block body %}
+
+<form action='{{action}}' method="post" accept-charset="utf-8" class="col s12" id="selectable-collection-{{form_id}}">
+    <div class='row'>
+        <div class='col s12'>
+            {% for record in selectable_collection_items %}
+            <span class='selectable-collection-item-container'
+                  data-label="{{record.description}}">
+                <input class="with-gap" name="{{record.id}}" type="checkbox"
+                       id="{{record.id}}"/>    
+                <label for='{{record.id}}'>{{record.name}}</label>
+            </span><br>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row">
+        <div class="col s6">
+            <button class='btn wave-effect'>
+                Submit
+            </button>
+        </div>
+    </div>
+</form>
+<script>
+    console.log("Setting up form behavior")
+    materialRefresh()
+    ajaxForm("#selectable-collection-{{form_id}}", function(data){
+        GlycReSoft.setShowingLayer("home-layer")
+    }, function(a, b, c){
+        console.log(a, b, c)
+    })
+</script>
+{% endblock %}

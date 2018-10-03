@@ -2,7 +2,7 @@ import os
 from weakref import WeakValueDictionary
 from collections import OrderedDict
 
-from flask import Response, g, request, render_template, jsonify
+from flask import Response, g, request, render_template, jsonify, abort
 
 from .collection_view import CollectionViewBase, ViewCache, SnapshotBase
 from .service_module import register_service
@@ -42,7 +42,9 @@ from glycan_profiling.tandem.glycopeptide import chromatogram_graph
 from glycan_profiling.output import (
     GlycopeptideLCMSMSAnalysisCSVSerializer,
     GlycopeptideSpectrumMatchAnalysisCSVSerializer,
-    MzIdentMLSerializer, ImportableGlycanHypothesisCSVSerializer)
+    MzIdentMLSerializer,
+    ImportableGlycanHypothesisCSVSerializer,
+    SpectrumAnnotatorExport)
 
 
 from glycan_profiling.plotting.spectral_annotation import TidySpectrumMatchAnnotator
@@ -345,7 +347,10 @@ def get_view(analysis_uuid):
         view = VIEW_CACHE[analysis_uuid]
         view.update_connection()
     else:
-        record = g.manager.analysis_manager.get(analysis_uuid)
+        try:
+            record = g.manager.analysis_manager.get(analysis_uuid)
+        except KeyError:
+            return abort(404)
         view = GlycopeptideAnalysisView(record, record.id)
         VIEW_CACHE[analysis_uuid] = view
     return view
@@ -478,7 +483,11 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
             if scan_id is None:
                 spectrum_match_ref = max(gp.spectrum_matches, key=lambda x: x.score)
                 scan_id = spectrum_match_ref.scan.id
-            scan = view.peak_loader.get_scan_by_id(scan_id)
+
+            try:
+                scan = view.peak_loader.get_scan_by_id(scan_id)
+            except IOError:
+                pass
 
             match = CoverageWeightedBinomialScorer.evaluate(
                 scan, gp.structure,
@@ -511,7 +520,7 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
             specmatch_artist.draw(fontsize=10, pretty=True)
             annotated_match_ax = specmatch_artist.ax
 
-            annotated_match_ax.set_title("%s\n" % (scan.id,), fontsize=18)
+            annotated_match_ax.set_title("%s\n" % (scan_id,), fontsize=18)
             annotated_match_ax.set_ylabel(annotated_match_ax.get_ylabel(), fontsize=16)
             annotated_match_ax.set_xlabel(annotated_match_ax.get_xlabel(), fontsize=16)
 
@@ -629,6 +638,20 @@ def _export_associated_glycan_compositions(analysis_uuid):
     return [file_name]
 
 
+def _export_annotated_spectra(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        g.add_message(Message("Annotating Spectra"))
+        dir_name = "%s-annotated-spectra" % (view.analysis.name)
+        path = g.manager.get_temp_path(dir_name)
+
+        annotator = SpectrumAnnotatorExport(
+            view.storage_record.path, view.analysis_id,
+            path, view.peak_loader.source_file)
+        annotator.run()
+    return [dir_name]
+
+
 @app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/to-csv")
 def to_csv(analysis_uuid):
     file_name = _export_csv(analysis_uuid)[0]
@@ -657,7 +680,8 @@ serialization_formats = {
     "glycopeptides (csv)": _export_csv,
     "glycopeptide spectrum matches (csv)": _export_spectrum_match_csv,
     # "mzIdentML (mzid 1.1.0)": _export_mzid,
-    "associated glycans (txt)": _export_associated_glycan_compositions
+    "associated glycans (txt)": _export_associated_glycan_compositions,
+    'annotated spectra (pdf)': _export_annotated_spectra,
 }
 
 
@@ -669,7 +693,8 @@ def export_menu(analysis_uuid):
             "glycopeptides (csv)",
             "glycopeptide spectrum matches (csv)",
             # "mzIdentML (mzid 1.1.0)",
-            "associated glycans (txt)"
+            "associated glycans (txt)",
+            'annotated spectra (pdf)',
         ]
         return render_template(
             "/view_glycopeptide_search/components/export_formats.templ",

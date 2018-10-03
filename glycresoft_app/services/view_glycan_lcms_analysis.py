@@ -103,8 +103,12 @@ class GlycanChromatographySnapShot(SnapshotBase):
 
     def _make_summary_graphics(self):
         try:
+            threshold = max([gc.total_signal for gc in self.glycan_chromatograms]) * 0.1
+            unidentified_chromatograms = [uc for uc in self.unidentified_chromatograms
+                                          if uc.total_signal > threshold]
             builder = GlycanChromatographySummaryGraphBuilder(
-                ChromatogramFilter(self.glycan_chromatograms + self.unidentified_chromatograms))
+                ChromatogramFilter(self.glycan_chromatograms + unidentified_chromatograms)
+            )
             chrom, bar = builder.draw(self.score_threshold)
             self.figure_axes['chromatograms_chart'] = chrom
             self.figure_axes['abundance_bar_chart'] = bar
