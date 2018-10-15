@@ -44,7 +44,8 @@ from glycan_profiling.output import (
     GlycopeptideSpectrumMatchAnalysisCSVSerializer,
     MzIdentMLSerializer,
     ImportableGlycanHypothesisCSVSerializer,
-    SpectrumAnnotatorExport)
+    SpectrumAnnotatorExport,
+    GlycopeptideDatabaseSearchReportCreator)
 
 
 from glycan_profiling.plotting.spectral_annotation import TidySpectrumMatchAnnotator
@@ -652,6 +653,20 @@ def _export_annotated_spectra(analysis_uuid):
     return [dir_name]
 
 
+def _export_html(analysis_uuid):
+    view = get_view(analysis_uuid)
+    with view:
+        g.add_message(Message("Building Glycopeptide HTML Report Export", "update"))
+        file_name = "%s-report.html" % (view.analysis.name)
+        path = g.manager.get_temp_path(file_name)
+        with open(path, 'wb') as fh:
+            writer = GlycopeptideDatabaseSearchReportCreator(
+                view.connection._original_connection, view.analysis_id, fh, 0,
+                view.peak_loader.source_file)
+            writer.start()
+    return [file_name]
+
+
 @app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/to-csv")
 def to_csv(analysis_uuid):
     file_name = _export_csv(analysis_uuid)[0]
@@ -682,6 +697,7 @@ serialization_formats = {
     # "mzIdentML (mzid 1.1.0)": _export_mzid,
     "associated glycans (txt)": _export_associated_glycan_compositions,
     'annotated spectra (pdf)': _export_annotated_spectra,
+    'glycopeptide report (html)': _export_html,
 }
 
 
@@ -695,6 +711,7 @@ def export_menu(analysis_uuid):
             # "mzIdentML (mzid 1.1.0)",
             "associated glycans (txt)",
             'annotated spectra (pdf)',
+            'glycopeptide report (html)',
         ]
         return render_template(
             "/view_glycopeptide_search/components/export_formats.templ",
