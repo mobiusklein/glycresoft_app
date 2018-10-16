@@ -347,9 +347,10 @@ class ModificationSelectionEditor
 
     filterSelectionList: (pattern) ->
         try
-            pattern = new RegExp(pattern, 'ig')
+            pattern = pattern.toLowerCase()
             for key, rule of @fullListing.rules
-                if pattern.test key
+                key = key.toLowerCase()
+                if key.includes(pattern)
                     rule.hidden = false
                 else
                     rule.hidden = true

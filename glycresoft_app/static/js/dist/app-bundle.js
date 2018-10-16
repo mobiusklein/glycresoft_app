@@ -1894,12 +1894,13 @@ ModificationSelectionEditor = (function() {
   ModificationSelectionEditor.prototype.filterSelectionList = function(pattern) {
     var err, key, ref, results, rule;
     try {
-      pattern = new RegExp(pattern, 'ig');
+      pattern = pattern.toLowerCase();
       ref = this.fullListing.rules;
       results = [];
       for (key in ref) {
         rule = ref[key];
-        if (pattern.test(key)) {
+        key = key.toLowerCase();
+        if (key.includes(pattern)) {
           results.push(rule.hidden = false);
         } else {
           results.push(rule.hidden = true);
