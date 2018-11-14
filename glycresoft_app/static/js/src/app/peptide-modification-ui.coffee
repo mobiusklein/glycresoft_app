@@ -23,13 +23,19 @@ class ModificationTarget
 
     serialize: ->
         parts = []
-        parts.push @residues.join("")
-        if @positionClassifier?
-            parts.push("@")
-            parts.push(PositionClassifier[@positionClassifier])
+        if @residues.length > 0
+            parts.push @residues.join("")
+            if @positionClassifier?
+                parts.push("@")
+                parts.push(PositionClassifier[@positionClassifier])
+        else
+            parts.push PositionClassifier[@positionClassifier]
         return parts.join(" ")
 
     @parse = (specString) ->
+        isOnlyTerminalRule = /^([NC]-term)$/.test(specString)
+        if isOnlyTerminalRule
+            return new ModificationTarget([], specString)
         match = /([A-Z]*)(?: @ ([NC]-term))?/.exec specString
         return new ModificationTarget(match[1].split(""), match[2])
 
@@ -441,7 +447,7 @@ makeModificationSelectionEditor = (uid, callback) ->
             <div class='col s3 input-field'>
                 <label for='new-modification-formula'>New Modification Formula</label>
                 <input id='new-modification-formula' name="new-modification-formula"
-                       type="text" class="validate" pattern="^[A-Za-z0-9\-\(\)]+$">
+                       type="text" class="validate" pattern="^[A-Za-z0-9\-\(\)\[\]]+$">
             </div>
             <div class='col s3 input-field'>
                 <label for='new-modification-target'>New Modification Target</label>
