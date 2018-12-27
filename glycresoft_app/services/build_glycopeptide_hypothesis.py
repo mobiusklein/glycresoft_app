@@ -8,9 +8,9 @@ from .service_module import register_service
 from werkzeug import secure_filename
 
 
-from glypy.composition import ChemicalCompositionError
+from glypy.composition import ChemicalCompositionError, Composition
 from glycopeptidepy.structure.modification import (
-    extract_targets_from_string, ModificationRule, Composition)
+    extract_targets_from_string, ModificationRule)
 
 from glycresoft_app.task.fasta_glycopeptide_hypothesis import BuildGlycopeptideHypothesisFasta
 from glycresoft_app.task.mzid_glycopeptide_hypothesis import BuildGlycopeptideHypothesisMzId

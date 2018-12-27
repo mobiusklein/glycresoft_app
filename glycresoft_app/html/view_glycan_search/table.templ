@@ -24,7 +24,7 @@
             <td>{{"%0.5f" % chrom.score}}</td>
             <td>{{"%0.3e" % chrom.total_signal}}</td>
             <td>
-            {{chrom.adducts|join(', ', "name")}}
+            {{chrom.mass_shifts|join(', ', "name")}}
             </td>
             <td>
                 {{chrom.charge_states|join(',')}}

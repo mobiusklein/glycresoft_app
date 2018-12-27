@@ -8,7 +8,8 @@
         <div class='col s4'>
             <b>Mass Accuracy:</b> {{analysis.parameters.mass_error_tolerance * (10 ** 6)}} PPM<br>
             <b>Grouping Tolerance:</b> {{analysis.parameters.grouping_error_tolerance * (10 ** 6)}} PPM<br>
-            <b>Adducts:</b> {{analysis.parameters.adducts|join(", ")}}<br>
+            <b>Adducts:</b> {{analysis.parameters.get(
+                "mass_shifts", analysis.parameters.get("adducts", '')) |join(", ")}}<br>
             {% if analysis.parameters.get("network_parameters") is not none %}
                 <b>Network &lambda;:</b> {{"%0.3g" % analysis.parameters.network_parameters.lmbda}}<br>
             {% endif %}

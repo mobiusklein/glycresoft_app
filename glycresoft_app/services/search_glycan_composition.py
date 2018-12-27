@@ -46,7 +46,7 @@ def run_search_post():
     extra_model_features = data.getlist("model-features")
     extra_model_features = [ms1_model_features[feat] for feat in extra_model_features]
 
-    combinatorial_adduct_limit = int(data.get('combinatorial-adduct-limit', 8))
+    combinatorial_mass_shift_limit = int(data.get('combinatorial-mass-shift-limit', 8))
 
     hypothesis_name = hypothesis_record.name
     for sample_record in sample_records:
@@ -66,7 +66,7 @@ def run_search_post():
             hypothesis_record.path, sample_record.path, hypothesis_record.id,
             storage_path, name_prefix, mass_shift_data, grouping_tolerance,
             matching_tolerance, scoring_model=scoring_model,
-            minimum_mass=minimum_mass, combinatorial_adduct_limit=combinatorial_adduct_limit,
+            minimum_mass=minimum_mass, combinatorial_mass_shift_limit=combinatorial_mass_shift_limit,
             callback=lambda: 0,
             job_name_part=job_number)
         g.add_task(task)

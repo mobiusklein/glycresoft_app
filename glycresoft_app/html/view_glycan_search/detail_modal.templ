@@ -13,9 +13,9 @@
             <b>Total Abundance</b>: {{"%0.4e" % chromatogram.total_signal}} <br/>
             <b>Adduct Signal Fractions</b>
             <ul class='adduct-signal-fraction-list' style='margin-top:0px;'>
-            {% for adduct, fraction in chromatogram.adduct_signal_fractions().items() %}
+            {% for mass_shift, fraction in chromatogram.mass_shift_signal_fractions().items() %}
                 <li class='adduct-signal-fraction-item' style='margin-left:10px;'>
-                    {{adduct.name}}</b>: {{"%0.4e" % fraction}}
+                    {{mass_shift.name}}</b>: {{"%0.4e" % fraction}}
                 </li>
             {% endfor %}
             </ul>
@@ -42,10 +42,10 @@
                 {% endfor %}
                 </ul>
             {% endif %}
-            {% if chromatogram.used_as_adduct|length > 0 %}
+            {% if chromatogram.used_as_mass_shift|length > 0 %}
                 <b>Used As Adduct</b>
                 <ul>
-                    {% for pair in chromatogram.used_as_adduct %}
+                    {% for pair in chromatogram.used_as_mass_shift %}
                         <li style='margin-bottom: 5px;'>
                             {{pair[0] | glycan_composition_string}} ~ {{pair[1].name}}
                         </li>
@@ -61,8 +61,8 @@
             {{chromatogram_svg}}
         </div>
         <div class='col s6'>
-            {% if chromatogram.adducts|length > 1 %}
-                {{adduct_separation_svg}}
+            {% if chromatogram.mass_shifts|length > 1 %}
+                {{mass_shift_separation_svg}}
             {% endif %}
         </div>
     </div>

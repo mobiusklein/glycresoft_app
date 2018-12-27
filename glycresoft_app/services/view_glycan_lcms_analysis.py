@@ -48,23 +48,23 @@ VIEW_CACHE = ViewCache()
 class GlycanChromatographySnapShot(SnapshotBase):
     def __init__(self, score_threshold, glycan_filters, glycan_chromatograms,
                  unidentified_chromatograms, start_time=0, end_time=float('inf'),
-                 omit_used_as_adduct=False):
+                 omit_used_as_mass_shift=False):
         SnapshotBase.__init__(self)
         self.score_threshold = score_threshold
         self.glycan_filters = glycan_filters
         self.start_time = start_time
         self.end_time = end_time
-        self.omit_used_as_adduct = omit_used_as_adduct
+        self.omit_used_as_mass_shift = omit_used_as_mass_shift
 
         self.glycan_chromatograms = sorted(
             [x for x in glycan_chromatograms
-             if (len(x.used_as_adduct) == 0 if self.omit_used_as_adduct else True) and
+             if (len(x.used_as_mass_shift) == 0 if self.omit_used_as_mass_shift else True) and
                 (x.start_time > self.start_time) and (x.start_time < self.end_time)
              ], key=lambda x: (x.score, x.total_signal),
             reverse=True)
         self.unidentified_chromatograms = sorted(
             [x for x in unidentified_chromatograms
-             if (len(x.used_as_adduct) == 0 if self.omit_used_as_adduct else True) and
+             if (len(x.used_as_mass_shift) == 0 if self.omit_used_as_mass_shift else True) and
                 (x.start_time > self.start_time) and (x.start_time < self.end_time)
              ], key=lambda x: (x.score, x.total_signal),
             reverse=True)
@@ -88,7 +88,7 @@ class GlycanChromatographySnapShot(SnapshotBase):
             session.add(c)
 
     def is_valid(self, score_threshold, glycan_filters, start_time=0, end_time=float('inf'),
-                 omit_used_as_adduct=False):
+                 omit_used_as_mass_shift=False):
         if self.score_threshold != score_threshold:
             return False
         if self.glycan_filters != glycan_filters:
@@ -97,7 +97,7 @@ class GlycanChromatographySnapShot(SnapshotBase):
             return False
         if self.end_time != end_time:
             return False
-        if self.omit_used_as_adduct != omit_used_as_adduct:
+        if self.omit_used_as_mass_shift != omit_used_as_mass_shift:
             return False
         return True
 
@@ -154,7 +154,7 @@ class GlycanChromatographyAnalysisView(CollectionViewBase):
         # Filters (Should be Analysis specific, but are global in request state)
         self.start_time = 0
         self.end_time = float("inf")
-        self.omit_used_as_adduct = False
+        self.omit_used_as_mass_shift = False
         self.glycan_composition_filter = None
         self.monosaccharide_bounds = FilterSpecificationSet()
         self.score_threshold = 0.4
@@ -217,7 +217,7 @@ class GlycanChromatographyAnalysisView(CollectionViewBase):
             self._get_glycan_chromatograms(),
             self._get_unidentified_chromatograms(),
             self.start_time, self.end_time,
-            self.omit_used_as_adduct)
+            self.omit_used_as_mass_shift)
         return snapshot
 
     def get_items_for_display(self):
@@ -226,7 +226,7 @@ class GlycanChromatographyAnalysisView(CollectionViewBase):
                 self._snapshot = self._build_snapshot()
             elif not self._snapshot.is_valid(
                     self.score_threshold, self.monosaccharide_bounds,
-                    self.start_time, self.end_time, self.omit_used_as_adduct):
+                    self.start_time, self.end_time, self.omit_used_as_mass_shift):
                 self._snapshot = self._build_snapshot()
         return self._snapshot
 
@@ -241,12 +241,12 @@ class GlycanChromatographyAnalysisView(CollectionViewBase):
 
     def update_threshold(self, score_threshold, monosaccharide_bounds,
                          start_time=0, end_time=float('inf'),
-                         omit_used_as_adduct=False):
+                         omit_used_as_mass_shift=False):
         self.score_threshold = score_threshold
         self.monosaccharide_bounds = monosaccharide_bounds
         self.start_time = start_time
         self.end_time = end_time
-        self.omit_used_as_adduct = omit_used_as_adduct
+        self.omit_used_as_mass_shift = omit_used_as_mass_shift
 
 
 def get_view(analysis_uuid):
@@ -270,7 +270,7 @@ def index(analysis_uuid):
             state.monosaccharide_filters,
             start_time=state.settings.get("start_time", 0),
             end_time=state.settings.get("end_time", float('inf')),
-            omit_used_as_adduct=state.settings.get("omit_used_as_adduct", False))
+            omit_used_as_mass_shift=state.settings.get("omit_used_as_mass_shift", False))
         return render_template("/view_glycan_search/overview.templ", analysis=view.analysis)
 
 
@@ -342,23 +342,23 @@ def details_for(analysis_uuid, chromatogram_id):
 
             membership = [neigh.name for neigh in view.neighborhoods if neigh(glycan_composition)]
 
-            adduct_separation = ""
-            if len(chroma.adducts) > 1:
-                adducts = list(chroma.adducts)
+            mass_shift_separation = ""
+            if len(chroma.mass_shifts) > 1:
+                mass_shifts = list(chroma.mass_shifts)
                 labels = {}
                 rest = chroma
-                for adduct in adducts:
-                    with_adduct, rest = rest.bisect_adduct(adduct)
-                    labels[adduct] = with_adduct
-                adduct_plot = SmoothingChromatogramArtist(
+                for mass_shift in mass_shifts:
+                    with_mass_shift, rest = rest.bisect_mass_shift(mass_shift)
+                    labels[mass_shift] = with_mass_shift
+                mass_shift_plot = SmoothingChromatogramArtist(
                     labels.values(),
                     colorizer=lambda *a, **k: 'green', ax=figax()).draw(
-                    label_function=lambda *a, **k: tuple(a[0].adducts)[0].name,
+                    label_function=lambda *a, **k: tuple(a[0].mass_shifts)[0].name,
                     legend=False).ax
-                adduct_plot.set_title(
+                mass_shift_plot.set_title(
                     "Adduct-Separated\nExtracted Ion Chromatogram", fontsize=24)
-                adduct_separation = report.svguri_plot(
-                    adduct_plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
+                mass_shift_separation = report.svguri_plot(
+                    mass_shift_plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
 
             charge_separation = ""
             if len(chroma.charge_states) > 1:
@@ -372,7 +372,7 @@ def details_for(analysis_uuid, chromatogram_id):
 
             return render_template(
                 "/view_glycan_search/detail_modal.templ", chromatogram=chroma,
-                chromatogram_svg=chroma_svg, adduct_separation_svg=adduct_separation,
+                chromatogram_svg=chroma_svg, mass_shift_separation_svg=mass_shift_separation,
                 charge_chromatogram_svg=charge_separation,
                 logitscore=logitsum(chroma.score_components()),
                 membership=membership)
@@ -391,23 +391,23 @@ def details_for_unidentified(analysis_uuid, chromatogram_id):
             plot.set_title("Aggregated\nExtracted Ion Chromatogram", fontsize=24)
             chroma_svg = report.svguri_plot(plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
 
-            adduct_separation = ""
-            if len(chroma.adducts) > 1:
-                adducts = list(chroma.adducts)
+            mass_shift_separation = ""
+            if len(chroma.mass_shifts) > 1:
+                mass_shifts = list(chroma.mass_shifts)
                 labels = {}
                 rest = chroma
-                for adduct in adducts:
-                    with_adduct, rest = rest.bisect_adduct(adduct)
-                    labels[adduct] = with_adduct
-                adduct_plot = SmoothingChromatogramArtist(
+                for mass_shift in mass_shifts:
+                    with_mass_shift, rest = rest.bisect_mass_shift(mass_shift)
+                    labels[mass_shift] = with_mass_shift
+                mass_shift_plot = SmoothingChromatogramArtist(
                     labels.values(),
                     colorizer=lambda *a, **k: 'green', ax=figax()).draw(
-                    label_function=lambda *a, **k: tuple(a[0].adducts)[0].name,
+                    label_function=lambda *a, **k: tuple(a[0].mass_shifts)[0].name,
                     legend=False).ax
-                adduct_plot.set_title(
+                mass_shift_plot.set_title(
                     "Adduct-Separated\nExtracted Ion Chromatogram", fontsize=24)
-                adduct_separation = report.svguri_plot(
-                    adduct_plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
+                mass_shift_separation = report.svguri_plot(
+                    mass_shift_plot, bbox_inches='tight', height=5, width=9, svg_width="100%")
 
             charge_separation = ""
             if len(chroma.charge_states) > 1:
@@ -423,7 +423,7 @@ def details_for_unidentified(analysis_uuid, chromatogram_id):
 
             return render_template(
                 "/view_glycan_search/detail_modal.templ", chromatogram=chroma,
-                chromatogram_svg=chroma_svg, adduct_separation_svg=adduct_separation,
+                chromatogram_svg=chroma_svg, mass_shift_separation_svg=mass_shift_separation,
                 charge_chromatogram_svg=charge_separation,
                 logitscore=logitsum(chroma.score_components()),
                 membership=[])

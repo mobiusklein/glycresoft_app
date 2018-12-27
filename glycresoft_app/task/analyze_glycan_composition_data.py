@@ -14,7 +14,7 @@ from glycan_profiling.models import GeneralScorer
 
 from glycan_profiling.cli.validators import (
     validate_analysis_name,
-    validate_adduct)
+    validate_mass_shift)
 
 
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
@@ -35,10 +35,10 @@ def get_by_name_or_id(session, model_type, name_or_id):
 
 
 def analyze_glycan_composition(database_connection, sample_path, hypothesis_identifier,
-                               output_path, analysis_name, adducts, grouping_error_tolerance=1.5e-5,
+                               output_path, analysis_name, mass_shifts, grouping_error_tolerance=1.5e-5,
                                mass_error_tolerance=1e-5, scoring_model=None,
                                minimum_mass=500., smoothing_factor=None,
-                               regularization_model=None, combinatorial_adduct_limit=8,
+                               regularization_model=None, combinatorial_mass_shift_limit=8,
                                channel=None, **kwargs):
     if scoring_model is None:
         scoring_model = GeneralScorer
@@ -64,25 +64,25 @@ def analyze_glycan_composition(database_connection, sample_path, hypothesis_iden
     analysis_name = validate_analysis_name(None, database_connection.session, analysis_name)
 
     try:
-        adduct_out = []
-        for adduct, multiplicity in adducts:
-            adduct_out.append(validate_adduct(adduct, multiplicity))
+        mass_shift_out = []
+        for mass_shift, multiplicity in mass_shifts:
+            mass_shift_out.append(validate_mass_shift(mass_shift, multiplicity))
         expanded = []
-        expanded = MzMLGlycanChromatogramAnalyzer.expand_adducts(
-            dict(adduct_out), limit=combinatorial_adduct_limit)
-        adducts = expanded
+        expanded = MzMLGlycanChromatogramAnalyzer.expand_mass_shifts(
+            dict(mass_shift_out), limit=combinatorial_mass_shift_limit)
+        mass_shifts = expanded
     except Abort:
         channel.send(Message.traceback())
         return
 
-    adducts = expanded
+    mass_shifts = expanded
 
     try:
         analyzer = MzMLGlycanChromatogramAnalyzer(
             database_connection._original_connection, hypothesis.id,
             sample_path=sample_path,
             output_path=output_path,
-            adducts=adducts,
+            mass_shifts=mass_shifts,
             mass_error_tolerance=mass_error_tolerance,
             grouping_error_tolerance=grouping_error_tolerance,
             scoring_model=scoring_model,
@@ -107,15 +107,15 @@ class AnalyzeGlycanCompositionTask(Task):
     count = 0
 
     def __init__(self, database_connection, sample_path, hypothesis_identifier,
-                 output_path, analysis_name, adducts, grouping_error_tolerance=1.5e-5,
+                 output_path, analysis_name, mass_shifts, grouping_error_tolerance=1.5e-5,
                  mass_error_tolerance=1e-5, scoring_model=None,
                  minimum_mass=500., smoothing_factor=None, regularization_model=None,
-                 combinatorial_adduct_limit=8,
+                 combinatorial_mass_shift_limit=8,
                  callback=lambda: 0, **kwargs):
         args = (database_connection, sample_path, hypothesis_identifier,
-                output_path, analysis_name, adducts, grouping_error_tolerance,
+                output_path, analysis_name, mass_shifts, grouping_error_tolerance,
                 mass_error_tolerance, scoring_model, minimum_mass,
-                smoothing_factor, regularization_model, combinatorial_adduct_limit)
+                smoothing_factor, regularization_model, combinatorial_mass_shift_limit)
         if analysis_name is None:
             name_part = kwargs.pop("job_name_part", self.count)
             self.count += 1

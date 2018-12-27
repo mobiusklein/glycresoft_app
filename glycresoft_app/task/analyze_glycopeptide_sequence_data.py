@@ -74,9 +74,9 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
             psm_fdr_threshold=psm_fdr_threshold,
             peak_shape_scoring_model=peak_shape_scoring_model,
             oxonium_threshold=minimum_oxonium_threshold,
-            spectra_chunk_size=workload_size,
+            spectrum_batch_size=workload_size,
             use_peptide_mass_filter=use_peptide_mass_filter)
-        gps, unassigned, target_hits, decoy_hits = analyzer.start()
+        gps, unassigned, target_decoy_set = analyzer.start()
 
         analysis = analyzer.analysis
         if analysis is not None and len(gps) > 0:
