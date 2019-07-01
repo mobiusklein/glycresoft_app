@@ -45,7 +45,5 @@
 
 </div>
 <script type="text/javascript">
-    $.get("/view_sample/{{sample_run.uuid}}/chromatogram_table").then(function(content) {
-        $("#chromatogram-table").html(content)
-    })
+    controller = new SampleViewController("{{sample_run.uuid}}")
 </script>

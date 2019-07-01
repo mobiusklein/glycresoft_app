@@ -63,6 +63,10 @@ def build_glycopeptide_search_space_post():
     secure_protein_list = g.manager.get_temp_path(secure_filename(protein_list.filename))
     protein_list.save(secure_protein_list)
 
+    peptide_min_length = intify(values.get('peptide_min_length', 4), 4)
+    peptide_max_length = intify(values.get('peptide_max_length', 60), 60)
+    semispecific_digest = values.get('semispecific-digest') == 'on'
+
     if glycan_database == "" or glycan_database is None:
         glycan_file_type = "text"
         glycan_options["glycan_source_type"] = glycan_file_type
@@ -98,7 +102,9 @@ def build_glycopeptide_search_space_post():
             variable_modification=variable_modifications, processes=n_workers,
             glycan_source=glycan_options["glycomics_source"],
             glycan_source_type=glycan_options["glycan_source_type"],
-            glycan_source_identifier=glycan_options["glycan_source_identifier"])
+            glycan_source_identifier=glycan_options["glycan_source_identifier"],
+            peptide_length_range=(peptide_min_length, peptide_max_length),
+            semispecific_digest=semispecific_digest)
         g.add_task(task)
     elif protein_list_type == 'mzIdentML':
         protein_names = values.get("protein_names").split(",")
@@ -107,7 +113,8 @@ def build_glycopeptide_search_space_post():
             occupied_glycosites=maximum_glycosylation_sites, target_protein=protein_names,
             processes=n_workers, glycan_source=glycan_options['glycomics_source'],
             glycan_source_type=glycan_options['glycan_source_type'],
-            glycan_source_identifier=glycan_options["glycan_source_identifier"])
+            glycan_source_identifier=glycan_options["glycan_source_identifier"],
+            peptide_length_range=(peptide_min_length, peptide_max_length))
         g.add_task(task)
     else:
         abort(400)

@@ -24,10 +24,6 @@ def run_search():
 @app.route("/search_glycan_composition/run_search", methods=["POST"])
 def run_search_post():
     data = request.values
-    mass_shift_data = list(zip(data.getlist('mass_shift_name'),
-                               data.getlist('mass_shift_max_count')))
-    mass_shift_data = mass_shift_data[:-1]
-    mass_shift_data = [(a, int(b)) for a, b in mass_shift_data]
 
     matching_tolerance = float(data.get("mass-matching-tolerance", 10))
     if matching_tolerance > 1e-4:
@@ -46,6 +42,10 @@ def run_search_post():
     extra_model_features = data.getlist("model-features")
     extra_model_features = [ms1_model_features[feat] for feat in extra_model_features]
 
+    mass_shift_data = list(zip(data.getlist('mass_shift_name'),
+                               data.getlist('mass_shift_max_count')))
+    mass_shift_data = mass_shift_data[:-1]
+    mass_shift_data = [(a, int(b)) for a, b in mass_shift_data]
     combinatorial_mass_shift_limit = int(data.get('combinatorial-mass-shift-limit', 8))
 
     hypothesis_name = hypothesis_record.name

@@ -6,7 +6,7 @@ class GlycopeptideLCMSMSSearchPaginator extends PaginationBase
     rowSelector: '.glycopeptide-match-row'
 
     constructor: (@analysisId, @handle, @controller) ->
-        super(1) 
+        super(1)
 
     getPageUrl: (page=1) ->
         @pageUrl.format {"page": page, "analysisId": @analysisId, "proteinId": @controller.proteinId}

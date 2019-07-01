@@ -49,6 +49,11 @@ def run_search_post():
     minimum_oxonium_threshold = float(data.get("minimum-oxonium-threshold", 0.05))
     workload_size = int(data.get("batch-size", 1000))
 
+    mass_shift_data = list(zip(data.getlist('mass_shift_name'),
+                               data.getlist('mass_shift_max_count')))
+    mass_shift_data = mass_shift_data[:-1]
+    mass_shift_data = [(a, int(b)) for a, b in mass_shift_data]
+
     for sample_record in sample_records:
         sample_name = sample_record.name
         job_number = g.manager.get_next_job_number()
@@ -65,6 +70,7 @@ def run_search_post():
             msn_mass_error_tolerance=ms2_matching_tolerance, psm_fdr_threshold=psm_fdr_threshold,
             minimum_oxonium_threshold=minimum_oxonium_threshold,
             workload_size=workload_size, use_peptide_mass_filter=use_peptide_mass_filter,
+            mass_shifts=mass_shift_data,
             job_name_part=job_number)
         g.add_task(task)
         print(task)

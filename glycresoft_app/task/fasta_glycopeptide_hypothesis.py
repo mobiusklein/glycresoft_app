@@ -18,7 +18,7 @@ from .task_process import Task, Message
 
 def fasta_glycopeptide(database_connection, fasta_file, enzyme, missed_cleavages, occupied_glycosites, name,
                        constant_modification, variable_modification, processes, glycan_source, glycan_source_type,
-                       glycan_source_identifier, channel):
+                       glycan_source_identifier, peptide_length_range, semispecific_digest, channel):
     context = None
     try:
         validate_modifications(
@@ -54,7 +54,8 @@ def fasta_glycopeptide(database_connection, fasta_file, enzyme, missed_cleavages
         variable_modifications=variable_modification,
         max_missed_cleavages=missed_cleavages,
         max_glycosylation_events=occupied_glycosites,
-        hypothesis_name=name,
+        hypothesis_name=name, peptide_length_range=peptide_length_range,
+        semispecific=semispecific_digest,
         n_processes=processes)
 
     try:
@@ -77,11 +78,11 @@ def fasta_glycopeptide(database_connection, fasta_file, enzyme, missed_cleavages
 class BuildGlycopeptideHypothesisFasta(Task):
     def __init__(self, database_connection, fasta_file, enzyme, missed_cleavages, occupied_glycosites, name,
                  constant_modification, variable_modification, processes, glycan_source, glycan_source_type,
-                 glycan_source_identifier,
+                 glycan_source_identifier, peptide_length_range, semispecific_digest,
                  callback=lambda: 0, **kwargs):
         args = (database_connection, fasta_file, enzyme, missed_cleavages, occupied_glycosites, name,
                 constant_modification, variable_modification, processes, glycan_source, glycan_source_type,
-                glycan_source_identifier)
+                glycan_source_identifier, peptide_length_range, semispecific_digest)
         job_name = "Fasta Glycopeptide Hypothesis %s" % (name,)
         kwargs.setdefault('name', job_name)
         super(BuildGlycopeptideHypothesisFasta, self).__init__(fasta_glycopeptide, args, callback, **kwargs)

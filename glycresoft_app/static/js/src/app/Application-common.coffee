@@ -18,9 +18,9 @@ class Application extends ActionLayerManager
         self.monosaccharideFilterState = new MonosaccharideFilterState(self, null)
 
         @messageHandlers = {}
-        
+
         @connectEventSource()
-        
+
 
         @handleMessage "log", (data) =>
             console.log(data)
@@ -73,7 +73,7 @@ class Application extends ActionLayerManager
                     'name': data.name
                     'status': 'stopped'
             self.updateTaskList()
-            return            
+            return
         @handleMessage 'new-sample-run', (data) =>
             @samples[data.name] = data
             @emit "render-samples"
@@ -105,7 +105,7 @@ class Application extends ActionLayerManager
 
     runInitializers: ->
         for initializer in Application.initializers
-            initializer.apply this, null 
+            initializer.apply this, null
 
     updatePreferences: (payload={}) ->
         $.post('/preferences', payload).success((data) =>
@@ -130,7 +130,7 @@ class Application extends ActionLayerManager
         self = @
 
         viewLog = (event) ->
-            handle = $(this)    
+            handle = $(this)
             id = handle.attr('data-id')
             name = handle.attr("data-name")
             created_at = handle.attr("data-created-at")
@@ -234,7 +234,7 @@ class Application extends ActionLayerManager
     ]
 
     loadData: ->
-        HypothesisAPI.all (d) => 
+        HypothesisAPI.all (d) =>
             @hypotheses = d
             @emit "render-hypotheses"
         SampleAPI.all (d) =>

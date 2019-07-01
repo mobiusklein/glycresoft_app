@@ -23,6 +23,20 @@
                     </tr>
                 </tbody>
             </table>
+            <div class='mass-shift-signal-fraction-container'>
+                {% if glycopeptide.chromatogram is not none %}
+                    <b>Adduct Signal Fractions</b>
+                    <ul class='mass-shift-signal-fraction-list' style='margin-top:0px;'>
+                    {% for mass_shift, fraction in glycopeptide.chromatogram.mass_shift_signal_fractions().items()|sort(attribute=1) %}
+                        <li class='mass_shift-signal-fraction-item' style='margin-left:10px;'>
+                            <b>{{mass_shift.name}}</b>: {{"%0.4e" % fraction}}
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    Adduct: {{spectral_match_info.spectrum_match.name}}
+                {% endif %}
+            </div>
         </div>
         <div class='col s4'>
             <b>Observed Mass (PPM Error)</b>:

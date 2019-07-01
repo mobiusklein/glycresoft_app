@@ -1,5 +1,7 @@
 import os
 
+from click import Abort
+
 from glycresoft_app.project import analysis as project_analysis
 from .task_process import Task, Message
 
@@ -7,14 +9,14 @@ from glycan_profiling.serialize import (
     DatabaseBoundOperation, GlycopeptideHypothesis)
 
 from glycan_profiling.profiler import (
-    MzMLGlycopeptideLCMSMSAnalyzer)
+    MzMLGlycopeptideLCMSMSAnalyzer,
+    MzMLGlycanChromatogramAnalyzer)
 
 from glycan_profiling.models import GeneralScorer, get_feature
 
 from glycan_profiling.cli.validators import (
-    validate_analysis_name)
-
-from glycan_profiling.scoring import chromatogram_solution, shape_fitter
+    validate_analysis_name,
+    validate_mass_shift)
 
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
 
@@ -38,7 +40,7 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
                                    mass_error_tolerance=1e-5, msn_mass_error_tolerance=2e-5,
                                    psm_fdr_threshold=0.05, peak_shape_scoring_model=None,
                                    minimum_oxonium_threshold=0.05, workload_size=1000,
-                                   use_peptide_mass_filter=True,
+                                   use_peptide_mass_filter=True, mass_shifts=None,
                                    channel=None, **kwargs):
     if peak_shape_scoring_model is None:
         peak_shape_scoring_model = GeneralScorer.clone()
@@ -64,6 +66,18 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
     analysis_name = validate_analysis_name(None, database_connection.session, analysis_name)
 
     try:
+        mass_shift_out = []
+        for mass_shift, multiplicity in mass_shifts:
+            mass_shift_out.append(validate_mass_shift(mass_shift, multiplicity))
+        expanded = []
+        expanded = MzMLGlycanChromatogramAnalyzer.expand_mass_shifts(
+            dict(mass_shift_out), crossproduct=False)
+        mass_shifts = expanded
+    except Abort:
+        channel.send(Message.traceback())
+        return
+
+    try:
         analyzer = MzMLGlycopeptideLCMSMSAnalyzer(
             database_connection._original_connection, hypothesis.id, sample_path,
             output_path=output_path,
@@ -75,7 +89,8 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
             peak_shape_scoring_model=peak_shape_scoring_model,
             oxonium_threshold=minimum_oxonium_threshold,
             spectrum_batch_size=workload_size,
-            use_peptide_mass_filter=use_peptide_mass_filter)
+            use_peptide_mass_filter=use_peptide_mass_filter,
+            mass_shifts=mass_shifts)
         gps, unassigned, target_decoy_set = analyzer.start()
 
         analysis = analyzer.analysis
@@ -103,11 +118,12 @@ class AnalyzeGlycopeptideSequenceTask(Task):
                  output_path, analysis_name, grouping_error_tolerance=1.5e-5, mass_error_tolerance=1e-5,
                  msn_mass_error_tolerance=2e-5, psm_fdr_threshold=0.05, peak_shape_scoring_model=None,
                  minimum_oxonium_threshold=0.05, workload_size=1000, use_peptide_mass_filter=True,
+                 mass_shifts=None,
                  callback=lambda: 0, **kwargs):
         args = (database_connection, sample_path, hypothesis_identifier,
                 output_path, analysis_name, grouping_error_tolerance, mass_error_tolerance,
                 msn_mass_error_tolerance, psm_fdr_threshold, peak_shape_scoring_model,
-                minimum_oxonium_threshold, workload_size, use_peptide_mass_filter)
+                minimum_oxonium_threshold, workload_size, use_peptide_mass_filter, mass_shifts)
         if analysis_name is None:
             name_part = kwargs.pop("job_name_part", self.count)
             self.count += 1

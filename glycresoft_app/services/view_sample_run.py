@@ -1,5 +1,7 @@
 import numpy as np
-from flask import Response, g, request, render_template, redirect, abort, current_app
+from flask import Response, g, request, render_template, redirect, abort, current_app, jsonify
+
+from glycresoft_app.task.task_process import Message
 
 from glycan_profiling.plotting import (
     AbundantLabeler, SmoothingChromatogramArtist, figax)
@@ -9,12 +11,14 @@ from glycan_profiling.trace import ChromatogramExtractor
 from glycan_profiling.chromatogram_tree import SimpleChromatogram
 from glycan_profiling.tandem.oxonium_ions import standard_oxonium_ions
 
+from glycan_profiling.output import SimpleChromatogramCSVSerializer
+
 import ms_deisotope
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
 
 from glycresoft_app.report import png_plot
 
-from .collection_view import ViewCache
+from .collection_view import ViewCache, SimpleViewBase
 from .service_module import register_service
 
 app = view_sample_run = register_service("view_sample_run", __name__)
@@ -23,8 +27,9 @@ app = view_sample_run = register_service("view_sample_run", __name__)
 VIEW_CACHE = ViewCache()
 
 
-class SampleView(object):
+class SampleView(SimpleViewBase):
     def __init__(self, record, minimum_mass=None, abundance_threshold=None):
+        SimpleViewBase.__init__(self)
         self.record = record
         self.reader = ProcessedMzMLDeserializer(record.path)
         self.scan_levels = {
@@ -33,11 +38,22 @@ class SampleView(object):
         }
         self.minimum_mass = minimum_mass
         self.abundance_threshold = abundance_threshold
+        self._chromatograms = None
         self.chromatograms = None
         self.total_ion_chromatogram = None
         self.oxonium_ion_chromatogram = None
         self.chromatogram_artist = None
         self.oxonium_ion_artist = None
+
+    @property
+    def chromatograms(self):
+        if self._chromatograms is None:
+            self.build_chromatograms()
+        return self._chromatograms
+
+    @chromatograms.setter
+    def chromatograms(self, value):
+        self._chromatograms = value
 
     def _estimate_threshold(self):
         intensity_accumulator = []
@@ -163,6 +179,25 @@ def view_sample(sample_run_uuid):
         sample_run=view.record,
         scan_levels=view.scan_levels,
         chromatograms=view.draw_chromatograms())
+
+
+@app.route("/view_sample/<sample_run_uuid>/to-csv")
+def to_csv(sample_run_uuid):
+    file_name = _export_csv(sample_run_uuid)[0]
+    return jsonify(filename=file_name)
+
+
+def _export_csv(sample_run_uuid):
+    view = get_view(sample_run_uuid)
+    with view:
+        g.add_message(Message("Building Chromatogram CSV Export", "update"))
+
+        file_name = "%s-chromatograms.csv" % (view.record.name)
+        path = g.manager.get_temp_path(file_name)
+
+        SimpleChromatogramCSVSerializer(
+            open(path, 'wb'), view.chromatograms).start()
+    return [file_name]
 
 
 @app.route("/view_sample/<sample_run_uuid>/chromatogram_table")

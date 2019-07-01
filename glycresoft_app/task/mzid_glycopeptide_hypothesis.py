@@ -15,6 +15,7 @@ from .task_process import Task, Message
 
 def mzid_glycopeptide(database_connection, mzid_file, name, occupied_glycosites, target_protein,
                       processes, glycan_source, glycan_source_type, glycan_source_identifier,
+                      peptide_length_range,
                       channel):
     context = None
     proteins = validate_mzid_proteins(
@@ -39,6 +40,7 @@ def mzid_glycopeptide(database_connection, mzid_file, name, occupied_glycosites,
         hypothesis_name=name,
         target_proteins=proteins,
         max_glycosylation_events=occupied_glycosites,
+        peptide_length_range=peptide_length_range,
         n_processes=processes)
     try:
         builder.start()
@@ -60,9 +62,11 @@ def mzid_glycopeptide(database_connection, mzid_file, name, occupied_glycosites,
 class BuildGlycopeptideHypothesisMzId(Task):
     def __init__(self, database_connection, mzid_file, name, occupied_glycosites, target_protein,
                  processes, glycan_source, glycan_source_type, glycan_source_identifier,
+                 peptide_length_range,
                  callback=lambda: 0, **kwargs):
         args = (database_connection, mzid_file, name, occupied_glycosites, target_protein,
-                processes, glycan_source, glycan_source_type, glycan_source_identifier)
+                processes, glycan_source, glycan_source_type, glycan_source_identifier,
+                peptide_length_range)
         job_name = "mzIdentML Glycopeptide Hypothesis %s" % (name,)
         kwargs.setdefault('name', job_name)
         super(BuildGlycopeptideHypothesisMzId, self).__init__(mzid_glycopeptide, args, callback, **kwargs)

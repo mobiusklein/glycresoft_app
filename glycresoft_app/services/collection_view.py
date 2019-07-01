@@ -49,11 +49,31 @@ class ViewCache(object):
         self.set(key, value)
 
 
-class CollectionViewBase(object):
+
+class SimpleViewBase(object):
+    def __init__(self, *args, **kwargs):
+        self._instance_lock = RLock()
+
+    def __enter__(self):
+        self._instance_lock.acquire()
+        self._resolve_sources()
+
+    def __exit__(self, *args, **kwargs):
+        self.close()
+        self._instance_lock.release()
+
+    def close(self):
+        pass
+
+    def _resolve_sources(self):
+        pass
+
+
+class CollectionViewBase(SimpleViewBase):
     def __init__(self, storage_record):
+        super(CollectionViewBase, self).__init__(storage_record)
         self.storage_record = storage_record
         self.session = None
-        self._instance_lock = RLock()
 
     def connect(self):
         self.connection = DatabaseBoundOperation(self.storage_record.path)

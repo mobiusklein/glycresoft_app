@@ -39,6 +39,29 @@
             <label for='missed_cleavages'>Missed Cleavages Allowed</label>
             <input class='validate numeric-entry' type='number' min="0" id='missed_cleavages'
                    name='missed_cleavages' value="2"/>
+            <span class="advanced-enzyme-container-toggle right" data-state='closed' style='cursor: pointer;'>
+                Advanced Options<span class='mdi mdi-chevron-down'></span></span>
+            <div class='advanced-enzyme-container row clearfix' style="display: none;">
+                <div>
+                    <input name="semispecific-digest" type="checkbox"
+                           id="semispecific-digest"/>    
+                    <label for='semispecific-digest'>Semi-Specific Digest</label>
+                </div>
+                <div class="col s6">
+                    <div class='input-field'>
+                         <label for='peptide_min_length'>Minimum Length</label>
+                         <input class='validate numeric-entry' type='number' min="0" id='peptide_min_length'
+                                name='peptide_min_length' value="4"/>
+                    </div>
+                </div>
+                <div class="col s6">
+                    <div class='input-field'>
+                         <label for='peptide_max_length'>Maximum Length</label>
+                         <input class='validate numeric-entry' type='number' min="0" id='peptide_max_length'
+                                name='peptide_max_length' value="60"/>
+                    </div>
+                </div>
+            </div>
             <span class='message'></span>
             </div>
             <div class='col s2'>
@@ -77,47 +100,6 @@
                     <br>
                 </div>
             </div>
-        </div>
-        {# <div class='row' style='margin-bottom:0px;'>
-            <div class='col s8'>
-                <h6>Glycan Definitions</h6>
-            </div>
-            <small class='col s4' id='sitelist-file-help'>
-                List of glycan structures/compositions to attach to each protein.
-            </small>                
-        </div> #}
-        <div class='row' style='margin-bottom:0px;'>
-            {# <div class='col s6'>
-                <div class="file-field input-field">
-                    <h6>
-                        Text File of Glycan Structures or Compositions
-                    </h6>
-                    <div class="btn">
-                        <span>Select File...</span>
-                        <input name='glycan-definition-file' id='glycan-definition-file' type="file" />
-                    </div>
-                    <input class="file-path validate" type="text" style="width: 67%;padding-left:5px;"/>
-                    <br>
-                </div>
-            </div>
-            <div class='col s1'>
-                <br><br>Or
-            </div> #}
-            {# <div class='col s4'>
-                <div class='input-field'>
-                    <h6>
-                        Select a Glycan Hypothesis or Sample Analysis
-                    </h6>
-                    <select id="glycan-database-source" name="glycan-database-source" class='browser-default'>
-                        <option selected="true"></option>
-                        <optgroup label="Glycan Hypotheses">
-                        {% for hypothesis in manager.glycan_hypotheses(user) %}
-                            <option value="Hypothesis,{{hypothesis.uuid}}">{{hypothesis.name}}</option>
-                        {% endfor %}
-                        </optgroup>
-                    </select>
-                </div>
-            </div> #}
         </div>
         <div class='row'>
             <div class='col s3 tooltipped' data-position='top' data-tooltip="Be careful if using a large number glycans, as this can make the hypothesis intractably large.">
@@ -166,6 +148,21 @@ $("#protein-list-file").on("change", function(event){
     }
 })
 
+$(".advanced-enzyme-container-toggle").click(function(event){
+        var handle = $(this)
+        var symbolHandle = handle.find(".mdi")
+        if(handle.attr('data-state') == 'open'){
+            symbolHandle.removeClass("mdi-chevron-up")
+            symbolHandle.addClass("mdi-chevron-down")
+            $(".advanced-enzyme-container").hide()
+            handle.attr('data-state', 'closed')
+        } else {
+            symbolHandle.removeClass("mdi-chevron-down")
+            symbolHandle.addClass("mdi-chevron-up")            
+            $(".advanced-enzyme-container").show()
+            handle.attr('data-state', 'open')
+        }
+    })
 
 modificationSelectionEditor = makeModificationSelectionEditor(0, function(editor){
     editor.chooseConstant("Carbamidomethyl (C)")

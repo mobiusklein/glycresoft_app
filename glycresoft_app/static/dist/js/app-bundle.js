@@ -3275,3 +3275,54 @@ GlycopeptideLCMSMSSearchController = (function() {
 })();
 
 //# sourceMappingURL=view-glycopeptide-search.js.map
+
+var SampleViewController;
+
+SampleViewController = (function() {
+  SampleViewController.prototype.chromatogramTableSelector = "#chromatogram-table";
+
+  SampleViewController.prototype.saveResultBtnSelector = "#save-result-btn";
+
+  function SampleViewController(sampleUUID) {
+    this.sampleUUID = sampleUUID;
+    this.initializeChromatogramTable();
+  }
+
+  SampleViewController.prototype.saveCSV = function() {
+    return $.get("/view_sample/" + this.sampleUUID + "/to-csv").then((function(_this) {
+      return function(payload) {
+        if (GlycReSoft.isNativeClient()) {
+          return nativeClientMultiFileDownloadDirectory(function(directory) {
+            return $.post("/internal/move_files", {
+              filenames: [payload.filename],
+              destination: directory
+            }).success(function() {
+              return openDirectoryExternal(directory);
+            });
+          });
+        } else {
+          return GlycReSoft.downloadFile(payload.filename);
+        }
+      };
+    })(this));
+  };
+
+  SampleViewController.prototype.initializeChromatogramTable = function() {
+    console.log("Loading Chromatogram Table");
+    return $.get("/view_sample/" + this.sampleUUID + "/chromatogram_table").then((function(_this) {
+      return function(content) {
+        console.log("Writing Chromatogram Table");
+        $(_this.chromatogramTableSelector).html(content);
+        $(_this.saveResultBtnSelector).click(function() {
+          return _this.saveCSV();
+        });
+        return materialRefresh();
+      };
+    })(this));
+  };
+
+  return SampleViewController;
+
+})();
+
+//# sourceMappingURL=view-sample.js.map
