@@ -34,7 +34,7 @@
                     {% endfor %}
                     </ul>
                 {% else %}
-                    Adduct: {{spectral_match_info.spectrum_match.name}}
+                    Adduct: {{match.mass_shift.name}}
                 {% endif %}
             </div>
         </div>
@@ -101,7 +101,7 @@
                             </td>
                         {% endif %}
                     </tr>
-                {% endfor %}                    
+                {% endfor %}
                 </tbody>
             </table>
         </div>
@@ -130,7 +130,7 @@
                             pair.peak.intensity * 100.0 / max_peak)}})</td>
                         <td class='center-align'>{{pair.peak.charge}}</td>
                     </tr>
-                {% endfor %}                    
+                {% endfor %}
                 </tbody>
             </table>
         </div>
