@@ -2,6 +2,7 @@ import logging
 import traceback
 import multiprocessing
 import dill
+import os
 
 from os import path
 from uuid import uuid4
@@ -35,6 +36,7 @@ ERROR = 'error'
 STOPPED = "stopped"
 FINISHED = 'finished'
 
+WINDOWS_EXTENDED_PATH_PREFIX = "\\\\?\\"
 
 def noop():
     pass
@@ -238,6 +240,9 @@ class Task(object):
         self.message_buffer = []
         self._user = None
         self.user = user
+
+    def validate_log_file_path(self):
+        pass
 
     @property
     def user(self):
@@ -473,7 +478,7 @@ class TaskManager(object):
         try:
             self.check_state()
             self.launch_new_tasks()
-        except Exception, e:
+        except Exception as e:
             logger.exception("an error occurred in `tick`", exc_info=e)
 
     def cancel_all_tasks(self):
