@@ -1,4 +1,5 @@
 recursive-include glycresoft_app/static/dist *.js *.css *.img *.svg *.eot *.ttf *.woff *.woff2
+include glycresoft_app/static/logo.png
 recursive-include glycresoft_app/html *.templ *.html
 include glycresoft_app/package.json
 include requirements.txt
