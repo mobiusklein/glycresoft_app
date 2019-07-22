@@ -36,7 +36,7 @@ ERROR = 'error'
 STOPPED = "stopped"
 FINISHED = 'finished'
 
-WINDOWS_EXTENDED_PATH_PREFIX = "\\\\?\\"
+WINDOWS_EXTENDED_PATH_PREFIX = u"\\\\?\\"
 
 def noop():
     pass

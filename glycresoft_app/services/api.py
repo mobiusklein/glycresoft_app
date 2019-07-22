@@ -82,7 +82,7 @@ def modifications():
     d = {}
     mt = ModificationTable()
     d['definitions'] = [
-        (rule.title, formula(rule.composition if rule.composition else {}), rule.mass) for rule in mt.rules()
+        (rule.name, formula(rule.composition if rule.composition else {}), rule.mass) for rule in mt.rules()
     ]
     d['specificities'] = set()
     for rule in mt.rules():
