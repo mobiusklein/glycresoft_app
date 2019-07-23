@@ -88,7 +88,9 @@ def modifications():
     for rule in mt.rules():
         if (ModificationCategory.substitution in rule.categories or
             ModificationCategory.glycosylation in rule.categories or
-                ModificationCategory.other_glycosylation in rule.categories):
+            ModificationCategory.other_glycosylation in rule.categories or
+            ModificationCategory.substitution in rule.categories or
+                rule.name.startswith("Xlink:")):
             continue
         d['specificities'].update(rule.as_spec_strings())
     d['specificities'] = tuple(d['specificities'])

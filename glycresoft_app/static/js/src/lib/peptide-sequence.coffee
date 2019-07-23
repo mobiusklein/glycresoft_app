@@ -62,7 +62,7 @@ class PeptideSequence
                             state = 'aa'
                             if currentAA == ""
                                 chunks.slice(-1)[1] = chunks.slice(-1)[1].concat currentMods
-                            else 
+                            else
                                 chunks.push([currentAA, currentMods])
                         else if state == "nTerm"
                             if sequence[i+1] != "-"

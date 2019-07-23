@@ -57,7 +57,7 @@ formatFormula = (formula) ->
     return formulaEntry
 
 class ModificationRule
-    constructor: (@name, @formula, @mass, targets, @hidden=false, @category=0, @recent=false) ->
+    constructor: (@name, @formula, @mass, targets, @hidden=false, @category=0, @recent=false, names) ->
         @targets = []
         if targets?
             if _.isArray targets
@@ -65,6 +65,11 @@ class ModificationRule
                     @addTarget target
             else
                 @addTarget target
+        @names = []
+        if names?
+            if _.isArray names
+                for _name in names
+                    @names.push(_name)
 
     addTarget: (target) ->
         if !(target instanceof ModificationTarget)
@@ -422,13 +427,13 @@ makeModificationSelectionEditor = (uid, callback) ->
                         Constant
                     </div>
                     <div class='constant-modification-choices'>
-                        
+
                     </div>
                     <div class='choice-list-header' style='border-top: 1px solid lightgrey'>
                         Variable
                     </div>
                     <div class='variable-modification-choices'>
-                        
+
                     </div>
                 </div>
             </div>

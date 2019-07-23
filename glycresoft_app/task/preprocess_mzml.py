@@ -39,6 +39,7 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
         loader.get_scan_by_time(end_time)).id
 
     loader.reset()
+    loader.make_iterator(grouped=True)
     is_profile = next(loader).precursor.is_profile
     if is_profile:
         logger.info("Spectra are profile")
