@@ -94,7 +94,7 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
         gps, unassigned, target_decoy_set = analyzer.start()
 
         analysis = analyzer.analysis
-        if analysis is not None and len(gps) > 0:
+        if analysis is not None:
             record = project_analysis.AnalysisRecord(
                 name=analysis.name, id=analysis.id, uuid=analysis.uuid, path=output_path,
                 analysis_type=analysis.analysis_type,
