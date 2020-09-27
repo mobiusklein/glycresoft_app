@@ -228,7 +228,7 @@ class GlycopeptideAnalysisView(CollectionViewBase):
             Glycopeptide).group_by(Protein.id).filter(
             Protein.hypothesis_id == self.hypothesis.id).all()
         matched_counts = self.session.query(Protein.name, Protein.id, func.count(IdentifiedGlycopeptide.id)).join(
-            Glycopeptide).join(
+            Protein.glycopeptides).join(
             IdentifiedGlycopeptide, IdentifiedGlycopeptide.structure_id == Glycopeptide.id).group_by(
             Protein.id).filter(
             IdentifiedGlycopeptide.ms2_score > self.score_threshold,

@@ -16,33 +16,46 @@
             </div>
         </div>
         <div class='row'>
-            <div class='input-field col s2'>
-                <label for='ms1-tolerance'>MS<sup>1</sup> Mass PPM Error Tolerance</label>
-                <input type='number' value='10' id='ms1-tolerance' name='ms1-tolerance' class='numeric-entry'>
+            <div class='col s2'>
+                <div class='input-field '>
+                    <label for='ms1-tolerance'>MS<sup>1</sup> Mass PPM Error Tolerance</label>
+                    <input type='number' value='10' id='ms1-tolerance' name='ms1-tolerance' class='numeric-entry'>
+                </div>
+                <div class='input-field '>
+                    <label for='q-value-threshold'><code>q</code>-Value Threshold</label>
+                    <input class='numeric-entry' type='number' value='0.05' id='q-value-threshold'
+                        name='q-value-threshold' step='0.01'>
+                </div>
+                <div class='input-field'>
+                    <label for='batch-size'>Spectrum Batch Size</label>
+                    <input class='numeric-entry' type='number' value='250' id='batch-size'
+                        name='batch-size' min="1">
+                </div>
             </div>
-            <div class='input-field col s2'>
-                <label for='peak-grouping-tolerance'>Peak Grouping PPM Error Tolerance</label>
-                <input class='numeric-entry' type='number' value='15' id='peak-grouping-tolerance' name='peak-grouping-tolerance'>
+            <div class='col s2'>
+                <div class='input-field'>
+                    <label for='peak-grouping-tolerance'>Peak Grouping PPM Error Tolerance</label>
+                    <input class='numeric-entry' type='number' value='15' id='peak-grouping-tolerance' name='peak-grouping-tolerance'>
+                </div>
+                <div class='input-field'>
+                    <label for='q-value-threshold'>Minimum Oxonium Threhsold</label>
+                    <input class='numeric-entry' type='number' value='0.05' id='minimum-oxonium-threshold'
+                        name='minimum-oxonium-threshold' step='0.01'>
+                </div>
             </div>
-            <div class='input-field col s2'>
-                <label for='ms2-tolerance'>MS<sup>2</sup> Mass PPM Error Tolerance</label>
-                <input type='number' value='20' id='ms2-tolerance' name='ms2-tolerance' class='numeric-entry'>
-            </div>
-        </div>
-        <div class='row'>
-            <div class='input-field col s2'>
-                <label for='q-value-threshold'><code>q</code>-Value Threshold</label>
-                <input class='numeric-entry' type='number' value='0.05' id='q-value-threshold'
-                       name='q-value-threshold' step='0.01'>
-            </div>
-            <div class='input-field col s2'>
-                <label for='q-value-threshold'>Minimum Oxonium Threhsold</label>
-                <input class='numeric-entry' type='number' value='0.05' id='minimum-oxonium-threshold'
-                       name='minimum-oxonium-threshold' step='0.01'>
-            </div>
-            <div class='input-field col s2'>
-                <input type="checkbox" id="peptide-mass-filter" name="peptide-mass-filter" />
-                <label for='peptide-mass-filter'>Use Peptide Mass Filter</label>
+            <div class='col s2'>
+                <div class="input-field">
+                    <label for='ms2-tolerance'>MS<sup>2</sup> Mass PPM Error Tolerance</label>
+                    <input type='number' value='20' id='ms2-tolerance' name='ms2-tolerance' class='numeric-entry'>
+                </div>
+                <div class='input-field'>
+                    <input type="checkbox" id="peptide-mass-filter" name="peptide-mass-filter" />
+                    <label for='peptide-mass-filter'>Use Peptide Mass Filter</label>
+                </div>
+                <div class='input-field'>
+                    <input type="checkbox" id="permute-decoy-glycan-fragments" name="permute-decoy-glycan-fragments" />
+                    <label for='permute-decoy-glycan-fragments'>Permute Decoy Glycan Fragments</label>
+                </div>
             </div>
             <div class='col s6'>
                 <div class='row'>
@@ -51,22 +64,6 @@
                         <br>
                     </div>
                 </div>
-            </div>
-        </div>
-        <div class='row'>
-            <div class='input-field col s2'>
-                <label for='batch-size'>Spectrum Batch Size</label>
-                <input class='numeric-entry' type='number' value='250' id='batch-size'
-                       name='batch-size' min="1">
-            </div>
-            <div class='input-field col s2'>
-                {# <label for='batch-size'>Spectrum Batch Size</label>
-                <input class='numeric-entry' type='number' value='250' id='batch-size'
-                       name='batch-size' min="1"> #}
-            </div>
-            <div class='input-field col s2'>
-                <input type="checkbox" id="permute-decoy-glycan-fragments" name="permute-decoy-glycan-fragments" />
-                <label for='permute-decoy-glycan-fragments'>Permute Decoy Glycan Fragments</label>
             </div>
         </div>
         <button class='btn'>Submit</button>

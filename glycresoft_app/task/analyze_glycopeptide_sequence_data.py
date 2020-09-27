@@ -92,7 +92,7 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
             spectrum_batch_size=workload_size,
             use_peptide_mass_filter=use_peptide_mass_filter,
             mass_shifts=mass_shifts,
-            permute_decoy_glycan_fragments=permute_decoy_glycan_fragments)
+            permute_decoy_glycans=permute_decoy_glycan_fragments)
         gps, unassigned, target_decoy_set = analyzer.start()
 
         analysis = analyzer.analysis
