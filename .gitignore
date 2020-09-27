@@ -10,6 +10,8 @@ __pycache__/
 
 .vscode
 package-lock.json
+glycresoft_app/static/js/build/
+glycresoft_app/static/js/dist/
 
 # Distribution / packaging
 .Python
