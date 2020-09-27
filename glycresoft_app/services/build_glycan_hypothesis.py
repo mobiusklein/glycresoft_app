@@ -1,7 +1,10 @@
 import re
 
 from flask import Response, g, request, render_template, jsonify, Markup
-from werkzeug import secure_filename
+try:
+    from werkzeug import secure_filename
+except ImportError:
+    from werkzeug.utils import secure_filename
 import markdown
 
 from .form_cleaners import remove_empty_rows, intify, make_unique_name, touch_file

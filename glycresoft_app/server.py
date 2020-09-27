@@ -7,7 +7,10 @@ from flask import (
     abort, render_template, jsonify,
     Response, current_app)
 
-from werkzeug import secure_filename
+try:
+    from werkzeug import secure_filename
+except ImportError:
+    from werkzeug.utils import secure_filename
 
 import click
 

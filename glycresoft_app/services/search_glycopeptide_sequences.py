@@ -1,6 +1,10 @@
 import re
 from flask import Response, g, request, render_template
-from werkzeug import secure_filename
+
+try:
+    from werkzeug import secure_filename
+except ImportError:
+    from werkzeug.utils import secure_filename
 
 from .form_cleaners import remove_empty_rows, intify, make_unique_name
 from .service_module import register_service
@@ -40,6 +44,12 @@ def run_search_post():
     else:
         use_peptide_mass_filter = False
 
+    permute_decoy_glycan_fragments = data.get("permute-decoy-glycan-fragments")
+    if permute_decoy_glycan_fragments == 'on':
+        permute_decoy_glycan_fragments = True
+    else:
+        permute_decoy_glycan_fragments = False
+
     hypothesis_uuid = (data.get("hypothesis_choice"))
     hypothesis_record = g.manager.hypothesis_manager.get(hypothesis_uuid)
     hypothesis_name = hypothesis_record.name
@@ -70,7 +80,7 @@ def run_search_post():
             msn_mass_error_tolerance=ms2_matching_tolerance, psm_fdr_threshold=psm_fdr_threshold,
             minimum_oxonium_threshold=minimum_oxonium_threshold,
             workload_size=workload_size, use_peptide_mass_filter=use_peptide_mass_filter,
-            mass_shifts=mass_shift_data,
+            mass_shifts=mass_shift_data, permute_decoy_glycan_fragments=permute_decoy_glycan_fragments,
             job_name_part=job_number)
         g.add_task(task)
         print(task)

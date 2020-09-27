@@ -41,6 +41,7 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
                                    psm_fdr_threshold=0.05, peak_shape_scoring_model=None,
                                    minimum_oxonium_threshold=0.05, workload_size=1000,
                                    use_peptide_mass_filter=True, mass_shifts=None,
+                                   permute_decoy_glycan_fragments=False,
                                    channel=None, **kwargs):
     if peak_shape_scoring_model is None:
         peak_shape_scoring_model = GeneralScorer.clone()
@@ -90,7 +91,8 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
             oxonium_threshold=minimum_oxonium_threshold,
             spectrum_batch_size=workload_size,
             use_peptide_mass_filter=use_peptide_mass_filter,
-            mass_shifts=mass_shifts)
+            mass_shifts=mass_shifts,
+            permute_decoy_glycan_fragments=permute_decoy_glycan_fragments)
         gps, unassigned, target_decoy_set = analyzer.start()
 
         analysis = analyzer.analysis
@@ -118,12 +120,13 @@ class AnalyzeGlycopeptideSequenceTask(Task):
                  output_path, analysis_name, grouping_error_tolerance=1.5e-5, mass_error_tolerance=1e-5,
                  msn_mass_error_tolerance=2e-5, psm_fdr_threshold=0.05, peak_shape_scoring_model=None,
                  minimum_oxonium_threshold=0.05, workload_size=1000, use_peptide_mass_filter=True,
-                 mass_shifts=None,
+                 mass_shifts=None, permute_decoy_glycan_fragments=False,
                  callback=lambda: 0, **kwargs):
         args = (database_connection, sample_path, hypothesis_identifier,
                 output_path, analysis_name, grouping_error_tolerance, mass_error_tolerance,
                 msn_mass_error_tolerance, psm_fdr_threshold, peak_shape_scoring_model,
-                minimum_oxonium_threshold, workload_size, use_peptide_mass_filter, mass_shifts)
+                minimum_oxonium_threshold, workload_size, use_peptide_mass_filter,
+                mass_shifts, permute_decoy_glycan_fragments)
         if analysis_name is None:
             name_part = kwargs.pop("job_name_part", self.count)
             self.count += 1

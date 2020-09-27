@@ -4,7 +4,11 @@ import os
 from uuid import uuid4
 from multiprocessing import cpu_count
 
-from werkzeug import secure_filename
+try:
+    from werkzeug import secure_filename
+except ImportError:
+    from werkzeug.utils import secure_filename
+
 from flask import Response, g, request, render_template, redirect, abort, current_app
 from .service_module import register_service
 from .form_cleaners import make_unique_name, touch_file

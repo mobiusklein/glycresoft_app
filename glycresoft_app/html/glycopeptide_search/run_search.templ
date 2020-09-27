@@ -5,7 +5,7 @@
             {% include "components/sample_selection.templ" %}
         </div>
         <div class='row'>
-            <div class='input-field col s6'>    
+            <div class='input-field col s6'>
                 <label for="hypothesis_choice">Choose a Hypothesis</label>
                 <br>
                 <select id="hypothesis_choice" name="hypothesis_choice" required class='browser-default'>
@@ -49,7 +49,7 @@
                     <div class='mass-shift-input-table col s12'>
                         <div class='section-title' style='margin-left: 25%;'>Variable Adducts</div>
                         <br>
-                    </div>                    
+                    </div>
                 </div>
             </div>
         </div>
@@ -58,6 +58,15 @@
                 <label for='batch-size'>Spectrum Batch Size</label>
                 <input class='numeric-entry' type='number' value='250' id='batch-size'
                        name='batch-size' min="1">
+            </div>
+            <div class='input-field col s2'>
+                {# <label for='batch-size'>Spectrum Batch Size</label>
+                <input class='numeric-entry' type='number' value='250' id='batch-size'
+                       name='batch-size' min="1"> #}
+            </div>
+            <div class='input-field col s2'>
+                <input type="checkbox" id="permute-decoy-glycan-fragments" name="permute-decoy-glycan-fragments" />
+                <label for='permute-decoy-glycan-fragments'>Permute Decoy Glycan Fragments</label>
             </div>
         </div>
         <button class='btn'>Submit</button>
@@ -72,5 +81,5 @@ ajaxForm($("form#match-sample-form"), function(){
     console.log(arguments)
 })
 materialFileInput()
-</script>    
+</script>
 </div>
