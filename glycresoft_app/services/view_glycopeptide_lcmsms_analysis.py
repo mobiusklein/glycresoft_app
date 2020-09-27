@@ -130,6 +130,8 @@ class GlycopeptideSnapShot(SnapshotBase):
                     if len(spanning_site) == 0:
                         continue
                     bundle = BundledGlycanComposition.aggregate(spanning_site)
+                    if len(bundle) == 0:
+                        continue
                     ax = figax()
                     AggregatedAbundanceArtist(bundle, ax=ax).draw()
                     axes[(glycotype, site)] = ax

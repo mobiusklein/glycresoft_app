@@ -44,9 +44,10 @@ def svg_plot(figure, svg_width=None, xml_transform=None, **kwargs):
             root.attrib["width"] = svg_width
         if xml_transform is not None:
             root = xml_transform(root)
-        return etree.tostring(root)
+        result = etree.tostring(root)
     else:
-        return data_buffer.getvalue()
+        result = data_buffer.getvalue()
+    return result.decode('utf8')
 
 
 def svguri_plot(figure, **kwargs):
