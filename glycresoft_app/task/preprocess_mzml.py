@@ -33,10 +33,15 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
     logger.info("Begin Scan Interpolation")
     loader = MSFileLoader(mzml_file)
 
-    start_scan_id = loader._locate_ms1_scan(
-        loader.get_scan_by_time(start_time)).id
-    end_scan_id = loader._locate_ms1_scan(
-        loader.get_scan_by_time(end_time)).id
+    try:
+        start_scan_id = loader._locate_ms1_scan(loader.get_scan_by_time(start_time)).id
+    except IndexError:
+        start_scan_id = loader.get_scan_by_time(start_time).id
+
+    try:
+        end_scan_id = loader._locate_ms1_scan(loader.get_scan_by_time(end_time)).id
+    except IndexError:
+        end_scan_id = loader.get_scan_by_time(end_time).id
 
     loader.reset()
     loader.make_iterator(grouped=True)
