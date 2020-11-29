@@ -213,3 +213,7 @@ Peptide Sequence Display
 #figure_1 > #patch_1{
     display: none;
 }
+
+.compact-label {
+    line-height: 15px !important;
+}

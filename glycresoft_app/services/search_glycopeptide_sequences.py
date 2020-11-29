@@ -50,6 +50,12 @@ def run_search_post():
     else:
         permute_decoy_glycan_fragments = False
 
+    include_rare_signature_ions = data.get("include-rare-signature-ions")
+    if include_rare_signature_ions == 'on':
+        include_rare_signature_ions = True
+    else:
+        include_rare_signature_ions = False
+
     hypothesis_uuid = (data.get("hypothesis_choice"))
     hypothesis_record = g.manager.hypothesis_manager.get(hypothesis_uuid)
     hypothesis_name = hypothesis_record.name
@@ -81,7 +87,7 @@ def run_search_post():
             minimum_oxonium_threshold=minimum_oxonium_threshold,
             workload_size=workload_size, use_peptide_mass_filter=use_peptide_mass_filter,
             mass_shifts=mass_shift_data, permute_decoy_glycan_fragments=permute_decoy_glycan_fragments,
-            job_name_part=job_number)
+            job_name_part=job_number, include_rare_signature_ions=include_rare_signature_ions)
         g.add_task(task)
         print(task)
     return Response("Tasks Scheduled")
