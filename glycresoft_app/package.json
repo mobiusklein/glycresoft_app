@@ -1,6 +1,6 @@
 {
   "name": "GlycReSoft",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "devDependencies": {
     "grunt": "^1.0.1",
     "grunt-contrib-coffee": "~0.13.0",
