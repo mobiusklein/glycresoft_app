@@ -1,4 +1,4 @@
-var ActionLayer, ActionLayerManager, errorLoadingContent, loadingContent,
+var ActionLayer, ActionLayerManager, dismissLayerButton, errorLoadingContent, loadingContent,
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
 
@@ -147,6 +147,8 @@ loadingContent = "<div class='content-loading-please-wait' style='margin-top:5%'
 
 errorLoadingContent = "<div class='content-loading-please-wait' style='margin-top:5%'>\n    <h5 class='center-align red-text'>Something Went Wrong.</h5>\n</div>";
 
+dismissLayerButton = "<div>\n    <a class='dismiss-layer mdi mdi-close' onclick='GlycReSoft.removeCurrentLayer()'></a>\n</div>";
+
 ActionLayer = (function() {
   function ActionLayer(manager, options, params, method) {
     if (method == null) {
@@ -205,13 +207,14 @@ ActionLayer = (function() {
         });
         materialRefresh();
         if (_this.options.closeable) {
-          return _this.container.prepend("<div>\n    <a class='dismiss-layer mdi mdi-close' onclick='GlycReSoft.removeCurrentLayer()'></a>\n</div>");
+          return _this.container.prepend(dismissLayerButton);
         }
       };
     })(this);
     errorHandler = (function(_this) {
       return function(err) {
-        return _this.container.html(errorLoadingContent);
+        _this.container.html(errorLoadingContent);
+        return _this.container.prepend(dismissLayerButton);
       };
     })(this);
     this.container.html(loadingContent);
@@ -245,7 +248,7 @@ ActionLayer = (function() {
     });
     materialRefresh();
     if (this.options.closeable) {
-      return this.container.prepend("<div>\n<a class='dismiss-layer mdi-content-clear' onclick='GlycReSoft.removeCurrentLayer()'></a>\n</div>");
+      return this.container.prepend(dismissLayerButton);
     }
   };
 

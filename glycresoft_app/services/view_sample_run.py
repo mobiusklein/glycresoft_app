@@ -59,6 +59,13 @@ class SampleView(SimpleViewBase):
         intensity_accumulator = []
         mz_accumulator = []
         charge_accumulator = []
+        if not self.reader.extended_index.ms1_ids:
+            self.mass_array = np.array([])
+            self.charge_array = np.array([])
+            self.intensity_array = np.array([])
+            self.abundance_threshold = 0
+            self.minimum_mass = 0
+            return
         for scan_id in self.reader.extended_index.ms1_ids:
             header = self.reader.get_scan_header_by_id(scan_id)
             intensity_accumulator.extend(header.arrays.intensity)
@@ -75,9 +82,9 @@ class SampleView(SimpleViewBase):
         self.mass_array = mass_array
         self.charge_array = np.array(charge_accumulator, dtype=int)
         self.intensity_array = np.array(intensity_accumulator)
-        if self.abundance_threshold is None:
+        if self.abundance_threshold is None and intensity_accumulator:
             self.abundance_threshold = np.percentile(intensity_accumulator, 90)
-        if self.minimum_mass is None:
+        if self.minimum_mass is None and mass_array:
             counts, bins = np.histogram(self.mass_array)
             self.minimum_mass = np.average(bins[:-1], weights=counts)
 
@@ -107,37 +114,40 @@ class SampleView(SimpleViewBase):
         if self.chromatograms is None:
             self.build_chromatograms()
         ax = figax()
-        a = SmoothingChromatogramArtist(
-            list(self.chromatograms) + [
-                self.total_ion_chromatogram
-            ], ax=ax, colorizer=lambda *a, **k: 'lightblue')
-        a.draw(label_function=lambda *a, **kw: "")
-        rt, intens = self.total_ion_chromatogram.as_arrays()
-        a.draw_generic_chromatogram(
-            "TIC", rt, intens, 'lightblue')
-        a.ax.set_ylim(0, max(intens) * 1.1)
-        chromatogram_artist = a
-
-        # if self.reader.extended_index.msn_ids:
-        #     oxonium_axis = ax.twinx()
-        #     stub = SimpleChromatogram(
-        #         self.total_ion_chromatogram.time_converter)
-        #     for key in self.total_ion_chromatogram:
-        #         stub[key] = 0
-        #     oxonium_ion_artist = SmoothingChromatogramArtist(
-        #         [stub],
-        #         ax=oxonium_axis).draw(
-        #         label_function=lambda *a, **kw: "")
-        #     rt, intens = self.oxonium_ion_chromatogram
-        #     oxonium_axis.set_ylim(0, max(intens) * 1.1)
-        #     oxonium_axis.yaxis.tick_right()
-        #     oxonium_axis.axes.spines['right'].set_visible(True)
-        #     oxonium_axis.set_ylabel("Oxonium Abundance", fontsize=18)
-        #     oxonium_ion_artist.draw_generic_chromatogram(
-        #         "Oxonium Ions", rt, intens, 'green')
-        fig = chromatogram_artist.ax.get_figure()
-        fig.set_figwidth(10)
-        fig.set_figheight(5)
+        chromatograms = list(self.chromatograms)
+        if len(chromatograms):
+            chromatograms.append(self.total_ion_chromatogram)
+            a = SmoothingChromatogramArtist(
+                chromatograms, ax=ax, colorizer=lambda *a, **k: 'lightblue')
+            a.draw(label_function=lambda *a, **kw: "")
+            rt, intens = self.total_ion_chromatogram.as_arrays()
+            a.draw_generic_chromatogram(
+                "TIC", rt, intens, 'lightblue')
+            a.ax.set_ylim(0, max(intens) * 1.1)
+            chromatogram_artist = a
+            fig = chromatogram_artist.ax.get_figure()
+            fig.set_figwidth(10)
+            fig.set_figheight(5)
+            # if self.reader.extended_index.msn_ids:
+            #     oxonium_axis = ax.twinx()
+            #     stub = SimpleChromatogram(
+            #         self.total_ion_chromatogram.time_converter)
+            #     for key in self.total_ion_chromatogram:
+            #         stub[key] = 0
+            #     oxonium_ion_artist = SmoothingChromatogramArtist(
+            #         [stub],
+            #         ax=oxonium_axis).draw(
+            #         label_function=lambda *a, **kw: "")
+            #     rt, intens = self.oxonium_ion_chromatogram
+            #     oxonium_axis.set_ylim(0, max(intens) * 1.1)
+            #     oxonium_axis.yaxis.tick_right()
+            #     oxonium_axis.axes.spines['right'].set_visible(True)
+            #     oxonium_axis.set_ylabel("Oxonium Abundance", fontsize=18)
+            #     oxonium_ion_artist.draw_generic_chromatogram(
+            #         "Oxonium Ions", rt, intens, 'green')
+        else:
+            ax.text(0.5, 0.5, "No chromatograms extracted", ha='center', fontsize=16)
+            ax.axis('off')
         return png_plot(ax, patchless=True, bbox_inches='tight', width=12, height=8)
 
     def build_chromatograms(self):

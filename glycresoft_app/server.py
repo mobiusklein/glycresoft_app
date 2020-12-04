@@ -344,10 +344,10 @@ def has_native_client():
 
 
 def get_accepted_ms_file_formats():
-    selection = [".mzml", ".mzML", ".mzxml", ".mzXML"]
+    selection = [".mzml", ".mzxml", ".mgf", ]
 
     if has_thermo():
-        selection.extend((".raw", ".RAW"))
+        selection.extend((".raw", ))
     return ','.join(selection)
 
 

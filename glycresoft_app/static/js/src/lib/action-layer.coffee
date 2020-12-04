@@ -107,6 +107,11 @@ errorLoadingContent = """
 </div>
 """
 
+dismissLayerButton = """
+<div>
+    <a class='dismiss-layer mdi mdi-close' onclick='GlycReSoft.removeCurrentLayer()'></a>
+</div>"""
+
 
 class ActionLayer
     constructor: (manager, options, params, method='get') ->
@@ -139,7 +144,7 @@ class ActionLayer
     setup: () ->
         if @options.contentURLTemplate?
             @contentURL = @options.contentURLTemplate.format @params
-        
+
         callback = (doc) =>
             if not @showing
                 @container.hide()
@@ -152,12 +157,10 @@ class ActionLayer
                     $.getScript srcURL
             materialRefresh()
             if @options.closeable
-                @container.prepend("""
-        <div>
-            <a class='dismiss-layer mdi mdi-close' onclick='GlycReSoft.removeCurrentLayer()'></a>
-        </div>""")
+                @container.prepend(dismissLayerButton)
         errorHandler = (err) =>
             @container.html(errorLoadingContent)
+            @container.prepend(dismissLayerButton)
         @container.html(loadingContent)
         if @method == "get"
             $.get(@contentURL).success(callback).error(errorHandler)
@@ -171,7 +174,7 @@ class ActionLayer
                 type: "POST"
                 )
 
-    
+
     reload: ->
         @container.html @options.document
         @container.find('script').each (i, tag) ->
@@ -181,10 +184,7 @@ class ActionLayer
                 $.getScript srcURL
         materialRefresh()
         if @options.closeable
-            @container.prepend("""
-        <div>
-        <a class='dismiss-layer mdi-content-clear' onclick='GlycReSoft.removeCurrentLayer()'></a>
-        </div>""")
+            @container.prepend(dismissLayerButton)
 
     setController: (controller) ->
         @controller = controller

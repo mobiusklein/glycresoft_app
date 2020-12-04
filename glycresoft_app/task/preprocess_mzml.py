@@ -45,7 +45,12 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
 
     loader.reset()
     loader.make_iterator(grouped=True)
-    is_profile = next(loader).precursor.is_profile
+
+    first_batch = next(loader)
+    if first_batch.precursor is not None:
+        is_profile = first_batch.precursor.is_profile
+    elif first_batch.products:
+        is_profile = first_batch.products[0].is_profile
     if is_profile:
         logger.info("Spectra are profile")
     else:
