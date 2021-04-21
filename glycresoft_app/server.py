@@ -15,6 +15,7 @@ except ImportError:
 import click
 
 from ms_deisotope.data_source.thermo_raw import determine_if_available as has_thermo
+from ms_deisotope.data_source.thermo_raw_net import determine_if_available as has_thermo_net
 try:
     import comtypes
     has_comtypes = True
@@ -346,7 +347,7 @@ def has_native_client():
 def get_accepted_ms_file_formats():
     selection = [".mzml", ".mzxml", ".mgf", ]
 
-    if has_thermo():
+    if has_thermo() or has_thermo_net():
         selection.extend((".raw", ))
     return ','.join(selection)
 
