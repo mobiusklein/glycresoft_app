@@ -15944,6 +15944,12 @@ Peptide Sequence Display
     line-height: 15px !important;
 }
 
+select:invalid {
+    border-color: red !important;
+    border-width: 3px  !important;
+    border-style: dashed;
+}
+
 .table-container {
     overflow-x: scroll;
     width: 100%;

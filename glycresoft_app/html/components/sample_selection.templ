@@ -1,9 +1,14 @@
 {% set samples = manager.samples(user) %}
 {% if samples|length > 0 %}
-    <label for="samples" style='font-size: 1.3em;'>Select one or more samples</label>
-    <select name="samples" class='browser-default' multiple required style='height:150px;'>
+    <label for="samples" style='font-size: 1.3em;' id='sample-selector-label'>Select one or more samples</label>
+    <select id='sample-selector' name="samples" class='browser-default' multiple required style='height:150px;'
+            oninvalid="Materialize.toast('Must select one or more samples before submitting!', 3e3, 'red')">
         {% for sample in samples %}
-            <option value="{{sample.uuid}}">{{sample.name}}
+            {% if loop.index == 1 %}
+                <option value="{{sample.uuid}}" selected>{{sample.name}}
+            {% else %}
+                <option value="{{sample.uuid}}">{{sample.name}}
+            {% endif %}
             {% if not sample.completed %}
                 (Incomplete)
             {% endif %}
