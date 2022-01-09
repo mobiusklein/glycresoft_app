@@ -1,6 +1,18 @@
 import os
 import urllib
 
+from io import BytesIO
+
+from six import string_types as basestring
+
+from jinja2 import Environment, PackageLoader, FileSystemLoader, escape
+
+from lxml import etree
+
+from matplotlib import rcParams as mpl_params
+from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
+
 from glycopeptidepy import PeptideSequence
 from glycopeptidepy.utils.collectiontools import groupby
 from glypy.structure.glycan_composition import GlycanComposition
@@ -9,16 +21,6 @@ from ms_deisotope import mass_charge_ratio
 from glycan_profiling.symbolic_expression import GlycanSymbolContext
 from glycan_profiling.scoring import logit
 
-from jinja2 import Environment, PackageLoader, FileSystemLoader, escape
-
-
-from io import BytesIO
-
-from lxml import etree
-
-from matplotlib import rcParams as mpl_params
-from matplotlib import pyplot as plt
-from matplotlib.axes import Axes
 
 from glycan_profiling.plotting import colors
 
@@ -78,7 +80,7 @@ def rgbpack(color):
 def sort_peak_match_pairs(pairs):
     series = groupby(pairs, key_fn=lambda x: x.fragment.series)
     segments = []
-    for key in sorted(series):
+    for key in sorted(series, key=lambda x: x.int_code):
         segment = series[key]
         if hasattr(segment[0].fragment, "position"):
             segment.sort(key=lambda x: x.fragment.position)
@@ -108,8 +110,9 @@ def glycopeptide_string(sequence, long=False, include_glycan=True):
         render(sequence.n_term.modification, n_term_template)
     for res, mods in sequence:
         parts.append(res.symbol)
-        for mod in mods:
-            render(mod)
+        if mods:
+            for mod in mods:
+                render(mod)
     if sequence.c_term.modification is not None:
         render(sequence.c_term.modification, c_term_template)
     parts.append((

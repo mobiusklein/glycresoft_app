@@ -20,6 +20,7 @@ from glycresoft_app.report import png_plot
 
 from .collection_view import ViewCache, SimpleViewBase
 from .service_module import register_service
+from .file_exports import safepath
 
 app = view_sample_run = register_service("view_sample_run", __name__)
 
@@ -203,7 +204,7 @@ def _export_csv(sample_run_uuid):
         g.add_message(Message("Building Chromatogram CSV Export", "update"))
 
         file_name = "%s-chromatograms.csv" % (view.record.name)
-        path = g.manager.get_temp_path(file_name)
+        path = safepath(g.manager.get_temp_path(file_name))
 
         SimpleChromatogramCSVSerializer(
             open(path, 'wb'), view.chromatograms).start()

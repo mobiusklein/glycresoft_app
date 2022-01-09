@@ -1,9 +1,11 @@
 import os
 import glob
-from .base import SyncableStore, structure
+
+from six import string_types as basestring
 
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
 
+from .base import SyncableStore, structure
 
 _SampleRunRecord = structure("SampleRunRecord", ["name", "uuid", "path", "completed", "sample_type"])
 

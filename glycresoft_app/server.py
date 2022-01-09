@@ -161,11 +161,10 @@ def import_hypothesis_from_file():
         path = manager.get_hypothesis_path(
             manager.make_unique_hypothesis_name(secure_name))
         upload_file.save(path)
-        print(path)
+        app.logger.info("Importing from %s", path)
     # records = hypothesis.HypothesisRecordSet(native_path)
     records = manager.hypothesis_manager.make_record(path)
-    # import IPython
-    # IPython.embed()
+
     for record in records:
         manager.hypothesis_manager.put(record)
     manager.hypothesis_manager.dump()
@@ -201,7 +200,7 @@ def import_sample_from_file():
 
 @app.route("/internal/show_cache")
 def show_cache():
-    print(dict(g.manager.app_data))
+    app.logger.info("Cache: %r", dict(g.manager.app_data))
     return Response("Printed")
 
 
@@ -382,7 +381,11 @@ def _setup_win32_keyboard_interrupt_handler(server, manager):
     # Ensure FORTRAN handler is registered before registering
     # this handler
     from scipy import stats
-    import thread
+    try:
+        import _thread as thread
+    except ImportError:
+        import thread
+
     import win32api
 
     def handler(dwCtrlType, hook_sigint=thread.interrupt_main):

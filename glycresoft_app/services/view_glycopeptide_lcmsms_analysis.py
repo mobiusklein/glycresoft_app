@@ -1,13 +1,10 @@
 import os
+
 from weakref import WeakValueDictionary
 from collections import OrderedDict
+from threading import RLock
 
 from flask import Response, g, request, render_template, jsonify, abort
-
-from .collection_view import CollectionViewBase, ViewCache, SnapshotBase
-from .service_module import register_service
-
-from threading import RLock
 
 from glycopeptidepy import PeptideSequence
 
@@ -58,6 +55,11 @@ from glycan_profiling.plotting.entity_bar_chart import (
 from glycan_profiling.task import log_handle
 
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
+
+from .collection_view import CollectionViewBase, ViewCache, SnapshotBase
+from .service_module import register_service
+from .file_exports import safepath
+
 
 app = view_glycopeptide_lcmsms_analysis = register_service("view_glycopeptide_lcmsms_analysis", __name__)
 
@@ -113,7 +115,7 @@ class GlycopeptideSnapShot(SnapshotBase):
         except KeyError:
             protein = session.query(Protein).get(self.protein_id)
             ax = figax()
-            svg = plot_glycoforms_svg(protein, self.members, ax=ax)
+            svg = plot_glycoforms_svg(protein, self.members, ax=ax, margin_left=0)
             self.figure_axes['plot_glycoforms'] = svg
             return svg
 
@@ -139,6 +141,9 @@ class GlycopeptideSnapShot(SnapshotBase):
 
 
 class GlycopeptideAnalysisView(CollectionViewBase):
+    _retention_time_model = None
+    _fdr_estimator = None
+
     def __init__(self, storage_record, analysis_id):
         CollectionViewBase.__init__(self, storage_record)
         self.analysis_id = analysis_id
@@ -152,6 +157,9 @@ class GlycopeptideAnalysisView(CollectionViewBase):
 
         self.parameters = None
 
+        self.retention_time_model = None
+        self.fdr_estimator = None
+
         self._peak_loader = None
         self._snapshots_lock = RLock()
         self._snapshots = dict()
@@ -162,6 +170,27 @@ class GlycopeptideAnalysisView(CollectionViewBase):
             self._resolve_sources()
             self._build_protein_index()
             self._build_glycan_filter()
+
+    @property
+    def retention_time_model(self):
+        if self._retention_time_model is None and self.parameters:
+            self._retention_time_model = self.parameters.get("retention_time_model")
+        return self._retention_time_model
+
+    @retention_time_model.setter
+    def retention_time_model(self, value):
+        self._retention_time_model = value
+
+    @property
+    def fdr_estimator(self):
+        if self._fdr_estimator is None and self.parameters:
+            self._fdr_estimator = self.parameters.get(
+                "fdr_estimator")
+        return self._fdr_estimator
+
+    @fdr_estimator.setter
+    def fdr_estimator(self, value):
+        self._fdr_estimator = value
 
     @property
     def peak_loader(self):
@@ -591,7 +620,7 @@ def _export_spectrum_match_csv(analysis_uuid):
         protein_name_resolver = {entry['protein_id']: entry['protein_name'] for entry in view.protein_index}
 
         file_name = "%s-glycopeptide-spectrum-matches.csv" % (view.analysis.name)
-        path = g.manager.get_temp_path(file_name)
+        path = safepath(g.manager.get_temp_path(file_name))
 
         def generate_entities():
             for protein_id in protein_name_resolver:
@@ -614,7 +643,8 @@ def _export_mzid(analysis_uuid):
         g.add_message(Message("Building mzIdentML Export", "update"))
         protein_name_resolver = {entry['protein_id']: entry['protein_name'] for entry in view.protein_index}
         file_name = "%s.mzid" % (view.analysis.name,)
-        path = g.manager.get_temp_path(file_name)
+        path = safepath(g.manager.get_temp_path(file_name))
+
         glycopeptides = [
             gp for protein_id in protein_name_resolver for gp in
             view.get_items_for_display(protein_id).members
@@ -635,7 +665,8 @@ def _export_associated_glycan_compositions(analysis_uuid):
         reader = AnalysisDeserializer(view.connection._original_connection, analysis_id=view.analysis_id)
         compositions = reader.load_glycans_from_identified_glycopeptides()
         file_name = "%s-associated-glycans.txt" % (view.analysis.name,)
-        path = g.manager.get_temp_path(file_name)
+        path = safepath(g.manager.get_temp_path(file_name))
+        breakpoint()
         ImportableGlycanHypothesisCSVSerializer(
             open(path, 'wb'), compositions).start()
     return [file_name]
@@ -660,7 +691,7 @@ def _export_html(analysis_uuid):
     with view:
         g.add_message(Message("Building Glycopeptide HTML Report Export", "update"))
         file_name = "%s-report.html" % (view.analysis.name)
-        path = g.manager.get_temp_path(file_name)
+        path = safepath(g.manager.get_temp_path(file_name))
         with open(path, 'wb') as fh:
             writer = GlycopeptideDatabaseSearchReportCreator(
                 view.connection._original_connection, view.analysis_id, fh, 0,

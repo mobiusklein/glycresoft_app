@@ -39,6 +39,9 @@ from glycan_profiling.output import (
     GlycanLCMSAnalysisCSVSerializer,
     ImportableGlycanHypothesisCSVSerializer)
 
+from .file_exports import safepath
+
+
 app = view_glycan_lcms_analysis = register_service("view_glycan_lcms_analysis", __name__)
 
 
@@ -436,7 +439,7 @@ def _export_csv(analysis_uuid):
         snapshot = view.get_items_for_display()
         with snapshot.bind(view.session):
             file_name = "%s-glycan-chromatograms.csv" % (view.analysis.name)
-            path = g.manager.get_temp_path(file_name)
+            path = safepath(g.manager.get_temp_path(file_name))
             GlycanLCMSAnalysisCSVSerializer(
                 open(path, 'wb'),
                 (
@@ -457,7 +460,7 @@ def _export_hypothesis(analysis_uuid):
         snapshot = view.get_items_for_display()
         with snapshot.bind(view.session):
             file_name = "%s-glycan-compositions.txt" % (view.analysis.name)
-            path = g.manager.get_temp_path(file_name)
+            path = safepath(g.manager.get_temp_path(file_name))
             composition_keys = {c.composition.id: c.composition for c in snapshot.glycan_chromatograms}
             compositions = [
                 view.session.query(GlycanComposition).get(key) for key in composition_keys

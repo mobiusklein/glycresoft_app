@@ -263,12 +263,12 @@ class SqliteDict(DictClass):
                     # persisted to disk before returning.
                     try:
                         self.conn.commit(blocking=True)
-                    except Exception, e:
+                    except Exception as e:
                         if do_log:
                             logger.exception("Exception in SqliteDict.close", exc_info=e)
                 try:
                     self.conn.close()
-                except Exception, e:
+                except Exception as e:
                     if do_log:
                         logger.exception("Exception in SqliteDict.close 2", exc_info=e)
                 self.conn = None

@@ -13,7 +13,7 @@ from glycresoft_app.utils.state_transfer import request_arguments_and_context
 from glycresoft_app.task import Message
 
 from .service_module import register_service
-
+from .file_exports import safepath
 
 app = view_hypothesis = register_service("view_hypothesis", __name__)
 
@@ -60,7 +60,7 @@ def view_hypothesis_dispatch(uuid):
             return handle_glycopeptide_hypothesis(hypothesis)
 
         return Response("<h2>%s</h2>" % record.name)
-    except Exception, e:
+    except Exception as e:
         logging.exception("An exception occurred for %r",
                           request.get_json(), exc_info=e)
     return Response("<h2>No display method is implemented for %s </h2>" % request.get_json())
@@ -84,7 +84,7 @@ def mass_search_dispatch(uuid):
             return search_glycopeptide_hypothesis(hypothesis.uuid, arguments['mass'], arguments['tolerance'])
 
         return jsonify(*[])
-    except Exception, e:
+    except Exception as e:
         logging.exception("An exception occurred for %r",
                           request.get_json(), exc_info=e)
         return jsonify(*[])
@@ -129,7 +129,7 @@ def export_glycan_composition_hypothesis_as_text(uuid):
     entity_iterable = hypothesis.glycans
     g.add_message(Message("Building Export", "update"))
     file_name = "%s-glycan-compositions.txt" % (hypothesis.name)
-    path = g.manager.get_temp_path(file_name)
+    path = safepath(g.manager.get_temp_path(file_name))
     with open(path, 'wb') as handle:
         ImportableGlycanHypothesisCSVSerializer(handle, entity_iterable).start()
     file_names = [(file_name)]
