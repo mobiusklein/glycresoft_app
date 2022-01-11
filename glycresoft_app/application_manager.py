@@ -1,7 +1,8 @@
-from time import sleep
 import logging
 import os
 import pickle
+
+from time import sleep
 from threading import RLock
 
 from glycan_profiling.serialize import (
@@ -14,7 +15,7 @@ from glycan_profiling.task import log_handle
 from glycresoft_app.task.task_process import TaskManager
 from glycresoft_app.config import get as config_from_path
 
-from glycresoft_app.project.project import Project
+from glycresoft_app.project.project import Project, safepath
 from glycresoft_app.utils.message_queue import null_user
 
 
@@ -63,8 +64,8 @@ class ApplicationManager(Project):
 
     @property
     def application_log_path(self):
-        return os.path.join(
-            self.base_path, "glycresoft-log")
+        return safepath(os.path.join(
+            self.base_path, "glycresoft-log"))
 
     @property
     def escaped_base_path(self):
@@ -72,8 +73,8 @@ class ApplicationManager(Project):
 
     @property
     def configuration_path(self):
-        return os.path.join(
-            self.base_path, self._config_file_name)
+        return safepath(os.path.join(
+            self.base_path, self._config_file_name))
 
     def load_configuration(self):
         self.configuration = dict()
@@ -116,7 +117,7 @@ class ApplicationManager(Project):
 
     @property
     def app_data_path(self):
-        return self.get_temp_path(self.app_data_name)
+        return safepath(self.get_temp_path(self.app_data_name))
 
     def make_task_context(self, name):
         return {

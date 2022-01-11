@@ -1,4 +1,6 @@
 import os
+import platform
+
 from os import path
 from threading import RLock
 
@@ -12,6 +14,22 @@ from glycresoft_app.vendor import sqlitedict
 from glycresoft_app.utils.message_queue import null_user, has_access
 
 from . import sample, hypothesis, analysis
+
+
+def _winapi_path(path):
+    if path.startswith('\\\\?\\'):
+        return path
+    path = os.path.abspath(path)
+    return '\\\\?\\' + path
+
+
+def safepath(path):
+    if platform.system().lower() == 'windows' and len(path) > 259:
+        # Use UNC path notation to circumvent the ever-painful Win32 path length
+        # constraint
+        return _winapi_path(path)
+    else:
+        return path
 
 
 class Project(object):
@@ -28,7 +46,7 @@ class Project(object):
     project_id = None
 
     def __init__(self, base_path, validate=False):
-        self.base_path = os.path.abspath(base_path)
+        self.base_path = safepath(os.path.abspath(base_path))
 
         self.ensure_subdirectories()
         self.sample_manager = sample.SampleManager(path.join(self.sample_dir, "store.json"))
@@ -47,7 +65,7 @@ class Project(object):
     def ensure_subdirectories(self):
         for key in self._directories_def:
             try:
-                subdir = os.path.join(self.base_path, key)
+                subdir = safepath(os.path.join(self.base_path, key))
                 setattr(self, key, subdir)
                 os.makedirs(subdir)
             except Exception:
@@ -77,19 +95,19 @@ class Project(object):
         self.hypothesis_manager.rebuild()
 
     def get_sample_path(self, name):
-        return path.join(self.sample_dir, name)
+        return safepath(path.join(self.sample_dir, name))
 
     def get_temp_path(self, name):
-        return path.join(self.temp_dir, name)
+        return safepath(path.join(self.temp_dir, name))
 
     def get_task_path(self, name):
-        return path.join(self.task_dir, name)
+        return safepath(path.join(self.task_dir, name))
 
     def get_results_path(self, name):
-        return path.join(self.results_dir, name)
+        return safepath(path.join(self.results_dir, name))
 
     def get_hypothesis_path(self, name):
-        return path.join(self.hypothesis_dir, name)
+        return safepath(path.join(self.hypothesis_dir, name))
 
     def make_unique_sample_name(self, sample_name):
         base_name = sample_name
