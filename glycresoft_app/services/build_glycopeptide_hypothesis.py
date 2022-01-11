@@ -21,6 +21,8 @@ from glycresoft_app.task.mzid_glycopeptide_hypothesis import BuildGlycopeptideHy
 from glycan_profiling.config.config_file import (
     add_user_modification_rule as add_user_peptide_modification_rule)
 
+from .file_exports import safepath
+
 app = make_glycopeptide_hypothesis = register_service("make_glycopeptide_hypothesis", __name__)
 
 
@@ -43,12 +45,21 @@ def build_glycopeptide_search_space_post():
     enzyme = values.getlist("enzyme")
     if len(enzyme) == 1:
         enzyme = enzyme[0]
+    custom_enzyme = values.get("custom-protease")
+    if custom_enzyme:
+        if enzyme:
+            if isinstance(enzyme, list):
+                enzyme.append(custom_enzyme)
+            else:
+                enzyme = [enzyme, custom_enzyme]
+        else:
+            enzyme = custom_enzyme
 
     hypothesis_name = values.get("hypothesis_name")
     hypothesis_name = g.manager.make_unique_hypothesis_name(hypothesis_name)
 
     secure_name = secure_filename(hypothesis_name if hypothesis_name is not None else "glycopeptde_database")
-    storage_path = g.manager.get_hypothesis_path(re.sub(r"[\s\(\)]", "_", secure_name)) + '_glycopeptde_%s.database'
+    storage_path = safepath(g.manager.get_hypothesis_path(re.sub(r"[\s\(\)]", "_", secure_name)) + '_glycopeptde_%s.database')
     storage_path = make_unique_name(storage_path)
     touch_file(storage_path)
 
@@ -63,12 +74,19 @@ def build_glycopeptide_search_space_post():
     max_missed_cleavages = intify(values.get("missed_cleavages"))
     maximum_glycosylation_sites = intify(values.get("max_glycosylation_sites", 1))
 
-    secure_protein_list = g.manager.get_temp_path(secure_filename(protein_list.filename))
+    secure_protein_list = safepath(g.manager.get_temp_path(secure_filename(protein_list.filename)))
     protein_list.save(secure_protein_list)
 
     peptide_min_length = intify(values.get('peptide_min_length', 4), 4)
     peptide_max_length = intify(values.get('peptide_max_length', 60), 60)
     semispecific_digest = values.get('semispecific-digest') == 'on'
+    non_specific_digest = values.get("non-specific-digest") == 'on'
+
+    # The non-specific digest mode overrides all other digest parameters
+    if non_specific_digest:
+        enzyme = "."
+        max_missed_cleavages = peptide_max_length
+        semispecific_digest = False
 
     if glycan_database == "" or glycan_database is None:
         glycan_file_type = "text"
