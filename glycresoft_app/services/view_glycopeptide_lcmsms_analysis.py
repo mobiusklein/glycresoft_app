@@ -46,7 +46,7 @@ from glycan_profiling.output import (
 
 
 from glycan_profiling.plotting.spectral_annotation import TidySpectrumMatchAnnotator
-from glycan_profiling.plotting.plot_glycoforms import plot_glycoforms_svg
+from glycan_profiling.plotting.plot_glycoforms import GlycoformLayout
 from glycan_profiling.plotting.sequence_fragment_logo import glycopeptide_match_logo
 
 from glycan_profiling.plotting.entity_bar_chart import (
@@ -115,7 +115,9 @@ class GlycopeptideSnapShot(SnapshotBase):
         except KeyError:
             protein = session.query(Protein).get(self.protein_id)
             ax = figax()
-            svg = plot_glycoforms_svg(protein, self.members, ax=ax, margin_left=0)
+            layout = GlycoformLayout(protein, self.members, ax=ax)
+            layout.draw()
+            svg = layout.to_svg(scale=2.0)
             self.figure_axes['plot_glycoforms'] = svg
             return svg
 
