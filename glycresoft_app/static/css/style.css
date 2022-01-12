@@ -223,3 +223,8 @@ select:invalid {
     border-width: 3px  !important;
     border-style: dashed;
 }
+
+.simple-figure {
+    margin-left: 30%;
+    margin-right: 25%;
+}

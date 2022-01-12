@@ -15,7 +15,7 @@
                         {{element.glycopeptide_sequence|glycopeptide_string}}
                     </td>
                     <td>
-                        {{element.calculated_mass}}
+                        {{ "%0.3f" % element.calculated_mass}}
                     </td>
                     <td>{{element.peptide.start_position}}-{{element.peptide.end_position}}</td>
                 </tr>
@@ -40,4 +40,4 @@
     <li class={{"disabled" if paginator.page == paginator.pages else ""}}>
         <a class='next-page '><i class="material-icons">chevron_right</i></a>
     </li>
-</ul>        
+</ul>

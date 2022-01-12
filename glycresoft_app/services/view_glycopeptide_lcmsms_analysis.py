@@ -21,8 +21,9 @@ from glycan_profiling.serialize import (
     MSScan, GlycopeptideSpectrumSolutionSet)
 
 from glycan_profiling.tandem.glycopeptide.scoring import CoverageWeightedBinomialScorer
-
 from glycan_profiling.tandem.glycopeptide.identified_structure import IdentifiedGlycoprotein
+from glycan_profiling.tandem.target_decoy import TargetDecoyAnalyzer, GroupwiseTargetDecoyAnalyzer
+from glycan_profiling.tandem.glycopeptide.dynamic_generation.multipart_fdr import GlycopeptideFDREstimator
 
 from glycan_profiling.serialize.hypothesis.glycan import GlycanCombinationGlycanComposition
 
@@ -398,9 +399,13 @@ def index(analysis_uuid):
         log_handle.log("Loading Index")
         log_handle.log("%s" % state.monosaccharide_filters)
         view.update_threshold(state.settings['minimum_ms2_score'], state.monosaccharide_filters)
+        has_fdr = view.fdr_estimator is not None
+        has_retention_time_model = view.retention_time_model is not None
         return render_template(
             "view_glycopeptide_search/overview.templ", analysis=view.analysis,
-            protein_table=view.protein_index)
+            protein_table=view.protein_index,
+            has_fdr=has_fdr,
+            has_retention_time_model=has_retention_time_model)
 
 
 @app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/<int:protein_id>/overview", methods=['POST'])
@@ -450,6 +455,75 @@ def site_specific_glycosylation(analysis_uuid, protein_id):
             return render_template(
                 "/view_glycopeptide_search/components/site_specific_glycosylation.templ",
                 axes_map=axes_map, glycoprotein=glycoprotein)
+
+
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/plot_fdr", methods=['GET'])
+def plot_fdr(analysis_uuid):
+    view = get_view(analysis_uuid)
+    figures = []
+    with view:
+        fdr_estimator = view.fdr_estimator
+        if isinstance(fdr_estimator, (GroupwiseTargetDecoyAnalyzer, TargetDecoyAnalyzer)):
+            ax = figax()
+            fdr_estimator.plot(ax=ax)
+            figures = [
+                {
+                    "title": "Total FDR",
+                    "format": "svg",
+                    "figure": report.svg_plot(ax.figure)
+                }
+            ]
+        if isinstance(fdr_estimator, GlycopeptideFDREstimator):
+            ax = figax()
+            fdr_estimator.glycan_fdr.plot(ax=ax)
+            ax.set_title("Glycan FDR", size=16)
+            figures = [
+                {
+                    "title": "Glycan FDR",
+                    "format": "svg",
+                    "figure": report.svg_plot(ax.figure)
+                }
+            ]
+            ax = figax()
+            fdr_estimator.peptide_fdr.plot(ax=ax)
+            ax.set_title("Peptide FDR", size=16)
+            figures.append({
+                "title": "Peptide FDR",
+                "format": "svg",
+                "figure": report.svg_plot(ax.figure)
+            })
+    return jsonify(figures=figures)
+
+
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/plot_retention_time_model", methods=['GET'])
+def plot_retention_time_model(analysis_uuid):
+    view = get_view(analysis_uuid)
+    figures = []
+    with view:
+        retention_time_model = view.retention_time_model
+        if retention_time_model is not None:
+            ax = figax()
+            retention_time_model.plot_factor_coefficients(ax=ax)
+            figures.append({
+                "title": "Factor Coefficients",
+                "format": "svg",
+                "figure": report.svg_plot(ax.figure)
+            })
+            ax = figax()
+            retention_time_model.plot_residuals(ax=ax)
+            figures.append({
+                "title": "Factor Coefficients",
+                "format": "svg",
+                "figure": report.svg_plot(ax.figure)
+            })
+            width_range = {
+                "lower": retention_time_model.width_range.lower,
+                "upper": retention_time_model.width_range.upper,
+            },
+            interval_padding = retention_time_model.interval_padding
+            R2 = retention_time_model.R2()
+    return jsonify(figures=figures, interval_padding=interval_padding, width_range=width_range, R2=R2)
+
 
 
 @app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/search_by_scan/<scan_id>")
@@ -574,6 +648,14 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
                 fig_g.attrib["transform"] = "scale(1.0, 1.0)"
                 return root
 
+            retention_time_score = None
+            retention_time_interval = None
+            has_retention_time_model = False
+            if view.retention_time_model:
+                has_retention_time_model = True
+                if gp.chromatogram:
+                    retention_time_score = view.retention_time_model.score_interval(gp, alpha=0.01)
+                    retention_time_interval = view.retention_time_model.predict_interval(gp, alpha=0.01)
             return render_template(
                 "/view_glycopeptide_search/components/glycopeptide_detail.templ",
                 glycopeptide=gp,
@@ -587,6 +669,9 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
                     height=3, width=7, patchless=True),
                 matched_scans=matched_scans,
                 max_peak=max_peak,
+                retention_time_score=retention_time_score,
+                retention_time_interval=retention_time_interval,
+                has_retention_time_model=has_retention_time_model,
             )
 
 

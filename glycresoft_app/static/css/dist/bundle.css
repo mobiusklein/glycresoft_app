@@ -15950,6 +15950,10 @@ select:invalid {
     border-style: dashed;
 }
 
+.simple-figure {
+    margin-left: 30%;
+    margin-right: 25%;
+}
 .table-container {
     overflow-x: scroll;
     width: 100%;

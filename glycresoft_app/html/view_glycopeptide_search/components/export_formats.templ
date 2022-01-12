@@ -26,7 +26,6 @@ ajaxForm("#export-form", function (payload) {
     for(var i = 0; i < payload.filenames.length; i++){
         var name = payload.filenames[i]
         console.log(name)
-        // GlycReSoft.downloadFile(name)
     }
     if(GlycReSoft.isNativeClient()){
         nativeClientMultiFileDownloadDirectory(function(directory){

@@ -48,7 +48,7 @@ def build_glycan_search_space():
 def _serialize_rules_to_buffer(rules, constraints, header_comment=""):
     lines = [';%s' % header_comment]
     for symbol, low, high in rules:
-        symbol, low, high = map(lambda x: str(x).strip(), (symbol, low, high))
+        symbol, low, high = list(map(lambda x: str(x).strip(), (symbol, low, high)))
         if any(c == "" for c in [symbol, low, high]):
             continue
         lines.append(" ".join([symbol, low, high]))
@@ -101,8 +101,8 @@ def build_glycan_search_space_process():
     # specified rules.
     if selected_method == "combinatorial":
         comb_monosaccharide_name = data.getlist('monosaccharide_name')[:-1]
-        comb_lower_bound = map(intify, data.getlist('monosaccharide_lower_bound')[:-1])
-        comb_upper_bound = map(intify, data.getlist('monosaccharide_upper_bound')[:-1])
+        comb_lower_bound = list(map(intify, data.getlist('monosaccharide_lower_bound')[:-1]))
+        comb_upper_bound = list(map(intify, data.getlist('monosaccharide_upper_bound')[:-1]))
 
         comb_monosaccharide_name, comb_lower_bound, comb_upper_bound = remove_empty_rows(
             comb_monosaccharide_name, comb_lower_bound, comb_upper_bound)

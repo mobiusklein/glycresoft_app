@@ -150,6 +150,12 @@ class GlycopeptideLCMSMSSearchController
     proteinContainerSelector: '#protein-container'
     proteinOverviewUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/overview"
 
+    fdrFigureViewSelector: "#view-fdr-figures"
+    fdrFigureUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/plot_fdr"
+
+    rtModelViewSelector: "#view-retention-time-model-figures"
+    rtModelFigureUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/plot_retention_time_model"
+
     detailUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/details_for/{glycopeptideId}"
     saveCSVURL: "/view_glycopeptide_lcmsms_analysis/{analysisId}/to-csv"
     searchByScanIdUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/search_by_scan/{scanId}"
@@ -188,6 +194,14 @@ class GlycopeptideLCMSMSSearchController
             console.log(@)
             self.searchByScanId @value.replace(/\s+$/g, "")
 
+        fdrFigureOpener = @handle.find @fdrFigureViewSelector
+        fdrFigureOpener.click (event) =>
+            @showFDRFigures()
+
+        rtModelOpener = @handle.find @rtModelViewSelector
+        rtModelOpener.click (event) =>
+            @showRTModelFigures()
+
         proteinRowHandle.click (event) ->
             self.proteinChoiceHandler @
         console.log("setup complete")
@@ -206,6 +220,21 @@ class GlycopeptideLCMSMSSearchController
                 GlycReSoft.displayMessageModal(formContent)
         )
 
+    showFDRFigures: ->
+        $.get(@fdrFigureUrl.format({"analysisId": @analysisId})).success (response) ->
+            chunks = []
+            response.figures.forEach (figure) ->
+                chunks.push "<div class='simple-figure'>#{figure.figure}</div>"
+            formContent = chunks.join('\n')
+            GlycReSoft.displayMessageModal(formContent)
+
+    showRTModelFigures: ->
+        $.get(@rtModelFigureUrl.format({"analysisId": @analysisId})).success (response) ->
+            chunks = []
+            response.figures.forEach (figure) ->
+                chunks.push "<div class='simple-figure'>#{figure.figure}</div>"
+            formContent = chunks.join('\n')
+            GlycReSoft.displayMessageModal(formContent)
 
     getLastProteinViewed: ->
         GlycReSoft.context['protein_id']

@@ -9,17 +9,53 @@
                 <thead>
                     <tr>
                         <th>Profile Score</th>
-                        <th>Tandem Score</th>
-                        <th>TDA q-value</th>
+                        {% if glycopeptide.is_multiscore() %}
+                            <th>Total Score</th>
+                            <th>Peptide Score</th>
+                            <th>Glycan Score</th>
+                            <th>Glycan Coverage</th>
+                            <th>Total q-value</th>
+                            <th>Peptide q-value</th>
+                            <th>Glycan q-value</th>
+                        {% else %}
+                            <th>Tandem Score</th>
+                            <th>TDA q-value</th>
+                        {% endif %}
                         <th>Volume</th>
+                        <th>Apex Time</th>
+                        {% if has_retention_time_model %}
+                            <th>RT Score (Interval)</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td>{{"%0.4f"|format(glycopeptide.ms1_score)}}</td>
-                        <td>{{"%0.4f"|format(glycopeptide.ms2_score)}}</td>
-                        <td>{{"%0.4f"|format(glycopeptide.q_value)}}</td>
+                        {% if glycopeptide.is_multiscore() %}
+                            <td>{{"%0.3f" % glycopeptide.score}}</td>
+                            <td>{{"%0.3f" % glycopeptide.score_set.peptide_score}}</td>
+                            <td>{{"%0.3f" % glycopeptide.score_set.glycan_score}}</td>
+                            <td>{{"%0.3f" % glycopeptide.score_set.glycan_coverage}}</td>
+                            <td>{{"%0.3f" % glycopeptide.q_value}}</td>
+                            <td>{{"%0.3f" % glycopeptide.q_value_set.peptide_q_value}}</td>
+                            <td>{{"%0.3f" % glycopeptide.q_value_set.glycan_q_value}}</td>
+                        {% else %}
+                            <td>{{"%0.4f"|format(glycopeptide.ms2_score)}}</td>
+                            <td>{{"%0.4f"|format(glycopeptide.q_value)}}</td>
+                        {% endif %}
                         <td>{{"%0.4e"|format(glycopeptide.total_signal)}}</td>
+                        {% if glycopeptide.chromatogram is not none %}
+                            <td>{{"%0.3f"|format(glycopeptide.chromatogram.apex_time)}}</td>
+                        {% else %}
+                            <td>-</td>
+                        {% endif %}
+                        {% if has_retention_time_model %}
+                            {% if retention_time_score is not none%}
+                                <td>{{"%0.3f" % retention_time_score}} ({{"%0.2f" % retention_time_interval[0]}}-{{"%0.2f" % retention_time_interval[1]}})</td>
+                            {% else %}
+                                <td>-</td>
+                            {% endif %}
+                        {% endif %}
                     </tr>
                 </tbody>
             </table>

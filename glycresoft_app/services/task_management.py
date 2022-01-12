@@ -1,6 +1,9 @@
 from flask import Response, g, jsonify
-from ..task.dummy_task import DummyTask
+
+from six import text_type
+
 from .service_module import register_service
+from ..task.dummy_task import DummyTask
 
 task_actions = register_service("task_management", __name__)
 
@@ -13,7 +16,11 @@ def send_log(task_name):
         log_buffer = open(log_file, 'r').read()
         formatted_buffer = log_buffer.replace(
             ">", "&gt;").replace("<", "&lt;")
-        encoded_contents = formatted_buffer.decode('string_escape')
+        if not isinstance(formatted_buffer, text_type):
+            encoded_contents = formatted_buffer.decode('string_escape')
+        else:
+            encoded_contents = formatted_buffer
+
         log_content = wrapper.format(
             task_name=task_name, content=encoded_contents)
         return Response(log_content, mimetype='text/html')

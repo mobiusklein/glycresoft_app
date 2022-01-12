@@ -38,7 +38,7 @@ def listify(value):
 
 
 def remove_empty_rows(*columns):
-    lengths = map(len, columns)
+    lengths = list(map(len, columns))
     assert all(i == lengths[0] for i in lengths), "Not all columns are the same length"
     keep = []
     for i in range(lengths[0]):

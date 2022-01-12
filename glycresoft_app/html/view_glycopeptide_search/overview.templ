@@ -28,25 +28,43 @@
         <div class="col s5">
             {% include "view_glycopeptide_search/components/protein_table.templ" %}
         </div>
-        <div class='col s3 offset-s1'>
-            <div class='input-field'>
-                <label for="search-by-scan-id">
-                    Search by Scan ID
-                </label>
-                <input type="text" name="search-by-scan-id" class='tooltipped'
-                       id='search-by-scan-id' data-tooltip="
-                       Enter a Scan ID to check if it has been matched to
-                       a glycopeptide"
-                       />
+        <div class='col s6 offset-s1'>
+            {# TODO
+            This space could be used to hold other controls which don't fit directly into the tab view model. Options are:
+            - Search for PSM by scan id
+            - Interactive EIC graph builder
+            - Search for glycopeptide by sequence
+            #}
+            <div class='row' id='search-by-scan-container'>
+                <div class='col s6'>
+                    <div class='input-field'>
+                        <label for="search-by-scan-id">
+                            Search by Scan ID
+                        </label>
+                        <input type="text" name="search-by-scan-id" class='tooltipped'
+                            id='search-by-scan-id' data-tooltip="
+                            Enter a Scan ID to check if it has been matched to
+                            a glycopeptide"
+                            />
+                    </div>
+                </div>
             </div>
-        {# TODO
-This space could be used to hold other controls which don't fit directly into the tab view model. Options are:
-- Search for PSM by scan id
-- Interactive EIC graph builder
-- Search for glycopeptide by sequence
-         #}
-        </div>
-        <div class="col s1">
+            {% if has_fdr %}
+                <div class='row' id='view-fdr-figures-container'>
+                    <button class='btn' id='view-fdr-figures'>
+                        View FDR
+                    </button>
+                </div>
+            {% endif %}
+            {% if has_retention_time_model %}
+                <div class='row' id='view-retention-time-model-figures-container'>
+                    <button class='btn' id='view-retention-time-model-figures'>
+                        View Retention Time Model
+                    </button>
+                </div>
+            {% endif %}
+            <div>
+            </div>
         </div>
     </div>
     <div id='monosaccharide-filters'>

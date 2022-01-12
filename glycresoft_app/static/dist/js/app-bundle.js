@@ -3048,6 +3048,14 @@ GlycopeptideLCMSMSSearchController = (function() {
 
   GlycopeptideLCMSMSSearchController.prototype.proteinOverviewUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/overview";
 
+  GlycopeptideLCMSMSSearchController.prototype.fdrFigureViewSelector = "#view-fdr-figures";
+
+  GlycopeptideLCMSMSSearchController.prototype.fdrFigureUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/plot_fdr";
+
+  GlycopeptideLCMSMSSearchController.prototype.rtModelViewSelector = "#view-retention-time-model-figures";
+
+  GlycopeptideLCMSMSSearchController.prototype.rtModelFigureUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/plot_retention_time_model";
+
   GlycopeptideLCMSMSSearchController.prototype.detailUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/details_for/{glycopeptideId}";
 
   GlycopeptideLCMSMSSearchController.prototype.saveCSVURL = "/view_glycopeptide_lcmsms_analysis/{analysisId}/to-csv";
@@ -3088,7 +3096,7 @@ GlycopeptideLCMSMSSearchController = (function() {
   };
 
   GlycopeptideLCMSMSSearchController.prototype.setup = function() {
-    var filterContainer, proteinRowHandle, self;
+    var fdrFigureOpener, filterContainer, proteinRowHandle, rtModelOpener, self;
     proteinRowHandle = $(this.proteinTableRowSelector);
     self = this;
     this.handle.find(".tooltipped").tooltip();
@@ -3101,6 +3109,18 @@ GlycopeptideLCMSMSSearchController = (function() {
       console.log(this);
       return self.searchByScanId(this.value.replace(/\s+$/g, ""));
     });
+    fdrFigureOpener = this.handle.find(this.fdrFigureViewSelector);
+    fdrFigureOpener.click((function(_this) {
+      return function(event) {
+        return _this.showFDRFigures();
+      };
+    })(this));
+    rtModelOpener = this.handle.find(this.rtModelViewSelector);
+    rtModelOpener.click((function(_this) {
+      return function(event) {
+        return _this.showRTModelFigures();
+      };
+    })(this));
     proteinRowHandle.click(function(event) {
       return self.proteinChoiceHandler(this);
     });
@@ -3125,6 +3145,34 @@ GlycopeptideLCMSMSSearchController = (function() {
         return GlycReSoft.displayMessageModal(formContent);
       };
     })(this));
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.showFDRFigures = function() {
+    return $.get(this.fdrFigureUrl.format({
+      "analysisId": this.analysisId
+    })).success(function(response) {
+      var chunks, formContent;
+      chunks = [];
+      response.figures.forEach(function(figure) {
+        return chunks.push("<div class='simple-figure'>" + figure.figure + "</div>");
+      });
+      formContent = chunks.join('\n');
+      return GlycReSoft.displayMessageModal(formContent);
+    });
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.showRTModelFigures = function() {
+    return $.get(this.rtModelFigureUrl.format({
+      "analysisId": this.analysisId
+    })).success(function(response) {
+      var chunks, formContent;
+      chunks = [];
+      response.figures.forEach(function(figure) {
+        return chunks.push("<div class='simple-figure'>" + figure.figure + "</div>");
+      });
+      formContent = chunks.join('\n');
+      return GlycReSoft.displayMessageModal(formContent);
+    });
   };
 
   GlycopeptideLCMSMSSearchController.prototype.getLastProteinViewed = function() {
