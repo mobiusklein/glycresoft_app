@@ -44,6 +44,8 @@ class SyncableStore(object):
 
     @classmethod
     def make_instance_record(cls, entry):
+        if hasattr(cls, 'from_json'):
+            return cls.from_json(entry)
         return cls.record_type(**entry)
 
     def recover(self, store, raw_data):

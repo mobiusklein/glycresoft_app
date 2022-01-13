@@ -13,11 +13,15 @@ def structure(*args, **kwargs):
 
     if "to_json" not in kwargs:
         def to_json(self):
-            return self._asdict()
+            d = self._asdict()
+            d = {
+                k: v.to_json() if hasattr(v, 'to_json') else v for k, v in d.items()
+            }
+            return d
     else:
         to_json = kwargs.pop("to_json")
 
-    new_type = namedtuple(*args, **kwargs)
+    new_type = namedtuple(args[0], *args[1:], **kwargs)
 
     derived_type = type(args[0], (new_type,), {"to_json": to_json})
     derived_type.__new__.__defaults__ = ((None,) * (len(fields) - 1) + (null_user.id,))

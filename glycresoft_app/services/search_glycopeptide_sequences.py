@@ -56,6 +56,12 @@ def run_search_post():
     else:
         include_rare_signature_ions = False
 
+    model_retention_time = data.get("model-retention-time")
+    if model_retention_time == 'on':
+        model_retention_time = True
+    else:
+        model_retention_time = False
+
     hypothesis_uuid = (data.get("hypothesis_choice"))
     hypothesis_record = g.manager.hypothesis_manager.get(hypothesis_uuid)
     hypothesis_name = hypothesis_record.name
@@ -81,13 +87,19 @@ def run_search_post():
 
         task = AnalyzeGlycopeptideSequenceTask(
             hypothesis_record.path, sample_record.path, hypothesis_record.id,
-            storage_path, name_prefix, grouping_error_tolerance=grouping_tolerance,
+            storage_path, name_prefix,
+            grouping_error_tolerance=grouping_tolerance,
             mass_error_tolerance=matching_tolerance,
-            msn_mass_error_tolerance=ms2_matching_tolerance, psm_fdr_threshold=psm_fdr_threshold,
+            msn_mass_error_tolerance=ms2_matching_tolerance,
+            psm_fdr_threshold=psm_fdr_threshold,
             minimum_oxonium_threshold=minimum_oxonium_threshold,
-            workload_size=workload_size, use_peptide_mass_filter=use_peptide_mass_filter,
-            mass_shifts=mass_shift_data, permute_decoy_glycan_fragments=permute_decoy_glycan_fragments,
-            job_name_part=job_number, include_rare_signature_ions=include_rare_signature_ions)
+            workload_size=workload_size,
+            use_peptide_mass_filter=use_peptide_mass_filter,
+            mass_shifts=mass_shift_data,
+            permute_decoy_glycan_fragments=permute_decoy_glycan_fragments,
+            job_name_part=job_number,
+            include_rare_signature_ions=include_rare_signature_ions,
+            model_retention_time=model_retention_time)
         g.add_task(task)
         print(task)
     return Response("Tasks Scheduled")

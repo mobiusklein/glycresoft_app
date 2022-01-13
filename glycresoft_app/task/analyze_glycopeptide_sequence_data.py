@@ -43,6 +43,7 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
                                    use_peptide_mass_filter=True, mass_shifts=None,
                                    permute_decoy_glycan_fragments=False,
                                    include_rare_signature_ions=False,
+                                   model_retention_time=False,
                                    channel=None, **kwargs):
     if peak_shape_scoring_model is None:
         peak_shape_scoring_model = GeneralScorer.clone()
@@ -94,7 +95,8 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
             use_peptide_mass_filter=use_peptide_mass_filter,
             mass_shifts=mass_shifts,
             permute_decoy_glycans=permute_decoy_glycan_fragments,
-            rare_signatures=include_rare_signature_ions)
+            rare_signatures=include_rare_signature_ions,
+            model_retention_time=model_retention_time)
         _ = analyzer.start()
 
         analysis = analyzer.analysis
@@ -123,13 +125,14 @@ class AnalyzeGlycopeptideSequenceTask(Task):
                  msn_mass_error_tolerance=2e-5, psm_fdr_threshold=0.05, peak_shape_scoring_model=None,
                  minimum_oxonium_threshold=0.05, workload_size=1000, use_peptide_mass_filter=True,
                  mass_shifts=None, permute_decoy_glycan_fragments=False,
-                 include_rare_signature_ions=False,
+                 include_rare_signature_ions=False, model_retention_time=False,
                  callback=lambda: 0, **kwargs):
         args = (database_connection, sample_path, hypothesis_identifier,
                 output_path, analysis_name, grouping_error_tolerance, mass_error_tolerance,
                 msn_mass_error_tolerance, psm_fdr_threshold, peak_shape_scoring_model,
                 minimum_oxonium_threshold, workload_size, use_peptide_mass_filter,
-                mass_shifts, permute_decoy_glycan_fragments, include_rare_signature_ions)
+                mass_shifts, permute_decoy_glycan_fragments,
+                include_rare_signature_ions, model_retention_time)
         if analysis_name is None:
             name_part = kwargs.pop("job_name_part", self.count)
             self.count += 1

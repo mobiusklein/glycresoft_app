@@ -127,6 +127,19 @@
                            name='max_glycosylation_sites' value="1"/>
                 </div>
             </div>
+            <div class='col s3 tooltipped' data-position='top' data-tooltip="Generate a paired reverse protein decoy database instead of using a reverse peptide decoy database.">
+                <div class='input-field'>
+                    <input type="checkbox" id="generate-reverse-decoys" name="generate-reverse-decoys" />
+                    <label for='generate-reverse-decoys'>Generate Reverse Decoys</label>
+                </div>
+            </div>
+            <div class='col s3 tooltipped' data-position='top'
+                data-tooltip="Generate a full cross product of peptides with glycans and store each candidate. Less efficient but does not require spectra to contain peptide+Y ions.">
+                <div class='input-field'>
+                    <input type="checkbox" id="generate-full-crossproduct" name="generate-full-crossproduct" checked />
+                    <label for='generate-full-crossproduct'>Generate Full Crossproduct</label>
+                </div>
+            </div>
         </div>
         <div class='row'>
             <div class='col s4'>

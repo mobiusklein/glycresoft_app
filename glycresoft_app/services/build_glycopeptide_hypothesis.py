@@ -58,6 +58,9 @@ def build_glycopeptide_search_space_post():
     hypothesis_name = values.get("hypothesis_name")
     hypothesis_name = g.manager.make_unique_hypothesis_name(hypothesis_name)
 
+    generate_reverse_decoys = values.get("generate-reverse-decoys") == 'on'
+    generate_full_crossproduct = values.get("generate-full-crossproduct") == 'on'
+
     secure_name = secure_filename(hypothesis_name if hypothesis_name is not None else "glycopeptde_database")
     storage_path = safepath(g.manager.get_hypothesis_path(re.sub(r"[\s\(\)]", "_", secure_name)) + '_glycopeptde_%s.database')
     storage_path = make_unique_name(storage_path)
@@ -117,25 +120,36 @@ def build_glycopeptide_search_space_post():
     n_workers = g.manager.configuration.get("database_build_worker_count", 4)
     if protein_list_type == "fasta":
         task = BuildGlycopeptideHypothesisFasta(
-            storage_path, fasta_file=secure_protein_list, enzyme=enzyme,
-            missed_cleavages=max_missed_cleavages, occupied_glycosites=maximum_glycosylation_sites,
-            name=hypothesis_name, constant_modification=constant_modifications,
+            storage_path,
+            fasta_file=secure_protein_list,
+            enzyme=enzyme,
+            missed_cleavages=max_missed_cleavages,
+            occupied_glycosites=maximum_glycosylation_sites,
+            name=hypothesis_name,
+            constant_modification=constant_modifications,
             variable_modification=variable_modifications, processes=n_workers,
             glycan_source=glycan_options["glycomics_source"],
             glycan_source_type=glycan_options["glycan_source_type"],
             glycan_source_identifier=glycan_options["glycan_source_identifier"],
             peptide_length_range=(peptide_min_length, peptide_max_length),
-            semispecific_digest=semispecific_digest)
+            semispecific_digest=semispecific_digest,
+            generate_reverse_decoys=generate_reverse_decoys,
+            generate_full_crossproduct=generate_full_crossproduct)
         g.add_task(task)
     elif protein_list_type == 'mzIdentML':
         protein_names = values.get("protein_names").split(",")
         task = BuildGlycopeptideHypothesisMzId(
-            storage_path, secure_protein_list, name=hypothesis_name,
-            occupied_glycosites=maximum_glycosylation_sites, target_protein=protein_names,
-            processes=n_workers, glycan_source=glycan_options['glycomics_source'],
+            storage_path, secure_protein_list,
+            name=hypothesis_name,
+            occupied_glycosites=maximum_glycosylation_sites,
+            target_protein=protein_names,
+            processes=n_workers,
+            glycan_source=glycan_options['glycomics_source'],
             glycan_source_type=glycan_options['glycan_source_type'],
             glycan_source_identifier=glycan_options["glycan_source_identifier"],
-            peptide_length_range=(peptide_min_length, peptide_max_length))
+            peptide_length_range=(peptide_min_length, peptide_max_length),
+            generate_reverse_decoys=generate_reverse_decoys,
+            generate_full_crossproduct=generate_full_crossproduct)
         g.add_task(task)
     else:
         abort(400)

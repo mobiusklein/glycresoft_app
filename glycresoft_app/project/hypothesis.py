@@ -6,8 +6,16 @@ from glycan_profiling import serialize
 
 from .base import SyncableStore, structure
 
-_HypothesisRecord = structure("HypothesisRecord", ["name", 'id', 'uuid', 'path',
-                                                   'hypothesis_type', "monosaccharide_bounds"])
+_HypothesisRecord = structure("HypothesisRecord", [
+    'name',
+    'id',
+    'uuid',
+    'path',
+    'hypothesis_type',
+    'monosaccharide_bounds',
+    'decoy_hypothesis',
+    'options',
+])
 
 
 class HypothesisRecord(_HypothesisRecord):
@@ -30,6 +38,15 @@ class HypothesisRecord(_HypothesisRecord):
         if obj.uuid != self.uuid:
             return False
         return True
+
+    @classmethod
+    def from_json(cls, state):
+        decoy_state = state.get('decoy_hypothesis')
+        if decoy_state is not None:
+            state['decoy_hypothesis'] = cls.from_json(decoy_state)
+        inst = cls(**state)
+        return inst
+
 
 
 class HypothesisRecordSet(object):
