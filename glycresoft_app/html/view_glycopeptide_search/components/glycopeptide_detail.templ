@@ -1,6 +1,6 @@
 <div class='glycopeptide-details-container'>
     <div class='row'>
-        <div class='col s6' data-coverage="{{match.compute_coverage()}}">
+        <div class='col s7' data-coverage="{{match.compute_coverage()}}">
             <h6><b>Glycopeptide Sequence</b></h6>
             <div class='sequence-emphasis'>{{glycopeptide.structure|glycopeptide_string(long=True)}}</div>
             <b>Start Position</b>: {{glycopeptide.start_position + 1}}
@@ -10,13 +10,13 @@
                     <tr>
                         <th>Profile Score</th>
                         {% if glycopeptide.is_multiscore() %}
-                            <th>Total Score</th>
-                            <th>Peptide Score</th>
-                            <th>Glycan Score</th>
-                            <th>Glycan Coverage</th>
-                            <th>Total q-value</th>
-                            <th>Peptide q-value</th>
-                            <th>Glycan q-value</th>
+                            <th>Total <br/> Score</th>
+                            <th>Peptide <br/> Score</th>
+                            <th>Glycan <br/> Score</th>
+                            <th>Glycan <br/> Coverage</th>
+                            <th>Total <br/> q-value</th>
+                            <th>Peptide <br/> q-value</th>
+                            <th>Glycan <br/> q-value</th>
                         {% else %}
                             <th>Tandem Score</th>
                             <th>TDA q-value</th>
@@ -32,7 +32,7 @@
                     <tr>
                         <td>{{"%0.4f"|format(glycopeptide.ms1_score)}}</td>
                         {% if glycopeptide.is_multiscore() %}
-                            <td>{{"%0.3f" % glycopeptide.score}}</td>
+                            <td>{{"%0.3f" % glycopeptide.ms2_score}}</td>
                             <td>{{"%0.3f" % glycopeptide.score_set.peptide_score}}</td>
                             <td>{{"%0.3f" % glycopeptide.score_set.glycan_score}}</td>
                             <td>{{"%0.3f" % glycopeptide.score_set.glycan_coverage}}</td>

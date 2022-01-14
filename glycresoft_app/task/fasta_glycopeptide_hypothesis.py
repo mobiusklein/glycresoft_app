@@ -107,7 +107,7 @@ def fasta_glycopeptide(database_connection, fasta_file, enzyme, missed_cleavages
                 if item.uuid == decoy_builder.hypothesis.uuid:
                     decoy_hypothesis_record = item._replace(
                         user_id=channel.user.id,
-                        options={'full_cross_product': generate_full_crossproduct})
+                        options={'full_crossproduct': generate_full_crossproduct})
                     break
             else:
                 channel.send(Message("Something went wrong (%r)" %
@@ -119,7 +119,7 @@ def fasta_glycopeptide(database_connection, fasta_file, enzyme, missed_cleavages
                 hypothesis_record = item
                 hypothesis_record = hypothesis_record._replace(
                     user_id=channel.user.id,
-                    options={'full_cross_product': generate_full_crossproduct})
+                    options={'full_crossproduct': generate_full_crossproduct})
                 if decoy_hypothesis_record is not None:
                     hypothesis_record = hypothesis_record._replace(
                         decoy_hypothesis=decoy_hypothesis_record)

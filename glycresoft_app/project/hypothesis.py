@@ -47,6 +47,9 @@ class HypothesisRecord(_HypothesisRecord):
         inst = cls(**state)
         return inst
 
+    @property
+    def is_full_crossproduct(self):
+        return (self.options or {}).get("full_cross_product", False)
 
 
 class HypothesisRecordSet(object):
@@ -101,3 +104,7 @@ class HypothesisManager(SyncableStore):
     def make_record(cls, datum):
         record_set = HypothesisRecordSet(datum)
         return record_set
+
+    @classmethod
+    def from_json(cls, state):
+        return HypothesisRecord.from_json(state)

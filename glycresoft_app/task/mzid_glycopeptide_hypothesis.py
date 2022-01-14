@@ -57,9 +57,13 @@ def mzid_glycopeptide(database_connection, mzid_file, name, occupied_glycosites,
         except Abort:
             channel.abort("Could not validate the glycan source, %s, %s" %
                         (glycan_source, glycan_source_type))
+        channel.abort("Cannot build a reversed mzIdentML hypothesis")
+        # decoy_glycan_hypothesis_id = _glycan_hypothesis_builders[
+        #     glycan_source_type](decoy_database_connection, glycan_source,
+        #                         name, glycan_source_identifier)
         # decoy_builder = ReversingMultipleProcessFastaGlycopeptideHypothesisSerializer(
         #     mzid_file, decoy_database_connection,
-        #     glycan_hypothesis_id=glycan_hypothesis_id,
+        #     glycan_hypothesis_id=decoy_glycan_hypothesis_id,
         #     max_glycosylation_events=occupied_glycosites,
         #     hypothesis_name="Reverse " + name,
         #     peptide_length_range=peptide_length_range,
@@ -82,6 +86,7 @@ def mzid_glycopeptide(database_connection, mzid_file, name, occupied_glycosites,
                     decoy_hypothesis_record = decoy_hypothesis_record._replace(
                         user_id=channel.user.id,
                         options={'full_cross_product': generate_full_crossproduct})
+                    break
 
         for item in record:
             if item.uuid == builder.hypothesis.uuid:

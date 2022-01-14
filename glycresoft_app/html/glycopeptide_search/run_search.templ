@@ -13,6 +13,9 @@
                         <option value="{{hypothesis.uuid}}">{{hypothesis.name}}</option>
                     {% endfor %}
                 </select>
+                <div id="search-strategy-display">
+
+                </div>
             </div>
         </div>
         <div class='row'>
@@ -77,6 +80,36 @@
         <button class='btn'>Submit</button>
     </form>
 <script>
+function updatePeptideMassFilterForFullCrossproduct() {
+    const hypothesisChoiceInput = document.querySelector("#hypothesis_choice")
+    const peptideMassFilterInput = document.querySelector("#peptide-mass-filter")
+    const wasChecked = peptideMassFilterInput.checked
+    const hypothesisId = hypothesisChoiceInput.value
+    const hypothesis = GlycReSoft.hypotheses[hypothesisId]
+    const searchStrategyDisplay = document.querySelector("#search-strategy-display")
+    if (!hypothesis.isFullCrossproduct()) {
+        peptideMassFilterInput.checked = true
+        searchStrategyDisplay.innerHTML = `<span class='red-text' style='font-size: small;'>
+            The hypothesis selected uses the fast indexed joint search algorithm. It <em>requires</em>
+            the peptide mass filter and will control the FDR on both the peptide and glycan portions separately
+            and jointly.
+        </span>`
+    } else if (hypothesis.hasDecoyDatabase()) {
+        searchStrategyDisplay.innerHTML = `<span class='red-text' style='font-size: small;'>
+            The hypothesis selected uses a separate reverse-protein decoy database instead of the original reverse-peptide
+            decoy search strategy. This may be more permissive on a small database, while providing a more accurate
+            FDR estimate in general on a large database.
+        </span>`
+    } else {
+        searchStrategyDisplay.innerHTML = `<span class='red-text' style='font-size: small;'>
+            The hypothesis selected uses the original reverse-peptide decoy search strategy. It may be biased against
+            glycopeptides which produce predominantly peptide+Y ions.
+        </span>`
+    }
+}
+
+document.querySelector("#hypothesis_choice").onchange = updatePeptideMassFilterForFullCrossproduct
+
 MassShiftInputWidget($(".mass-shift-input-table"))
 ajaxForm($("form#match-sample-form"), function(){
     var currentAction = GlycReSoft.getShowingLayer()
@@ -86,5 +119,6 @@ ajaxForm($("form#match-sample-form"), function(){
     console.log(arguments)
 })
 materialFileInput()
+updatePeptideMassFilterForFullCrossproduct()
 </script>
 </div>

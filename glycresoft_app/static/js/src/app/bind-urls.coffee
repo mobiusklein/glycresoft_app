@@ -30,6 +30,15 @@ ActionBook =
         method: 'get'
 
 
+convertMapping = (converter) ->
+    fn = (data) ->
+        reducer = (acccumulator, key_value) ->
+            [key, value] = key_value
+            acccumulator[key] = converter(value)
+            acccumulator
+        return Object.entries(data).reduce(reducer, {})
+    return fn
+
 makeAPIGet = (url) -> (callback) -> $.get(url).success(callback)
 makeParameterizedAPIGet = (url) -> (params, callback) -> $.get(url.format(params)).success(callback)
 
@@ -37,10 +46,10 @@ HypothesisAPI =
     all: makeAPIGet("/api/hypotheses")
     get: makeParameterizedAPIGet("/api/hypotheses/{}")
 
-SampleAPI = 
+SampleAPI =
     all: makeAPIGet("/api/samples")
 
-AnalysisAPI = 
+AnalysisAPI =
     all: makeAPIGet("/api/analyses")
 
 TaskAPI =
@@ -55,5 +64,5 @@ User =
     set: (user_id, callback) -> $.post("/users/login", {"user_id": user_id}).success(callback)
 
 
-MassShiftAPI = 
+MassShiftAPI =
     all: makeAPIGet("/api/mass-shift")

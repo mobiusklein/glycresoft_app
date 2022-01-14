@@ -6,6 +6,8 @@ import zipfile
 import logging
 
 from flask import Response, g, abort, request, render_template, jsonify
+
+from glycresoft_app.project.project import safepath
 from .service_module import register_service
 from . import form_cleaners
 
@@ -13,19 +15,6 @@ from . import form_cleaners
 file_exports = register_service("file_exports", __name__)
 
 logger = logging.getLogger("glycresoft_app.file_exports")
-
-
-def _winapi_path(path):
-    path = os.path.abspath(path)
-    return '\\\\?\\' + path
-
-
-def safepath(path):
-    if platform.system().lower() == 'windows' and len(path) > 259:
-        return _winapi_path(path)
-    else:
-        return path
-
 
 @file_exports.route("/copy-file-form", methods=["GET"])
 def copy_file_to_server():

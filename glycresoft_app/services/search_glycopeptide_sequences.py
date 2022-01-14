@@ -9,7 +9,7 @@ except ImportError:
 from .form_cleaners import remove_empty_rows, intify, make_unique_name
 from .service_module import register_service
 
-from ..task.analyze_glycopeptide_sequence_data import AnalyzeGlycopeptideSequenceTask
+from ..task.analyze_glycopeptide_sequence_data import AnalyzeGlycopeptideSequenceTask, GlycopeptideSearchStrategyEnum
 
 app = search_glycopeptide_sequences = register_service("search_glycopeptide_sequences", __name__)
 
@@ -66,6 +66,19 @@ def run_search_post():
     hypothesis_record = g.manager.hypothesis_manager.get(hypothesis_uuid)
     hypothesis_name = hypothesis_record.name
 
+    decoy_hypothesis_record = hypothesis_record.decoy_hypothesis
+    decoy_hypothesis_path = None
+    decoy_hypothesis_id = None
+    if decoy_hypothesis_record is not None:
+        decoy_hypothesis_path = decoy_hypothesis_record.path
+        decoy_hypothesis_id = decoy_hypothesis_record.id
+
+    search_strategy = GlycopeptideSearchStrategyEnum.classic
+    if decoy_hypothesis_record and not hypothesis_record.is_full_crossproduct:
+        search_strategy = GlycopeptideSearchStrategyEnum.multipart
+    elif decoy_hypothesis_record:
+        search_strategy = GlycopeptideSearchStrategyEnum.classic_comparison
+
     sample_records = list(map(g.manager.sample_manager.get, data.getlist("samples")))
 
     minimum_oxonium_threshold = float(data.get("minimum-oxonium-threshold", 0.05))
@@ -99,7 +112,9 @@ def run_search_post():
             permute_decoy_glycan_fragments=permute_decoy_glycan_fragments,
             job_name_part=job_number,
             include_rare_signature_ions=include_rare_signature_ions,
-            model_retention_time=model_retention_time)
+            model_retention_time=model_retention_time,
+            search_strategy=search_strategy,
+            decoy_database_connection=decoy_hypothesis_path,
+            decoy_hypothesis_id=decoy_hypothesis_id)
         g.add_task(task)
-        print(task)
     return Response("Tasks Scheduled")

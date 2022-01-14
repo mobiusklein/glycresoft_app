@@ -2,15 +2,19 @@ import os
 
 from click import Abort
 
+from glypy.utils import Enum
+
 from glycresoft_app.project import analysis as project_analysis
-from .task_process import Task, Message
+
 
 from glycan_profiling.serialize import (
     DatabaseBoundOperation, GlycopeptideHypothesis)
 
 from glycan_profiling.profiler import (
     MzMLGlycopeptideLCMSMSAnalyzer,
-    MzMLGlycanChromatogramAnalyzer)
+    MzMLGlycanChromatogramAnalyzer,
+    MzMLComparisonGlycopeptideLCMSMSAnalyzer,
+    MultipartGlycopeptideLCMSMSAnalyzer)
 
 from glycan_profiling.models import GeneralScorer, get_feature
 
@@ -19,6 +23,14 @@ from glycan_profiling.cli.validators import (
     validate_mass_shift)
 
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
+
+from .task_process import Task, Message
+
+
+class GlycopeptideSearchStrategyEnum(Enum):
+    classic = 1
+    classic_comparison = 2
+    multipart = 3
 
 
 def get_by_name_or_id(session, model_type, name_or_id):
@@ -44,11 +56,17 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
                                    permute_decoy_glycan_fragments=False,
                                    include_rare_signature_ions=False,
                                    model_retention_time=False,
+                                   search_strategy=GlycopeptideSearchStrategyEnum.classic,
+                                   decoy_database_connection=None,
+                                   decoy_hypothesis_id=None,
                                    channel=None, **kwargs):
     if peak_shape_scoring_model is None:
         peak_shape_scoring_model = GeneralScorer.clone()
         peak_shape_scoring_model.add_feature(get_feature("null_charge"))
+
     database_connection = DatabaseBoundOperation(database_connection)
+    if decoy_database_connection:
+        decoy_database_connection = DatabaseBoundOperation(decoy_database_connection)
 
     if not os.path.exists(sample_path):
         channel.send(Message("Could not locate sample %r" % sample_path, "error"))
@@ -62,6 +80,14 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
             database_connection, GlycopeptideHypothesis, hypothesis_identifier)
     except Exception:
         channel.send(Message("Could not locate hypothesis %r" % hypothesis_identifier, "error"))
+        channel.abort("An error occurred during analysis.")
+
+    try:
+        decoy_hypothesis = get_by_name_or_id(
+            decoy_database_connection, GlycopeptideHypothesis, decoy_hypothesis_id)
+    except Exception:
+        channel.send(Message("Could not locate hypothesis %r" %
+                             decoy_hypothesis_id, "error"))
         channel.abort("An error occurred during analysis.")
 
     if analysis_name is None:
@@ -81,22 +107,55 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
         return
 
     try:
-        analyzer = MzMLGlycopeptideLCMSMSAnalyzer(
-            database_connection._original_connection, hypothesis.id, sample_path,
-            output_path=output_path,
-            analysis_name=analysis_name,
-            grouping_error_tolerance=grouping_error_tolerance,
-            mass_error_tolerance=mass_error_tolerance,
-            msn_mass_error_tolerance=msn_mass_error_tolerance,
-            psm_fdr_threshold=psm_fdr_threshold,
-            peak_shape_scoring_model=peak_shape_scoring_model,
-            oxonium_threshold=minimum_oxonium_threshold,
-            spectrum_batch_size=workload_size,
-            use_peptide_mass_filter=use_peptide_mass_filter,
-            mass_shifts=mass_shifts,
-            permute_decoy_glycans=permute_decoy_glycan_fragments,
-            rare_signatures=include_rare_signature_ions,
-            model_retention_time=model_retention_time)
+        if search_strategy == GlycopeptideSearchStrategyEnum.classic:
+            analyzer = MzMLGlycopeptideLCMSMSAnalyzer(
+                database_connection._original_connection, hypothesis.id, sample_path,
+                output_path=output_path,
+                analysis_name=analysis_name,
+                grouping_error_tolerance=grouping_error_tolerance,
+                mass_error_tolerance=mass_error_tolerance,
+                msn_mass_error_tolerance=msn_mass_error_tolerance,
+                psm_fdr_threshold=psm_fdr_threshold,
+                peak_shape_scoring_model=peak_shape_scoring_model,
+                oxonium_threshold=minimum_oxonium_threshold,
+                spectrum_batch_size=workload_size,
+                use_peptide_mass_filter=use_peptide_mass_filter,
+                mass_shifts=mass_shifts,
+                permute_decoy_glycans=permute_decoy_glycan_fragments,
+                rare_signatures=include_rare_signature_ions,
+                model_retention_time=model_retention_time)
+        elif search_strategy == GlycopeptideSearchStrategyEnum.classic_comparison:
+            analyzer = MzMLComparisonGlycopeptideLCMSMSAnalyzer(
+                database_connection._original_connection, decoy_database_connection._original_connection, hypothesis.id, sample_path,
+                output_path=output_path,
+                analysis_name=analysis_name,
+                grouping_error_tolerance=grouping_error_tolerance,
+                mass_error_tolerance=mass_error_tolerance,
+                msn_mass_error_tolerance=msn_mass_error_tolerance,
+                psm_fdr_threshold=psm_fdr_threshold,
+                peak_shape_scoring_model=peak_shape_scoring_model,
+                oxonium_threshold=minimum_oxonium_threshold,
+                spectrum_batch_size=workload_size,
+                use_peptide_mass_filter=use_peptide_mass_filter,
+                mass_shifts=mass_shifts,
+                permute_decoy_glycans=permute_decoy_glycan_fragments,
+                rare_signatures=include_rare_signature_ions,
+                model_retention_time=model_retention_time)
+        elif search_strategy == GlycopeptideSearchStrategyEnum.multipart:
+            analyzer = MultipartGlycopeptideLCMSMSAnalyzer(
+                database_connection._original_connection, decoy_database_connection._original_connection,
+                hypothesis.id, decoy_hypothesis.id, sample_path,
+                output_path=output_path,
+                analysis_name=analysis_name,
+                grouping_error_tolerance=grouping_error_tolerance,
+                mass_error_tolerance=mass_error_tolerance,
+                msn_mass_error_tolerance=msn_mass_error_tolerance,
+                psm_fdr_threshold=psm_fdr_threshold,
+                peak_shape_scoring_model=peak_shape_scoring_model,
+                spectrum_batch_size=workload_size,
+                mass_shifts=mass_shifts,
+                rare_signatures=include_rare_signature_ions,
+                model_retention_time=model_retention_time)
         _ = analyzer.start()
 
         analysis = analyzer.analysis
@@ -126,13 +185,16 @@ class AnalyzeGlycopeptideSequenceTask(Task):
                  minimum_oxonium_threshold=0.05, workload_size=1000, use_peptide_mass_filter=True,
                  mass_shifts=None, permute_decoy_glycan_fragments=False,
                  include_rare_signature_ions=False, model_retention_time=False,
+                 search_strategy=GlycopeptideSearchStrategyEnum.classic,
+                 decoy_database_connection=None, decoy_hypothesis_id=None,
                  callback=lambda: 0, **kwargs):
         args = (database_connection, sample_path, hypothesis_identifier,
                 output_path, analysis_name, grouping_error_tolerance, mass_error_tolerance,
                 msn_mass_error_tolerance, psm_fdr_threshold, peak_shape_scoring_model,
                 minimum_oxonium_threshold, workload_size, use_peptide_mass_filter,
-                mass_shifts, permute_decoy_glycan_fragments,
-                include_rare_signature_ions, model_retention_time)
+                mass_shifts, permute_decoy_glycan_fragments, include_rare_signature_ions,
+                model_retention_time, search_strategy, decoy_database_connection,
+                decoy_hypothesis_id)
         if analysis_name is None:
             name_part = kwargs.pop("job_name_part", self.count)
             self.count += 1

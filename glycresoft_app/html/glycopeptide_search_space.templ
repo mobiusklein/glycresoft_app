@@ -133,11 +133,11 @@
                     <label for='generate-reverse-decoys'>Generate Reverse Decoys</label>
                 </div>
             </div>
-            <div class='col s3 tooltipped' data-position='top'
+            <div class='col s5 tooltipped' data-position='top'
                 data-tooltip="Generate a full cross product of peptides with glycans and store each candidate. Less efficient but does not require spectra to contain peptide+Y ions.">
                 <div class='input-field'>
                     <input type="checkbox" id="generate-full-crossproduct" name="generate-full-crossproduct" checked />
-                    <label for='generate-full-crossproduct'>Generate Full Crossproduct</label>
+                    <label for='generate-full-crossproduct'>Generate Full Crossproduct (Disable For Fast Indexed Joint Search)</label>
                 </div>
             </div>
         </div>
@@ -194,6 +194,24 @@ $(".advanced-enzyme-container-toggle").click(function(event){
             handle.attr('data-state', 'open')
         }
     })
+
+$("#generate-full-crossproduct").change(function(event) {
+    const isChecked = this.checked
+    if (!isChecked) {
+        const reverseDecoys = document.querySelector("#generate-reverse-decoys")
+        reverseDecoys.checked = true
+    }
+})
+
+$("#generate-reverse-decoys").change(function (event) {
+    const isChecked = this.checked
+    if (!isChecked) {
+        const isFullCrossproduct = document.querySelector("#generate-full-crossproduct")
+        if(!isFullCrossproduct.checked) {
+            this.checked = true
+        }
+    }
+})
 
 modificationSelectionEditor = makeModificationSelectionEditor(0, function(editor){
     editor.chooseConstant("Carbamidomethyl (C)")

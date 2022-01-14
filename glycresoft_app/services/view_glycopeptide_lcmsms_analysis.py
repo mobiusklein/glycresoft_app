@@ -663,7 +663,7 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
                 chromatogram_plot=report.svg_plot(
                     ax, svg_width="100%", bbox_inches='tight', height=4, width=10, patchless=True),
                 spectrum_plot=report.svg_plot(
-                    annotated_match_ax, svg_width="100%", bbox_inches='tight', height=3, width=10, patchless=True),
+                    annotated_match_ax, svg_width="100%", bbox_inches='tight', height=3.5, width=10, patchless=True),
                 sequence_logo_plot=report.svg_plot(
                     sequence_logo_plot, svg_width="100%", xml_transform=xml_transform, bbox_inches='tight',
                     height=3, width=7, patchless=True),

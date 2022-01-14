@@ -1,4 +1,4 @@
-var Application, Task, createdAtParser, renderTask,
+var Application, Hypothesis, Task, createdAtParser, renderTask,
   bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
@@ -354,7 +354,7 @@ Application = (function(superClass) {
   Application.prototype.loadData = function() {
     HypothesisAPI.all((function(_this) {
       return function(d) {
-        _this.hypotheses = d;
+        _this.hypotheses = convertMapping(Hypothesis.create)(d);
         return _this.emit("render-hypotheses");
       };
     })(this));
@@ -537,9 +537,44 @@ renderTask = function(task) {
   return element;
 };
 
+Hypothesis = (function() {
+  function Hypothesis(name1, id1, uuid, path, hypothesis_type, monosaccharide_bounds, decoy_hypothesis, options) {
+    this.name = name1;
+    this.id = id1;
+    this.uuid = uuid;
+    this.path = path;
+    this.hypothesis_type = hypothesis_type;
+    this.monosaccharide_bounds = monosaccharide_bounds;
+    this.decoy_hypothesis = decoy_hypothesis;
+    if (options != null) {
+      this.options = options;
+    } else {
+      this.options = {};
+    }
+  }
+
+  Hypothesis.prototype.isFullCrossproduct = function() {
+    if (this.options.full_crossproduct != null) {
+      return this.options.full_crossproduct;
+    }
+    return true;
+  };
+
+  Hypothesis.prototype.hasDecoyDatabase = function() {
+    return this.decoy_hypothesis != null;
+  };
+
+  Hypothesis.create = function(source) {
+    return new Hypothesis(source.name, source.id, source.uuid, source.path, source.hypothesis_type, source.monosaccharide_bounds, source.decoy_hypothesis, source.options);
+  };
+
+  return Hypothesis;
+
+})();
+
 //# sourceMappingURL=Application-common.js.map
 
-var ActionBook, AnalysisAPI, ErrorLogURL, HypothesisAPI, MassShiftAPI, SampleAPI, TaskAPI, User, makeAPIGet, makeParameterizedAPIGet;
+var ActionBook, AnalysisAPI, ErrorLogURL, HypothesisAPI, MassShiftAPI, SampleAPI, TaskAPI, User, convertMapping, makeAPIGet, makeParameterizedAPIGet;
 
 ActionBook = {
   home: {
@@ -580,6 +615,21 @@ ActionBook = {
     contentURLTemplate: "/view_sample/{sample_id}",
     method: 'get'
   }
+};
+
+convertMapping = function(converter) {
+  var fn;
+  fn = function(data) {
+    var reducer;
+    reducer = function(acccumulator, key_value) {
+      var key, value;
+      key = key_value[0], value = key_value[1];
+      acccumulator[key] = converter(value);
+      return acccumulator;
+    };
+    return Object.entries(data).reduce(reducer, {});
+  };
+  return fn;
 };
 
 makeAPIGet = function(url) {

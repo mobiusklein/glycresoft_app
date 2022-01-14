@@ -235,7 +235,7 @@ class Application extends ActionLayerManager
 
     loadData: ->
         HypothesisAPI.all (d) =>
-            @hypotheses = d
+            @hypotheses = convertMapping(Hypothesis.create)(d)
             @emit "render-hypotheses"
         SampleAPI.all (d) =>
             @samples = d
@@ -354,3 +354,23 @@ renderTask = (task) ->
     element = $("<li data-id=\'#{id}\' data-status=\'#{status}\' data-name=\'#{name}\' data-created-at=\'#{created_at}\'><b>#{name}</b> (#{status})</li>")
     element.attr("data-name", name)
     element
+
+
+class Hypothesis
+    constructor: (@name, @id, @uuid, @path, @hypothesis_type, @monosaccharide_bounds, @decoy_hypothesis, options) ->
+        if options?
+            @options = options
+        else
+            @options = {}
+
+    isFullCrossproduct: ->
+        if @options.full_crossproduct?
+            return @options.full_crossproduct
+        return true
+
+    hasDecoyDatabase: ->
+        return @decoy_hypothesis?
+
+    @create: (source) ->
+        return new Hypothesis source.name, source.id, source.uuid, source.path, source.hypothesis_type,
+                              source.monosaccharide_bounds, source.decoy_hypothesis, source.options
