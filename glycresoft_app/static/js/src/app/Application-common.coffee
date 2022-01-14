@@ -78,7 +78,7 @@ class Application extends ActionLayerManager
             @samples[data.name] = data
             @emit "render-samples"
         @handleMessage 'new-hypothesis', (data) =>
-            @hypotheses[data.uuid] = data
+            @hypotheses[data.uuid] = Hypothesis.create(data)
             @emit "render-hypotheses"
         @handleMessage 'new-analysis', (data) =>
             @analyses[data.uuid] = data
@@ -139,7 +139,7 @@ class Application extends ActionLayerManager
             updateWrapper = () ->
                 updater = ->
                     status = taskListContainer.find("li[data-id='#{id}']").attr('data-status')
-                    if status == "running"
+                    if status == "running" or status == "queued"
                         $.get("/internal/log/#{name}-#{created_at}").success(
                             (message) ->
                                 console.log "Updating Log Window..."
@@ -351,7 +351,7 @@ renderTask = (task) ->
     status = task.status
     id = task.id
     created_at = task.created_at
-    element = $("<li data-id=\'#{id}\' data-status=\'#{status}\' data-name=\'#{name}\' data-created-at=\'#{created_at}\'><b>#{name}</b> (#{status})</li>")
+    element = $("<li class='task-display' data-id=\'#{id}\' data-status=\'#{status}\' data-name=\'#{name}\' data-created-at=\'#{created_at}\'><b>#{name}</b> (#{status})</li>")
     element.attr("data-name", name)
     element
 

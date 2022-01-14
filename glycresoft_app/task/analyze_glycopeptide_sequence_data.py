@@ -82,13 +82,14 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
         channel.send(Message("Could not locate hypothesis %r" % hypothesis_identifier, "error"))
         channel.abort("An error occurred during analysis.")
 
-    try:
-        decoy_hypothesis = get_by_name_or_id(
-            decoy_database_connection, GlycopeptideHypothesis, decoy_hypothesis_id)
-    except Exception:
-        channel.send(Message("Could not locate hypothesis %r" %
-                             decoy_hypothesis_id, "error"))
-        channel.abort("An error occurred during analysis.")
+    if decoy_database_connection:
+        try:
+            decoy_hypothesis = get_by_name_or_id(
+                decoy_database_connection, GlycopeptideHypothesis, decoy_hypothesis_id)
+        except Exception:
+            channel.send(Message("Could not locate hypothesis %r" %
+                                decoy_hypothesis_id, "error"))
+            channel.abort("An error occurred during analysis.")
 
     if analysis_name is None:
         analysis_name = "%s @ %s" % (sample_run.name, hypothesis.name)

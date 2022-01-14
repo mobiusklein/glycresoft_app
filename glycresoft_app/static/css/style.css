@@ -143,6 +143,10 @@ Navigation
     font-size: 1em;
 }
 
+.task-display {
+    cursor: pointer;
+}
+
 /*
 
 Mass Shift Input

@@ -109,7 +109,7 @@ Application = (function(superClass) {
     })(this));
     this.handleMessage('new-hypothesis', (function(_this) {
       return function(data) {
-        _this.hypotheses[data.uuid] = data;
+        _this.hypotheses[data.uuid] = Hypothesis.create(data);
         return _this.emit("render-hypotheses");
       };
     })(this));
@@ -210,7 +210,7 @@ Application = (function(superClass) {
         updater = function() {
           var status;
           status = taskListContainer.find("li[data-id='" + id + "']").attr('data-status');
-          if (status === "running") {
+          if (status === "running" || status === "queued") {
             return $.get("/internal/log/" + name + "-" + created_at).success(function(message) {
               var modalContent;
               console.log("Updating Log Window...");
@@ -532,7 +532,7 @@ renderTask = function(task) {
   status = task.status;
   id = task.id;
   created_at = task.created_at;
-  element = $("<li data-id=\'" + id + "\' data-status=\'" + status + "\' data-name=\'" + name + "\' data-created-at=\'" + created_at + "\'><b>" + name + "</b> (" + status + ")</li>");
+  element = $("<li class='task-display' data-id=\'" + id + "\' data-status=\'" + status + "\' data-name=\'" + name + "\' data-created-at=\'" + created_at + "\'><b>" + name + "</b> (" + status + ")</li>");
   element.attr("data-name", name);
   return element;
 };
