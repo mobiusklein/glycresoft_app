@@ -696,7 +696,7 @@ def _export_csv(analysis_uuid):
 
         GlycopeptideLCMSMSAnalysisCSVSerializer(
             open(path, 'wb'), generate_entities(),
-            protein_name_resolver).start()
+            protein_name_resolver, view.analysis).start()
     return [file_name]
 
 
@@ -720,7 +720,8 @@ def _export_spectrum_match_csv(analysis_uuid):
                                     yield sm
 
         GlycopeptideSpectrumMatchAnalysisCSVSerializer(
-            open(path, 'wb'), generate_entities(), protein_name_resolver).start()
+            open(path, 'wb'), generate_entities(), protein_name_resolver,
+            view.analysis).start()
     return [file_name]
 
 
@@ -753,7 +754,6 @@ def _export_associated_glycan_compositions(analysis_uuid):
         compositions = reader.load_glycans_from_identified_glycopeptides()
         file_name = "%s-associated-glycans.txt" % (view.analysis.name,)
         path = safepath(g.manager.get_temp_path(file_name))
-        breakpoint()
         ImportableGlycanHypothesisCSVSerializer(
             open(path, 'wb'), compositions).start()
     return [file_name]
