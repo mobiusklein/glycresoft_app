@@ -1,5 +1,4 @@
 import os
-import platform
 import shutil
 import base64
 import zipfile
@@ -28,9 +27,7 @@ def copy_file_to_server_post():
 
 
 def resolve_file_name(name):
-    breakpoint()
-    path = os.path.join(g.manager.temp_dir, name)
-    return path
+    return g.manager.get_temp_path(name)
 
 
 @file_exports.route("/internal/file_download/<b64name>")
