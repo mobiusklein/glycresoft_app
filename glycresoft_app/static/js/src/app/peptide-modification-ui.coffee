@@ -345,11 +345,17 @@ class ModificationSelectionEditor
             @container.find("#new-modification-name").val("")
             @container.find("#new-modification-formula").val("")
             @container.find("#new-modification-target").val("")
+            console.log("Received Modification Response From Server", payload)
 
             modRule = new ModificationRule(payload.name, payload.formula, payload.mass)
             for spec in payload.specificities
-                modRule.addTarget spec
+                console.log spec
+                [_, specParsed] = parseModificationRuleSpecification spec
+                modRule.addTarget specParsed
+
+            console.log("New modification rule", modRule)
             for modSpec in modRule.toSpecifications()
+                console.log modSpec
                 @fullListing.addRule modSpec
             @fullListing.render()
             @setState "select"
@@ -452,12 +458,12 @@ makeModificationSelectionEditor = (uid, callback) ->
             <div class='col s3 input-field'>
                 <label for='new-modification-formula'>New Modification Formula</label>
                 <input id='new-modification-formula' name="new-modification-formula"
-                       type="text" class="validate" pattern="^[A-Za-z0-9\-\(\)\[\]]+$">
+                       type="text" class="validate" pattern="^[A-Za-z0-9\\-\\(\\)\\[\\]]+$">
             </div>
             <div class='col s3 input-field'>
                 <label for='new-modification-target'>New Modification Target</label>
                 <input id='new-modification-target' name="new-modification-target"
-                       type="text" class="validate" pattern="([A-Z]*)(?: @ ([NC]-term))?">
+                       type="text" class="validate" pattern="(?:([A-Z]*)(?: @ ([NC]-[tT]erm))?|([NC]-[tT]erm))">
             </div>
         </div>
         <div class='modification-choice-controls row'>
