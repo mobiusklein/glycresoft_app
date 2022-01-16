@@ -69,7 +69,7 @@ class ApplicationManager(Project):
 
     @property
     def escaped_base_path(self):
-        return self.base_path.encode("unicode_escape")
+        return self.base_path.encode("unicode_escape").decode('utf8')
 
     @property
     def configuration_path(self):

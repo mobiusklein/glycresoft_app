@@ -1,3 +1,4 @@
+import re
 import logging
 from collections import defaultdict
 
@@ -14,15 +15,31 @@ api = register_service("maintenance", __name__)
 
 logger = logging.getLogger("glycresoft_app.js_error")
 
+# https://stackoverflow.com/a/14693789/1137920
+# 7-bit C1 ANSI sequences
+ansi_escape = re.compile(r'''
+    \x1B  # ESC
+    (?:   # 7-bit C1 Fe (except CSI)
+        [@-Z\\-_]
+    |     # or [ for CSI, followed by a control sequence
+        \[
+        [0-?]*  # Parameter bytes
+        [ -/]*  # Intermediate bytes
+        [@-~]   # Final byte
+    )
+''', re.VERBOSE)
+
 
 @api.route("/server_log")
 def view_server_log():
     path = g.manager.application_log_path
+    log_content = open(path, 'rt').read().replace(
+        ">", "&gt;").replace(
+        "<", "&lt;")
+    # Remove ANSI color codes
+    log_content = ansi_escape.sub('', log_content)
     return Response(
-        "<pre>%s</pre>" % open(path).read().replace(
-            ">", "&gt;").replace(
-            "<", "&lt;").decode(
-            "string_escape"),
+        "<pre>%s</pre>" % log_content,
         mimetype='application/text')
 
 
