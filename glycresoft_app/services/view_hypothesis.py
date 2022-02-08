@@ -114,8 +114,11 @@ def view_glycan_composition_hypothesis_table(uuid, page=1):
         return q.filter_by(
             hypothesis_id=hypothesis_id)
     session = object_session(hypothesis)
-    paginator = paginate(filter_context(session.query(GlycanComposition).filter(
-        GlycanComposition.hypothesis_id == hypothesis_id)), page, page_size)
+    paginator = paginate(filter_context(
+        session.query(GlycanComposition).filter(
+            GlycanComposition.hypothesis_id == hypothesis_id).order_by(
+                GlycanComposition.calculated_mass)
+        ), page, page_size)
     response = render_template(
         "view_glycan_hypothesis/display_table.templ",
         paginator=paginator, base_index=(page - 1) * page_size)

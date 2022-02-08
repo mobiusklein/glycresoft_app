@@ -1,4 +1,4 @@
-<div class='row'>  
+<div class='row'>
     <div class='col s10'>
         <div class='table-container'>
             <table class='bordered display-table' style='width: 100%;'>
@@ -20,7 +20,7 @@
                             {{element.composition|glycan_composition_string}}
                         </td>
                         <td>
-                            {{element.calculated_mass}}
+                            {{"%0.4f" % element.calculated_mass}}
                         </td>
                         <td class='wide'>{{element.structure_classes|join(", ", "name")}}</td>
                     </tr>
@@ -50,6 +50,6 @@
         <li class={{"disabled" if paginator.page == paginator.pages else ""}}>
             <a class='next-page'><i class="material-icons">chevron_right</i></a>
         </li>
-    </ul>        
+    </ul>
     </div>
 </div>
