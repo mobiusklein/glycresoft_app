@@ -178,17 +178,25 @@ def import_sample_from_file():
     manager = g.manager
 
     if g.has_native_client:
+        app.logger.info("Importing sample via native client")
         path = request.values.get("native-sample-file-path")
+        app.logger.info("Local Path: %r", path)
     else:
+        app.logger.info("Importing sample via upload")
         upload_file = request.files['sample-file']
         file_name = upload_file.filename
+        app.logger.info("Uploaded File: %r", file_name)
         secure_name = secure_filename(file_name)
         path = manager.get_sample_path(
             manager.make_unique_sample_name(secure_name))
+        app.logger.info("Destination Path: %r", path)
         upload_file.save(path)
+    app.logger.info("Building Sample Record From %r", path)
     record = manager.sample_manager.make_record(path)
     manager.sample_manager.put(record)
+    app.logger.info("Saving Sample Record %r", record)
     manager.sample_manager.dump()
+    app.logger.info("Sending Refresh Message To %r", g.user)
     message = Message(path, 'refresh-index', user=g.user)
     manager.add_message(message)
     return Response(str(record))
@@ -381,10 +389,7 @@ def _setup_win32_keyboard_interrupt_handler(server, manager):
     # Ensure FORTRAN handler is registered before registering
     # this handler
     from scipy import stats
-    try:
-        import _thread as thread
-    except ImportError:
-        import thread
+    import _thread as thread
 
     import win32api
 

@@ -16,9 +16,11 @@ mollit anim id est laborum
 
 def echo(*args, **kwargs):
     channel = args[-1]
-    for step in range(4):
+    for _ in range(4):
         logger.info(lorem)
-
+    throw = kwargs.get("throw")
+    if throw:
+        raise ValueError("You wanted a problem? Here's a problem.")
     channel.send(Message("Echo.... %s" % [args[:-1]], 'update', user=channel.user))
 
 

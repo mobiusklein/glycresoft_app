@@ -198,20 +198,21 @@ Application = (function(superClass) {
     };
     self = this;
     viewLog = function(event) {
-      var completer, created_at, handle, id, modal, name, state, updateWrapper;
+      var completer, created_at, handle, id, modal, name, state, task_id, updateWrapper;
       handle = $(this);
       id = handle.attr('data-id');
       name = handle.attr("data-name");
       created_at = handle.attr("data-created-at");
       state = {};
-      modal = $("#message-modal");
+      modal = $("#log-modal");
+      task_id = name + "-" + created_at;
       updateWrapper = function() {
         var updater;
         updater = function() {
           var status;
           status = taskListContainer.find("li[data-id='" + id + "']").attr('data-status');
           if (status === "running" || status === "queued") {
-            return $.get("/internal/log/" + name + "-" + created_at).success(function(message) {
+            return $.get("/internal/log/" + task_id).success(function(message) {
               var modalContent;
               console.log("Updating Log Window...");
               modalContent = modal.find(".modal-content");
@@ -226,10 +227,10 @@ Application = (function(superClass) {
       };
       return $.get("/internal/log/" + name + "-" + created_at).success((function(_this) {
         return function(message) {
-          return self.displayMessageModal(message, {
+          return self.displayLogModal(message, {
             "ready": updateWrapper,
             "complete": completer
-          });
+          }, task_id);
         };
       })(this)).error((function(_this) {
         return function(err) {
@@ -404,6 +405,21 @@ Application = (function(superClass) {
   Application.prototype.closeMessageModal = function() {
     var container;
     container = $("#message-modal");
+    return container.closeModal();
+  };
+
+  Application.prototype.displayLogModal = function(message, modalArgs, task_id) {
+    var container;
+    container = $("#log-modal");
+    container.find('.modal-content').html(message);
+    container.find('.download-log').attr('href', "/internal/download_log/" + task_id);
+    $(".lean-overlay").remove();
+    return container.openModal(modalArgs);
+  };
+
+  Application.prototype.closeLogModal = function() {
+    var container;
+    container = $("#log-modal");
     return container.closeModal();
   };
 

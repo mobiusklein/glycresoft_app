@@ -23,7 +23,7 @@
             window.$ = window.jQuery = require("jquery")
             window.Hammer = require("hammerjs")
         }
-    }    
+    }
     </script>
     <script src="{{ url_for('static',filename='dist/js/vendor-bundle.js') }}"></script>
     <script src="{{ url_for('static',filename='dist/js/lib-bundle.js') }}"></script>
@@ -37,7 +37,7 @@ $(function(){
             refreshTasksInterval: 25000,
             upkeepInterval: 10000,
         }
-        
+
     }
 
     window.GlycReSoft = new Application({
@@ -56,7 +56,7 @@ $(function(){
     GlycReSoft.runInitializers()
     GlycReSoft.updatePreferences()
     GlycReSoft.updateTaskList()
-    
+
 })
 
 ApplicationConfiguration = {
@@ -86,7 +86,7 @@ $(function() {
         } else {
             handle.removeClass("mdi-chevron-left")
             handle.addClass("mdi-chevron-right")
-            
+
             $("#left-sidebar").css("width", '14.9%')
             $("#sidebar-content").show()
             handle.attr('data-state', 'open')
@@ -108,7 +108,7 @@ $(function() {
                 <div id='user-display' style='margin-top:7px;'>
                     {% if multiuser and is_logged_in %}
                         User: {{user.name}}
-                    {% endif %}        
+                    {% endif %}
                 </div>
                 <div class='divider'>
                 </div>
@@ -131,12 +131,20 @@ $(function() {
             <div id='home-layer' class='container'>
                 {% block body %}
                 {% endblock %}
-            </div>        
+            </div>
         </div>
         <div id="message-modal" class="modal">
             <div class="modal-content">
             </div>
             <div class="modal-footer">
+                <a href="#!" class=" modal-action modal-close waves-effect waves-green btn-flat">Dismiss</a>
+            </div>
+        </div>
+        <div id="log-modal" class="modal">
+            <div class="modal-content">
+            </div>
+            <div class="modal-footer">
+                <a href="#!" class="download-log waves-effect waves-white btn-flat">Download</a>
                 <a href="#!" class=" modal-action modal-close waves-effect waves-green btn-flat">Dismiss</a>
             </div>
         </div>

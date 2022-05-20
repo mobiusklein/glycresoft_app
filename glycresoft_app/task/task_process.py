@@ -1,6 +1,7 @@
 import logging
 import traceback
 import multiprocessing
+from typing import Callable, DefaultDict, Dict, List, Set
 import dill
 import os
 
@@ -10,6 +11,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from multiprocessing import Process, Pipe, Event as IPCEvent, Manager as _IPCManager
+from multiprocessing.connection import Connection
 
 from threading import Event, Thread, RLock
 try:
@@ -23,7 +25,7 @@ from six import string_types as basestring
 
 from glycan_profiling.task import TaskBase, log_handle
 
-from glycresoft_app.utils.message_queue import make_message_queue, null_user
+from glycresoft_app.utils.message_queue import UserIdentity, make_message_queue, null_user
 
 TaskBase.display_fields = True
 
@@ -50,11 +52,12 @@ def make_log_path(name, created_at):
     return "%s-%s" % (name, str(created_at).replace(":", "-"))
 
 
-def configure_log_wrapper(log_file_path, task_callable, args, channel):
+def configure_log_wrapper(log_file_path, task_callable, args, channel, kwargs):
     args = dill.loads(args)
     args = list(args)
     args.append(channel)
-    import logging
+    kwargs = dill.loads(kwargs)
+
     logger = logging.getLogger()
     handler = logging.FileHandler(log_file_path)
     formatter = logging.Formatter(
@@ -75,7 +78,7 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel):
     logger.info("Task Running on PID %r", current_process.pid)
 
     try:
-        out = task_callable(*args)
+        out = task_callable(*args, **kwargs)
         return out
     except Exception:
         channel.send(Message.traceback())
@@ -220,23 +223,44 @@ class Task(object):
     task_fn : callable
         The function to call in the "task" process
     """
+    id: str
+    name: str
+    user: UserIdentity
+
+    task_fn: Callable
+    callback: Callable
+
+    message_buffer: List
+    pipe: Connection
+    control_context: TaskControlContext
+    stop_event: multiprocessing.Event
+
+    created_at: str
+    started_at: str
+    state: str
+
     def __init__(self, task_fn, args, callback=printop, user=null_user, context=None, **kwargs):
         if context is None:
             context = dict()
         self.id = str(uuid4())
-        self.task_fn = task_fn
-        self.pipe, child_conn = Pipe(True)
         self.created_at = str(datetime.now()).replace(":", "-")
+        self.name = kwargs.pop('name', self.id)
+
+        self.task_fn = task_fn
+        self.log_file_path = kwargs.pop("log_file_path", "%s-%s.log" % (self.name, self.created_at))
+
+        self.pipe, child_conn = Pipe(True)
         self.started_at = None
+
         control_context = TaskControlContext(child_conn, user=user, context=context)
         self.control_context = control_context
         self.stop_event = control_context.stop_event
         self.state = QUEUED
         self.process = None
-        self.args = list(args)
         self.callback = callback
-        self.name = kwargs.get('name', self.id)
-        self.log_file_path = kwargs.get("log_file_path", "%s-%s.log" % (self.name, self.created_at))
+
+        self.args = list(args)
+        self.kwargs = kwargs
         self.message_buffer = []
         self._user = None
         self.user = user
@@ -262,7 +286,7 @@ class Task(object):
 
     def start(self):
         self.process = Process(target=configure_log_wrapper, args=(
-            self.log_file_path, self.task_fn, dill.dumps(self.args), self.control_context))
+            self.log_file_path, self.task_fn, dill.dumps(self.args), self.control_context, dill.dumps(self.kwargs)))
         self.state = RUNNING
         self.process.start()
 
@@ -313,6 +337,7 @@ class Task(object):
             "state": self.state,
             "task_fn": self.task_fn,
             "args": self.args[:-1],
+            "kwargs": self.kwargs,
             "callback": self.callback,
             "user": self.user
         }
@@ -324,6 +349,7 @@ class Task(object):
         self.args = state['args']
         self.callback = state['callback']
         self.user = state['user']
+        self.kwargs = state['kwargs']
         self.pipe, child_conn = Pipe(True)
         control_context = TaskControlContext(child_conn, user=self.user)
         self.stop_event = control_context.stop_event
@@ -414,6 +440,21 @@ class TaskManager(object):
     """
     interval = 5
 
+    task_dir: os.PathLike
+
+    n_running: int
+    max_running: int
+    halting: bool
+
+    running_lock: RLock
+    task_queue: Queue
+
+    tasks: Dict[str, Task]
+    currently_running: Dict[str, Task]
+    completed_tasks: Set[str]
+
+    event_handlers: DefaultDict[str, Set[Callable]]
+
     def __init__(self, task_dir=None, max_running=1):
         if task_dir is None:
             task_dir = "./"
@@ -431,10 +472,10 @@ class TaskManager(object):
         self.halting = False
         self.event_handlers = defaultdict(set)
 
-    def register_event_handler(self, event_type, handler):
+    def register_event_handler(self, event_type: str, handler: Callable):
         self.event_handlers[event_type].add(handler)
 
-    def add_task(self, task):
+    def add_task(self, task: Task):
         """Add a `Task` object to the set of all tasks being managed
         by this instance.
 

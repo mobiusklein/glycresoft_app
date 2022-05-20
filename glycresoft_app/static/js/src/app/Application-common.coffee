@@ -135,25 +135,29 @@ class Application extends ActionLayerManager
             name = handle.attr("data-name")
             created_at = handle.attr("data-created-at")
             state = {}
-            modal = $("#message-modal")
+            modal = $("#log-modal")
+            task_id = "#{name}-#{created_at}"
             updateWrapper = () ->
                 updater = ->
                     status = taskListContainer.find("li[data-id='#{id}']").attr('data-status')
                     if status == "running" or status == "queued"
-                        $.get("/internal/log/#{name}-#{created_at}").success(
+                        $.get("/internal/log/#{task_id}").success(
                             (message) ->
                                 console.log "Updating Log Window..."
                                 modalContent = modal.find(".modal-content")
                                 modalContent.html message
-                                # modal.animate({scrollTop: modal[0].scrollHeight},"fast");
                             )
                 state.intervalId = setInterval(updater, 5000)
             completer = ->
                 clearInterval(state.intervalId)
 
             $.get("/internal/log/#{name}-#{created_at}").success(
-                (message) => self.displayMessageModal(message, {
-                    "ready": updateWrapper, "complete": completer})).error(
+                (message) => self.displayLogModal(
+                    message,
+                    {"ready": updateWrapper, "complete": completer},
+                    task_id
+                )
+            ).error(
                 (err) => alert("An error occurred during retrieval. #{err.toString()}"))
 
         cancelTask = (event) ->
@@ -263,6 +267,17 @@ class Application extends ActionLayerManager
 
     closeMessageModal: ->
         container = $("#message-modal")
+        container.closeModal()
+
+    displayLogModal: (message, modalArgs, task_id) ->
+        container = $("#log-modal")
+        container.find('.modal-content').html message
+        container.find('.download-log').attr('href', "/internal/download_log/#{task_id}")
+        $(".lean-overlay").remove()
+        container.openModal(modalArgs)
+
+    closeLogModal: ->
+        container = $("#log-modal")
         container.closeModal()
 
     ajaxWithContext: (url, options) ->
