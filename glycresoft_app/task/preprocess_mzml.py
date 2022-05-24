@@ -32,16 +32,23 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
     charge_range = (minimum_charge, maximum_charge)
     logger.info("Begin Scan Interpolation")
     loader = MSFileLoader(mzml_file)
-
+    if len(loader) == 0:
+        channel.abort("Cannot process an empty MS data file")
+    start_scan = loader.get_scan_by_time(start_time)
+    if start_scan is None:
+        start_scan = loader[0]
     try:
-        start_scan_id = loader._locate_ms1_scan(loader.get_scan_by_time(start_time)).id
+        start_scan_id = loader._locate_ms1_scan(start_scan).id
     except IndexError:
-        start_scan_id = loader.get_scan_by_time(start_time).id
+        start_scan_id = start_scan.id
 
+    end_scan = loader.get_scan_by_time(end_time)
+    if end_scan is None:
+        end_scan = loader[-1]
     try:
-        end_scan_id = loader._locate_ms1_scan(loader.get_scan_by_time(end_time)).id
+        end_scan_id = loader._locate_ms1_scan(end_scan).id
     except IndexError:
-        end_scan_id = loader.get_scan_by_time(end_time).id
+        end_scan_id = end_scan.id
 
     loader.reset()
     loader.make_iterator(grouped=True)
