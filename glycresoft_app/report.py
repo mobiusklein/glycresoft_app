@@ -1,7 +1,8 @@
 import os
-import urllib
 
 from io import BytesIO
+from base64 import encodebytes
+from urllib.parse import quote
 
 from six import string_types as basestring
 
@@ -35,7 +36,9 @@ mpl_params.update({
 
 def png_plot(figure, **kwargs):
     data_buffer = render_plot(figure, format='png', **kwargs)
-    return "<img src='data:image/png;base64,%s'>" % urllib.quote(data_buffer.getvalue().encode("base64"))
+    return "<img src='data:image/png;base64,%s'>" % quote(
+        encodebytes(data_buffer.getvalue())
+    )
 
 
 def svg_plot(figure, svg_width=None, xml_transform=None, **kwargs):
@@ -54,7 +57,7 @@ def svg_plot(figure, svg_width=None, xml_transform=None, **kwargs):
 
 def svguri_plot(figure, **kwargs):
     svg_string = svg_plot(figure, **kwargs)
-    return "<img src='data:image/svg+xml;utf-8,%s'>" % urllib.quote(svg_string)
+    return "<img src='data:image/svg+xml;utf-8,%s'>" % quote(svg_string)
 
 
 def render_plot(figure, **kwargs):

@@ -34,7 +34,7 @@ class SampleView(SimpleViewBase):
         self.record = record
         self.reader = ProcessedMzMLDeserializer(record.path)
         self.scan_levels = {
-            1: len(self.reader.extended_index.ms1_ids),
+            "1": len(self.reader.extended_index.ms1_ids),
             "N": len(self.reader.extended_index.msn_ids)
         }
         self.minimum_mass = minimum_mass
@@ -85,7 +85,7 @@ class SampleView(SimpleViewBase):
         self.intensity_array = np.array(intensity_accumulator)
         if self.abundance_threshold is None and intensity_accumulator:
             self.abundance_threshold = np.percentile(intensity_accumulator, 90)
-        if self.minimum_mass is None and mass_array:
+        if self.minimum_mass is None and len(mass_array):
             counts, bins = np.histogram(self.mass_array)
             self.minimum_mass = np.average(bins[:-1], weights=counts)
 
@@ -118,6 +118,7 @@ class SampleView(SimpleViewBase):
         chromatograms = list(self.chromatograms)
         if len(chromatograms):
             chromatograms.append(self.total_ion_chromatogram)
+            chromatograms = [chrom for chrom in chromatograms if len(chrom) > 0]
             a = SmoothingChromatogramArtist(
                 chromatograms, ax=ax, colorizer=lambda *a, **k: 'lightblue')
             a.draw(label_function=lambda *a, **kw: "")
@@ -223,7 +224,7 @@ def binsearch(array, value, tol=0.1):
     lo = 0
     hi = len(array)
     while hi != lo:
-        mid = (hi + lo) / 2
+        mid = (hi + lo) // 2
         point = array[mid]
         if abs(value - point) < tol:
             return mid
