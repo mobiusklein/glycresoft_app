@@ -15724,10 +15724,6 @@ Monosaccharide Grid
     position: relative;
     top: 5;
 }
-.log-display {
-
-}
-
 @font-face {
     font-family: Inconsolata;
     src: url("../fonts/Inconsolata/Inconsolata-Regular.ttf");
@@ -16241,6 +16237,10 @@ Modals
 }
 
 #message-modal {
+    width: 95% !important;
+}
+
+#log-modal {
     width: 95% !important;
 }
 

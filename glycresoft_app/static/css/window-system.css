@@ -28,6 +28,10 @@ Modals
     width: 95% !important;
 }
 
+#log-modal {
+    width: 95% !important;
+}
+
 .modal .row{
     margin-left: auto !important;
     margin-right: auto !important;
