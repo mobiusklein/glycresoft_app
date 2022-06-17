@@ -381,6 +381,8 @@ class Hypothesis
     isFullCrossproduct: ->
         if @options.full_crossproduct?
             return @options.full_crossproduct
+        if @options.full_cross_product?
+            return @options.full_cross_product
         return true
 
     hasDecoyDatabase: ->

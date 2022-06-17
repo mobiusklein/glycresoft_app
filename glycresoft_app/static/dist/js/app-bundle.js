@@ -573,6 +573,9 @@ Hypothesis = (function() {
     if (this.options.full_crossproduct != null) {
       return this.options.full_crossproduct;
     }
+    if (this.options.full_cross_product != null) {
+      return this.options.full_cross_product;
+    }
     return true;
   };
 
@@ -3171,14 +3174,20 @@ GlycopeptideLCMSMSSearchController = (function() {
     proteinRowHandle = $(this.proteinTableRowSelector);
     self = this;
     this.handle.find(".tooltipped").tooltip();
-    console.log("Setting up Save Buttons");
     this.handle.find("#save-result-btn").click(function(event) {
-      console.log("Clicked Save Button");
       return self.showExportMenu();
     });
     this.handle.find("#search-by-scan-id").blur(function(event) {
-      console.log(this);
-      return self.searchByScanId(this.value.replace(/\s+$/g, ""));
+      self.searchByScanId(this.value.replace(/\s+$/g, ""));
+      this.value = null;
+      return this.blur();
+    });
+    this.handle.find("#search-by-scan-id").keypress(function(event) {
+      if (event.key === "Enter") {
+        self.searchByScanId(this.value.replace(/\s+$/g, ""));
+        this.value = null;
+        return this.blur();
+      }
     });
     fdrFigureOpener = this.handle.find(this.fdrFigureViewSelector);
     fdrFigureOpener.click((function(_this) {
@@ -3287,13 +3296,15 @@ GlycopeptideLCMSMSSearchController = (function() {
       "analysisId": this.analysisId,
       "scanId": scanId
     });
+    $("#search-by-scan-spinner").show();
     return $.get(url).success((function(_this) {
       return function(doc) {
         var modalHandle;
         modalHandle = _this.getModal();
         modalHandle.find('.modal-content').html(doc);
         $(".lean-overlay").remove();
-        return modalHandle.openModal();
+        modalHandle.openModal();
+        return $("#search-by-scan-spinner").hide();
       };
     })(this));
   };

@@ -1,3 +1,4 @@
+import json
 import os
 import glob
 import warnings
@@ -52,6 +53,14 @@ class HypothesisRecord(_HypothesisRecord):
         return (self.options or {}).get("full_cross_product", False)
 
 
+def json_serializable(value):
+    try:
+        json.dumps(value)
+        return True
+    except TypeError:
+        return False
+
+
 class HypothesisRecordSet(object):
     def __init__(self, path):
         self.path = path
@@ -78,7 +87,12 @@ class HypothesisRecordSet(object):
                 id=hypothesis.id,
                 name=hypothesis.name, uuid=hypothesis.uuid, path=self.path,
                 monosaccharide_bounds=hypothesis.monosaccharide_bounds(),
-                hypothesis_type=HypothesisRecord.GLYCOPEPTIDE)
+                hypothesis_type=HypothesisRecord.GLYCOPEPTIDE,
+                options={
+                    k: v for k, v in hypothesis.parameters.items()
+                    if json_serializable(v)
+                }
+            )
             records.append(record)
         self.records = records
 

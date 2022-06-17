@@ -185,14 +185,21 @@ class GlycopeptideLCMSMSSearchController
         proteinRowHandle = $ @proteinTableRowSelector
         self = @
         @handle.find(".tooltipped").tooltip()
-        console.log("Setting up Save Buttons")
+
         @handle.find("#save-result-btn").click (event) ->
-            console.log("Clicked Save Button")
             self.showExportMenu()
 
         @handle.find("#search-by-scan-id").blur (event) ->
-            console.log(@)
             self.searchByScanId @value.replace(/\s+$/g, "")
+            @.value = null
+            @.blur()
+
+        @handle.find("#search-by-scan-id").keypress (event) ->
+            if event.key == "Enter"
+                self.searchByScanId @value.replace(/\s+$/g, "")
+                @.value = null
+                @.blur()
+
 
         fdrFigureOpener = @handle.find @fdrFigureViewSelector
         fdrFigureOpener.click (event) =>
@@ -271,12 +278,15 @@ class GlycopeptideLCMSMSSearchController
             "analysisId": @analysisId,
             "scanId": scanId
         })
+        $("#search-by-scan-spinner").show()
         $.get(url).success (doc) =>
             modalHandle = @getModal()
             modalHandle.find('.modal-content').html doc
             # Remove any straggler overlays from rapid re-opening of modal
             $(".lean-overlay").remove()
             modalHandle.openModal()
+            $("#search-by-scan-spinner").hide()
+
 
     proteinChoiceHandler: (row) =>
         handle = $ row

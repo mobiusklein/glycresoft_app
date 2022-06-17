@@ -59,10 +59,12 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
                                    search_strategy=GlycopeptideSearchStrategyEnum.classic,
                                    decoy_database_connection=None,
                                    decoy_hypothesis_id=None,
+                                   tandem_scoring_model=None,
                                    channel=None, **kwargs):
     if peak_shape_scoring_model is None:
         peak_shape_scoring_model = GeneralScorer.clone()
         peak_shape_scoring_model.add_feature(get_feature("null_charge"))
+
 
     database_connection = DatabaseBoundOperation(database_connection)
     if decoy_database_connection:
@@ -124,7 +126,9 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
                 mass_shifts=mass_shifts,
                 permute_decoy_glycans=permute_decoy_glycan_fragments,
                 rare_signatures=include_rare_signature_ions,
-                model_retention_time=model_retention_time)
+                model_retention_time=model_retention_time,
+                tandem_scoring_model=tandem_scoring_model
+            )
         elif search_strategy == GlycopeptideSearchStrategyEnum.classic_comparison:
             analyzer = MzMLComparisonGlycopeptideLCMSMSAnalyzer(
                 database_connection._original_connection, decoy_database_connection._original_connection, hypothesis.id, sample_path,
@@ -141,7 +145,9 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
                 mass_shifts=mass_shifts,
                 permute_decoy_glycans=permute_decoy_glycan_fragments,
                 rare_signatures=include_rare_signature_ions,
-                model_retention_time=model_retention_time)
+                model_retention_time=model_retention_time,
+                tandem_scoring_model=tandem_scoring_model
+            )
         elif search_strategy == GlycopeptideSearchStrategyEnum.multipart:
             analyzer = MultipartGlycopeptideLCMSMSAnalyzer(
                 database_connection._original_connection, decoy_database_connection._original_connection,
@@ -156,7 +162,9 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
                 spectrum_batch_size=workload_size,
                 mass_shifts=mass_shifts,
                 rare_signatures=include_rare_signature_ions,
-                model_retention_time=model_retention_time)
+                model_retention_time=model_retention_time,
+                tandem_scoring_model=tandem_scoring_model
+            )
         _ = analyzer.start()
 
         analysis = analyzer.analysis
@@ -167,7 +175,8 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
                 hypothesis_uuid=analysis.hypothesis.uuid,
                 hypothesis_name=analysis.hypothesis.name,
                 sample_name=analysis.parameters['sample_name'],
-                user_id=channel.user.id)
+                user_id=channel.user.id
+            )
             channel.send(Message(record.to_json(), 'new-analysis'))
         else:
             channel.send(Message("No glycopeptides were identified for \"%s\"" % (analysis_name,)))
@@ -188,6 +197,7 @@ class AnalyzeGlycopeptideSequenceTask(Task):
                  include_rare_signature_ions=False, model_retention_time=False,
                  search_strategy=GlycopeptideSearchStrategyEnum.classic,
                  decoy_database_connection=None, decoy_hypothesis_id=None,
+                 tandem_scoring_model=None,
                  callback=lambda: 0, **kwargs):
         args = (database_connection, sample_path, hypothesis_identifier,
                 output_path, analysis_name, grouping_error_tolerance, mass_error_tolerance,
@@ -195,7 +205,7 @@ class AnalyzeGlycopeptideSequenceTask(Task):
                 minimum_oxonium_threshold, workload_size, use_peptide_mass_filter,
                 mass_shifts, permute_decoy_glycan_fragments, include_rare_signature_ions,
                 model_retention_time, search_strategy, decoy_database_connection,
-                decoy_hypothesis_id)
+                decoy_hypothesis_id, tandem_scoring_model)
         if analysis_name is None:
             name_part = kwargs.pop("job_name_part", self.count)
             self.count += 1

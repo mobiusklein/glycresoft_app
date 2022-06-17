@@ -28,7 +28,7 @@
         <div class="col s5">
             {% include "view_glycopeptide_search/components/protein_table.templ" %}
         </div>
-        <div class='col s6 offset-s1'>
+        <div class='col s6'>
             {# TODO
             This space could be used to hold other controls which don't fit directly into the tab view model. Options are:
             - Search for PSM by scan id
@@ -36,7 +36,7 @@
             - Search for glycopeptide by sequence
             #}
             <div class='row' id='search-by-scan-container'>
-                <div class='col s6'>
+                <div class='col s8'>
                     <div class='input-field'>
                         <label for="search-by-scan-id">
                             Search by Scan ID
@@ -46,6 +46,21 @@
                             Enter a Scan ID to check if it has been matched to
                             a glycopeptide"
                             />
+                    </div>
+                </div>
+                <div class='col s2'>
+                    <div id='search-by-scan-spinner' class='preloader-wrapper big active' style="display: none;">
+                        <div class="spinner-layer spinner-blue-only hidden">
+                            <div class="circle-clipper left">
+                                <div class="circle"></div>
+                            </div>
+                            <div class="gap-patch">
+                                <div class="circle"></div>
+                            </div>
+                            <div class="circle-clipper right">
+                                <div class="circle"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -8,7 +8,7 @@ from glycan_profiling.cli.base import cli, HiddenOption
 
 @cli.command(short_help="Launch the application web server")
 @click.pass_context
-@click.argument("project-store-root")
+@click.argument("project-store-root", type=click.Path())
 @click.option("-b", "--base-path", default=None, help='Location to store application instance information')
 @click.option("-e", "--external", is_flag=True, help="Allow connections from non-local machines")
 @click.option("-p", "--port", default=8080, type=int, help="The port to listen on")
@@ -22,6 +22,9 @@ def server(context, project_store_root, base_path, external=False, port=None, no
     Start a web server to allow users to build hypotheses, preprocess MS data, run
     database search analyses, and view results.
     '''
+    if os.path.isdir(project_store_root):
+        project_store_root = os.path.join(
+            project_store_root, "store.glycresoft.db")
     from glycresoft_app.server import server as inner_fn
     inner_fn(context, project_store_root, base_path, external, port, multi_user=multiuser,
              max_tasks=max_tasks, native_client_key=native_client_key, validate_project=validate_project)

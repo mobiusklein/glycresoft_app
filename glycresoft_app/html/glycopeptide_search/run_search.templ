@@ -22,28 +22,34 @@
             <div class='col s2'>
                 <div class='input-field '>
                     <label for='ms1-tolerance'>MS<sup>1</sup> Mass PPM Error Tolerance</label>
-                    <input type='number' value='10' id='ms1-tolerance' name='ms1-tolerance' class='numeric-entry'>
+                    <input type='number' value='10' id='ms1-tolerance' name='ms1-tolerance' class='numeric-entry' />
                 </div>
                 <div class='input-field '>
                     <label for='q-value-threshold'><code>q</code>-Value Threshold</label>
                     <input class='numeric-entry' type='number' value='0.05' id='q-value-threshold'
-                        name='q-value-threshold' step='0.01'>
+                        name='q-value-threshold' step='0.01' />
                 </div>
                 <div class='input-field'>
                     <label for='batch-size'>Spectrum Batch Size</label>
                     <input class='numeric-entry' type='number' value='250' id='batch-size'
-                        name='batch-size' min="1">
+                        name='batch-size' min="1" />
                 </div>
             </div>
             <div class='col s2'>
                 <div class='input-field'>
                     <label for='peak-grouping-tolerance'>Peak Grouping PPM Error Tolerance</label>
-                    <input class='numeric-entry' type='number' value='15' id='peak-grouping-tolerance' name='peak-grouping-tolerance'>
+                    <input class='numeric-entry' type='number' value='15' id='peak-grouping-tolerance' name='peak-grouping-tolerance' />
                 </div>
                 <div class='input-field'>
-                    <label for='q-value-threshold'>Minimum Oxonium Threhsold</label>
+                    <label for='minimum-oxonium-threshold'>Minimum Oxonium Threhsold</label>
                     <input class='numeric-entry' type='number' value='0.05' id='minimum-oxonium-threshold'
-                        name='minimum-oxonium-threshold' step='0.01'>
+                        name='minimum-oxonium-threshold' step='0.01' />
+                </div>
+                <div>
+                    <label for='msn-scoring-model'>MSn Scoring Model</label>
+                    <select class='browser-default' id='msn-scoring-model' name='msn-scoring-model'>
+                        <option></option>
+                    </select>
                 </div>
             </div>
             <div class='col s2'>
@@ -80,6 +86,30 @@
         <button class='btn'>Submit</button>
     </form>
 <script>
+
+function updateScoringModelOptionsFromHypothesisType() {
+    const hypothesisChoiceInput = document.querySelector("#hypothesis_choice")
+    const hypothesisId = hypothesisChoiceInput.value
+    const hypothesis = GlycReSoft.hypotheses[hypothesisId]
+    let scoringOptions = []
+    if (!hypothesis.isFullCrossproduct()) {
+        scoringOptions = [
+            new Option("Intensity", "log_intensity"),
+            new Option("Reweighted Intensity", "log_intensity_v3", true, true)
+        ]
+    } else {
+        scoringOptions = [
+            new Option("Binomial", "coverage_weighted_binomial", true, true),
+            new Option("Intensity", "log_intensity"),
+            new Option("Peptide Binomial", "peptide_only_cw_binomial"),
+            new Option("Reweighted Intensity", "log_intensity_v3")
+        ]
+    }
+    const scoringModelSelect = document.querySelector("#msn-scoring-model")
+    Array.from(scoringModelSelect.children).map(c => scoringModelSelect.removeChild(c))
+    scoringOptions.map(c => scoringModelSelect.appendChild(c))
+}
+
 function updatePeptideMassFilterForFullCrossproduct() {
     const hypothesisChoiceInput = document.querySelector("#hypothesis_choice")
     const peptideMassFilterInput = document.querySelector("#peptide-mass-filter")
@@ -108,7 +138,10 @@ function updatePeptideMassFilterForFullCrossproduct() {
     }
 }
 
-document.querySelector("#hypothesis_choice").onchange = updatePeptideMassFilterForFullCrossproduct
+document.querySelector("#hypothesis_choice").onchange = () => {
+    updatePeptideMassFilterForFullCrossproduct()
+    updateScoringModelOptionsFromHypothesisType()
+}
 
 MassShiftInputWidget($(".mass-shift-input-table"))
 ajaxForm($("form#match-sample-form"), function(){
@@ -120,5 +153,6 @@ ajaxForm($("form#match-sample-form"), function(){
 })
 materialFileInput()
 updatePeptideMassFilterForFullCrossproduct()
+updateScoringModelOptionsFromHypothesisType()
 </script>
 </div>

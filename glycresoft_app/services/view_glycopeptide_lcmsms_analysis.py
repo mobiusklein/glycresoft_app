@@ -654,8 +654,12 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
             if view.retention_time_model:
                 has_retention_time_model = True
                 if gp.chromatogram:
-                    retention_time_score = view.retention_time_model.score_interval(gp, alpha=0.01)
-                    retention_time_interval = view.retention_time_model.predict_interval(gp, alpha=0.01)
+                    retention_time_score = view.retention_time_model.score_interval(
+                        gp, alpha=0.01
+                    )
+                    retention_time_interval = view.retention_time_model._truncate_interval(
+                        view.retention_time_model.predict_interval(gp, alpha=0.01)
+                    )
             return render_template(
                 "/view_glycopeptide_search/components/glycopeptide_detail.templ",
                 glycopeptide=gp,

@@ -1,10 +1,12 @@
 import re
-from flask import Response, g, request, render_template
+from flask import Response, g, request, render_template, current_app
 
 try:
     from werkzeug import secure_filename
 except ImportError:
     from werkzeug.utils import secure_filename
+
+from glycan_profiling.cli.validators import validate_glycopeptide_tandem_scoring_function
 
 from .form_cleaners import remove_empty_rows, intify, make_unique_name
 from .service_module import register_service
@@ -62,6 +64,11 @@ def run_search_post():
     else:
         model_retention_time = False
 
+    msn_scoring_model_name = data.get("msn-scoring-model")
+    tandem_scoring_model, msn_scoring_options = validate_glycopeptide_tandem_scoring_function(None, msn_scoring_model_name)
+    if msn_scoring_options:
+        current_app.logger.warning("Requested scoring model %s has unused options %s", msn_scoring_model_name, msn_scoring_options)
+
     hypothesis_uuid = (data.get("hypothesis_choice"))
     hypothesis_record = g.manager.hypothesis_manager.get(hypothesis_uuid)
     hypothesis_name = hypothesis_record.name
@@ -115,6 +122,8 @@ def run_search_post():
             model_retention_time=model_retention_time,
             search_strategy=search_strategy,
             decoy_database_connection=decoy_hypothesis_path,
-            decoy_hypothesis_id=decoy_hypothesis_id)
+            decoy_hypothesis_id=decoy_hypothesis_id,
+            tandem_scoring_model=tandem_scoring_model
+        )
         g.add_task(task)
     return Response("Tasks Scheduled")
