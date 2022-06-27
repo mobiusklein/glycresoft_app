@@ -4,6 +4,8 @@ from weakref import WeakValueDictionary
 from collections import OrderedDict
 from threading import RLock
 
+from sqlalchemy.orm import object_session
+
 from flask import Response, g, request, render_template, jsonify, abort
 
 from glycopeptidepy import PeptideSequence
@@ -82,6 +84,7 @@ class GlycopeptideSnapShot(SnapshotBase):
     def _update_bindings(self, session):
         super(GlycopeptideSnapShot, self)._update_bindings(session)
         for obj in self.members:
+            self._detatch_object(obj)
             session.add(obj)
 
     def get_glycoprotein(self, session):

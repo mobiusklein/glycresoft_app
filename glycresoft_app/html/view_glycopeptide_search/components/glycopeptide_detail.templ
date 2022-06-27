@@ -127,13 +127,14 @@
                         <td class='glycopeptide-detail-matched-scan-time center-align'>{{"%0.2f minutes" % scan.scan_time}}</td>
                         <td class='glycopeptide-detail-matched-scan-score center-align'>{{"%0.2f" % scan.score}}</td>
                         <td class='glycopeptide-detail-matched-scan-charge center-align'>{{scan.precursor_information.charge}}</td>
-                        {% if scan.precursor_information.precursor_scan_id|length > 30 %}
+                        {% set precursor_id = scan.precursor_information.precursor.scan_id %}
+                        {% if precursor_id|length > 30 %}
                             <td class='glycopeptide-detail-matched-precursor'>
-                                <small>{{scan.precursor_information.precursor_scan_id}}</small>
+                                <small>{{precursor_id}}</small>
                             </td>
                         {% else %}
                             <td class='glycopeptide-detail-matched-precursor'>
-                                {{scan.precursor_information.precursor_scan_id}}
+                                {{precursor_id}}
                             </td>
                         {% endif %}
                     </tr>

@@ -1,7 +1,7 @@
 import os
 
 from io import BytesIO
-from base64 import encodebytes
+import base64
 from urllib.parse import quote
 
 from six import string_types as basestring
@@ -34,12 +34,23 @@ mpl_params.update({
     'figure.subplot.bottom': .125})
 
 
-def png_plot(figure, **kwargs):
-    data_buffer = render_plot(figure, format='png', **kwargs)
-    return "<img src='data:image/png;base64,%s'>" % quote(
-        encodebytes(data_buffer.getvalue())
-    )
+def xmlattrs(**kwargs):
+    return ' '.join("%s=\"%s\"" % kv for kv in kwargs.items()).encode('utf8')
 
+
+def png_plot(figure, img_width=None, img_height=None, xattrs=None, **kwargs):
+    if xattrs is None:
+        xattrs = dict()
+    xml_attributes = dict(xattrs)
+    if img_width is not None:
+        xml_attributes['width'] = img_width
+    if img_height is not None:
+        xml_attributes['height'] = img_height
+    data_buffer = render_plot(figure, format='png', **kwargs)
+    return (b"<img %s src='data:image/png;base64,%s'>" % (
+        xmlattrs(**xml_attributes),
+        base64.b64encode(data_buffer.getvalue())
+    )).decode('utf8')
 
 def svg_plot(figure, svg_width=None, xml_transform=None, **kwargs):
     data_buffer = render_plot(figure, format='svg', **kwargs)
@@ -55,9 +66,12 @@ def svg_plot(figure, svg_width=None, xml_transform=None, **kwargs):
     return result.decode('utf8')
 
 
-def svguri_plot(figure, **kwargs):
+def svguri_plot(figure, xattrs=None, **kwargs):
+    if xattrs is None:
+        xattrs = dict()
+    xml_attributes = xmlattrs(**dict(xattrs)).decode('utf8')
     svg_string = svg_plot(figure, **kwargs)
-    return "<img src='data:image/svg+xml;utf-8,%s'>" % quote(svg_string)
+    return "<img %s src='data:image/svg+xml;utf-8,%s'>" % (xml_attributes, quote(svg_string))
 
 
 def render_plot(figure, **kwargs):

@@ -6,9 +6,9 @@
 <div id='glycopeptide-lcmsms-container'>
     <div class='row'>
         <div class='col s4'>
-            <b>MS<sup>1</sup> Mass Accuracy:</b> {{analysis.parameters.mass_error_tolerance * (10 ** 6)}} PPM<br>
-            <b>Grouping Tolerance:</b> {{analysis.parameters.grouping_error_tolerance * (10 ** 6)}} PPM<br>
-            <b>MS<sup>n</sup> Mass Accuracy:</b> {{analysis.parameters.fragment_error_tolerance * (10 ** 6)}} PPM<br>
+            <b>MS<sup>1</sup> Mass Accuracy:</b> {{(analysis.parameters.mass_error_tolerance * (10 ** 6))|round(2)}} PPM<br>
+            <b>Grouping Tolerance:</b> {{(analysis.parameters.grouping_error_tolerance * (10 ** 6))|round(2)}} PPM<br>
+            <b>MS<sup>n</sup> Mass Accuracy:</b> {{(analysis.parameters.fragment_error_tolerance * (10 ** 6))|round(2)}} PPM<br>
             <b>Minimum <code>q</code>-Value For Clustering:</b> {{analysis.parameters.psm_fdr_threshold}}<br>
         </div>
         <div class='col s4'>

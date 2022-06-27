@@ -14,10 +14,7 @@ from multiprocessing import Process, Pipe, Event as IPCEvent, Manager as _IPCMan
 from multiprocessing.connection import Connection
 
 from threading import Event, Thread, RLock
-try:
-    from Queue import Queue, Empty as QueueEmptyException
-except ImportError:
-    from queue import Queue, Empty as QueueEmptyException
+from queue import Queue, Empty as QueueEmptyException
 
 
 import psutil

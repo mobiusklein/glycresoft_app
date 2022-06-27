@@ -5,6 +5,8 @@ import pickle
 from time import sleep
 from threading import RLock
 
+import dill
+
 from glycan_profiling.serialize import (
     DatabaseBoundOperation, SampleRun, GlycanHypothesis,
     GlycopeptideHypothesis, Analysis, AnalysisTypeEnum)
@@ -17,6 +19,7 @@ from glycresoft_app.config import get as config_from_path
 
 from glycresoft_app.project.project import Project, safepath
 from glycresoft_app.utils.message_queue import null_user
+
 
 
 def has_access(record, user):
@@ -131,7 +134,7 @@ class ApplicationManager(Project):
         task.update_control_context(context)
         self.task_manager.add_task(task)
         path = self.get_task_path(task.name)
-        pickle.dump(task.args[:-1], open(path, 'wb'))
+        dill.dump(task.args[:-1], open(path, 'wb'))
 
     def cancel_task(self, task_id):
         self.task_manager.cancel_task(task_id)

@@ -3,6 +3,9 @@ import logging
 import contextlib
 
 from threading import RLock
+
+from sqlalchemy.orm import object_session
+
 from glycan_profiling.serialize import (
     DatabaseBoundOperation)
 
@@ -111,6 +114,11 @@ class SnapshotBase(object):
     def _clear_bindings(self):
         self.session.expunge_all()
         self.session = None
+
+    def _detatch_object(self, obj):
+        session = object_session(obj)
+        if session is not None:
+            session.expunge(obj)
 
     @contextlib.contextmanager
     def bind(self, session):

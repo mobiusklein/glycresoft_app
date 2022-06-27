@@ -32,7 +32,7 @@ def resolve_file_name(name):
 
 @file_exports.route("/internal/file_download/<b64name>")
 def download_file(b64name):
-    name = base64.b64decode(b64name)
+    name = base64.b64decode(b64name).decode("utf8")
     path = resolve_file_name(name)
     if os.path.exists(path):
         def yielder():

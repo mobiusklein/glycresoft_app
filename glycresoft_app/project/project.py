@@ -32,6 +32,17 @@ def safepath(path):
         return path
 
 
+def ensure_text(s):
+    if isinstance(s, (bytes, bytearray)):
+        s = s.decode('utf8')
+    elif isinstance(s, str):
+        pass
+    else:
+        breakpoint()
+        s = str(s)
+    return s
+
+
 class Project(object):
     _directories_def = {
         "sample_dir": sample.SampleManager,
@@ -95,18 +106,23 @@ class Project(object):
         self.hypothesis_manager.rebuild()
 
     def get_sample_path(self, name):
+        name = ensure_text(name)
         return safepath(path.join(self.sample_dir, name))
 
     def get_temp_path(self, name):
+        name = ensure_text(name)
         return safepath(path.join(self.temp_dir, name))
 
     def get_task_path(self, name):
+        name = ensure_text(name)
         return safepath(path.join(self.task_dir, name))
 
     def get_results_path(self, name):
+        name = ensure_text(name)
         return safepath(path.join(self.results_dir, name))
 
     def get_hypothesis_path(self, name):
+        name = ensure_text(name)
         return safepath(path.join(self.hypothesis_dir, name))
 
     def make_unique_sample_name(self, sample_name):

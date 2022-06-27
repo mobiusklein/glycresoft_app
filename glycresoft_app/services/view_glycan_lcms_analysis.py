@@ -1,8 +1,12 @@
+from threading import RLock
+
+from sqlalchemy.orm import object_session
+
 from flask import g, request, render_template, jsonify
+
 from .service_module import register_service
 from .collection_view import CollectionViewBase, ViewCache, SnapshotBase
 
-from threading import RLock
 from glycresoft_app.utils.state_transfer import request_arguments_and_context, FilterSpecificationSet
 from glycresoft_app import report
 from glycresoft_app.utils.pagination import SequencePagination
@@ -85,9 +89,11 @@ class GlycanChromatographySnapShot(SnapshotBase):
     def _update_bindings(self, session):
         super(GlycanChromatographySnapShot, self)._update_bindings(session)
         for c in self.member_id_map.values():
+            self._detatch_object(c)
             session.add(c)
 
         for c in self.unidentified_id_map.values():
+            self._detatch_object(c)
             session.add(c)
 
     def is_valid(self, score_threshold, glycan_filters, start_time=0, end_time=float('inf'),
@@ -288,7 +294,9 @@ def chromatograms_chart(analysis_uuid):
     with view:
         snapshot = view.get_items_for_display()
         with snapshot.bind(view.session):
-            return report.svguri_plot(snapshot.chromatograms_chart().ax, bbox_inches='tight')
+            return report.svguri_plot(snapshot.chromatograms_chart().ax, xattrs={
+                "style": "width:75%;margin-left:12%;"
+            }, bbox_inches='tight')
 
 
 @app.route("/view_glycan_lcms_analysis/<analysis_uuid>/page/<int:page>", methods=['POST'])
@@ -403,7 +411,7 @@ def details_for_unidentified(analysis_uuid, chromatogram_id):
                     with_mass_shift, rest = rest.bisect_mass_shift(mass_shift)
                     labels[mass_shift] = with_mass_shift
                 mass_shift_plot = SmoothingChromatogramArtist(
-                    labels.values(),
+                    list(labels.values()),
                     colorizer=lambda *a, **k: 'green', ax=figax()).draw(
                     label_function=lambda *a, **k: tuple(a[0].mass_shifts)[0].name,
                     legend=False).ax

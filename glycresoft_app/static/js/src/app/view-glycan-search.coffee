@@ -5,7 +5,7 @@ class GlycanCompositionLCMSSearchPaginator extends PaginationBase
     rowSelector: '.glycan-match-row'
 
     constructor: (@analysisId, @handle, @controller) ->
-        super(1) 
+        super(1)
 
     getPageUrl: (page=1) ->
         @pageUrl.format {"page": page, "analysisId": @analysisId}
@@ -21,7 +21,7 @@ class GlycanCompositionLCMSSearchUnidentifiedChromatogramPaginator extends Pagin
     rowSelector: ".unidentified-row"
 
     constructor: (@analysisId, @handle, @controller) ->
-        super(1) 
+        super(1)
 
     getPageUrl: (page=1) ->
         @pageUrl.format {"page": page, "analysisId": @analysisId}

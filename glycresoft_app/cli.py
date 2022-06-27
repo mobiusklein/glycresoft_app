@@ -5,6 +5,8 @@ import click
 from glycan_profiling.cli.tools import tools
 from glycan_profiling.cli.base import cli, HiddenOption
 
+from glycresoft_app.project.project import Project
+
 
 @cli.command(short_help="Launch the application web server")
 @click.pass_context
@@ -42,6 +44,12 @@ def project_init(path, reinitialize_check=False):
     from glycresoft_app.project.project import Project
     proj = Project(path, validate=reinitialize_check)
     click.secho("%r" % (proj,))
+
+
+@project.command("validate", short_help="Validate project structure")
+@click.argument("path")
+def project_validate(path):
+    Project(path, validate=True)
 
 
 @project.command("add-analysis", short_help='Add an existing analysis to the project')
