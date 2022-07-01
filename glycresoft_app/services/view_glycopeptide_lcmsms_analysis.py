@@ -9,6 +9,7 @@ from sqlalchemy.orm import object_session
 from flask import Response, g, request, render_template, jsonify, abort
 
 from glycopeptidepy import PeptideSequence
+from glycopeptidepy.utils.collectiontools import groupby
 
 from glycresoft_app.utils.state_transfer import request_arguments_and_context, FilterSpecificationSet
 from glycresoft_app.utils.pagination import SequencePagination
@@ -682,6 +683,63 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
             )
 
 
+@app.route(
+    "/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/evaluate_spectrum",
+    methods=['GET', 'POST'])
+def evalute_spectrum(analysis_uuid):
+    if request.method == 'GET':
+        return render_template(
+            "/view_glycopeptide_search/components/spectrum_evaluation.templ", glycopeptide=None)
+    view = get_view(analysis_uuid)
+    scan_id = request.values['scan_id'].strip()
+    glycopeptide = request.values['glycopeptide'].strip()
+    gp = PeptideSequence(glycopeptide)
+    with view:
+        scan = view.peak_loader.get_scan_by_id(scan_id)
+
+        scoring_model = view.parameters['tandem_scoring_model']
+        error_tolerance = view.parameters['fragment_error_tolerance']
+        extra_msn_evaluation_kwargs = view.parameters.get('extra_msn_evaluation_kwargs', {}).copy()
+        extra_msn_evaluation_kwargs['error_tolerance'] = error_tolerance
+
+        match = scoring_model.evaluate(scan, gp, **extra_msn_evaluation_kwargs)
+
+        specmatch_artist = TidySpectrumMatchAnnotator(match, ax=figax())
+        specmatch_artist.draw(fontsize=10, pretty=True)
+        annotated_match_ax = specmatch_artist.ax
+
+        annotated_match_ax.set_title("%s\n" % (scan_id,), fontsize=18)
+        annotated_match_ax.set_ylabel(annotated_match_ax.get_ylabel(), fontsize=16)
+        annotated_match_ax.set_xlabel(annotated_match_ax.get_xlabel(), fontsize=16)
+
+        sequence_logo_plot = glycopeptide_match_logo(match, ax=figax())
+        xlim = list(sequence_logo_plot.get_xlim())
+        xlim[0] += 1
+
+        sequence_logo_plot.set_xlim(xlim[0], xlim[1])
+
+    def xml_transform(root):
+        view_box_str = root.attrib["viewBox"]
+        x_start, y_start, x_end, y_end = map(float, view_box_str.split(" "))
+        x_start += 25
+        updated_view_box_str = " ".join(map(str, [x_start, y_start, x_end, y_end]))
+        root.attrib["viewBox"] = updated_view_box_str
+        fig_g = root.find(".//{http://www.w3.org/2000/svg}g[@id=\"figure_1\"]")
+        fig_g.attrib["transform"] = "scale(1.0, 1.0)"
+        return root
+
+    payload = {
+        "spectrum_plot": report.svg_plot(annotated_match_ax, svg_width="100%", bbox_inches='tight', height=3.5, width=10, patchless=True),
+        "sequence_logo_plot": report.svg_plot(
+            sequence_logo_plot, svg_width="100%", xml_transform=xml_transform, bbox_inches='tight',
+            height=3, width=7, patchless=True),
+        "score": match.score,
+        "glycopeptide": str(glycopeptide)
+    }
+    return render_template(
+        "/view_glycopeptide_search/components/spectrum_evaluation.templ", **payload)
+
+
 def _export_csv(analysis_uuid):
     view = get_view(analysis_uuid)
     with view:
@@ -800,22 +858,43 @@ def to_csv(analysis_uuid):
     return jsonify(filename=file_name)
 
 
-@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/<int:protein_id>/chromatogram_group", methods=["POST"])
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/<int:protein_id>/chromatogram_group")
 def chromatogram_group_plot(analysis_uuid, protein_id):
     view = get_view(analysis_uuid)
     with view:
         snapshot = view.get_items_for_display(protein_id)
-        graph = chromatogram_graph.GlycopeptideChromatogramGraph([
-            gp.chromatogram for gp in snapshot
-        ])
-        graph.build()
-        bunch = graph.sequence_map[request.values['backbone']]
-        chroma = [node.chromatogram for node in bunch]
-        ax = figax()
-        SmoothingChromatogramArtist(
-            chroma, ax=ax, colorizer=lambda *a, **k: 'green').draw(
-            legend=False)
-    return Response(report.svg_plot(ax, bbox_inches='tight', height=5, width=12, patchless=True))
+        chroma = [
+            gp for gp in snapshot
+            if gp.chromatogram is not None
+        ]
+        for chrom in chroma:
+            view.session.add(chrom)
+
+        groups = groupby(chroma, key_fn=lambda x: x.structure.peptide_id)
+        axes = []
+        for _group_key, group in sorted(groups.items()):
+            ax = figax()
+            artist = SmoothingChromatogramArtist(
+                group, ax=ax)
+            artist.draw(
+                legend=False,
+                label_function=lambda chrom, *args, **kwargs: str(chrom.glycan_composition)
+            )
+            ax.set_title(str(group[0].structure.convert().clone().deglycosylate()))
+            artist.minimum_ident_time -= artist.minimum_ident_time * 0.1
+            artist.maximum_ident_time += artist.maximum_ident_time * 0.1
+            artist.layout_axes(legend=False)
+
+            axes.append(ax)
+    figures = [report.svg_plot(ax, bbox_inches='tight', height=5, width=12, patchless=True) for ax in axes]
+    response = {
+        "figures": [
+            {
+                "figure": figure,
+            } for figure in figures
+        ]
+    }
+    return jsonify(response)
 
 
 serialization_formats = {

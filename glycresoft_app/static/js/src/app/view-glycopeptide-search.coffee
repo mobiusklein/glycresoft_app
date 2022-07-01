@@ -24,11 +24,29 @@ class GlycopeptideLCMSMSSearchTabView extends TabViewBase
     updateUrl: '/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/overview'
     containerSelector: '#glycopeptide-lcmsms-content-container'
 
+    chromatogramGroupViewSelector: "#view-chromatogram-groups-figures"
+    chromatogramGroupFigureUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/chromatogram_group"
+
     constructor: (@analysisId, @handle, @controller, updateHandlers) ->
+        updateHandlers.push => @registerChromatogramGroupHandler()
         super(updateHandlers)
 
     getUpdateUrl: ->
         @updateUrl.format({'analysisId': @analysisId, 'proteinId': @controller.proteinId})
+
+    showChromatogramGroupsFigure: ->
+        $.get(@chromatogramGroupFigureUrl.format({"analysisId": @analysisId, "proteinId": @controller.proteinId})).success (response) ->
+            chunks = []
+            response.figures.forEach (figure) ->
+                chunks.push "<div class='simple-figure'>#{figure.figure}</div>"
+            formContent = chunks.join('\n')
+            GlycReSoft.displayMessageModal(formContent)
+
+    registerChromatogramGroupHandler: ->
+        handle = $ @containerSelector
+        chromFigureOpener = handle.find @chromatogramGroupViewSelector
+        chromFigureOpener.click (event) =>
+            @showChromatogramGroupsFigure()
 
 
 class PlotManagerBase
@@ -156,6 +174,9 @@ class GlycopeptideLCMSMSSearchController
     rtModelViewSelector: "#view-retention-time-model-figures"
     rtModelFigureUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/plot_retention_time_model"
 
+    spectrumEvaluationSelector: "#open-spectrum-evaluation-container"
+    spectrumEvaluationUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/evaluate_spectrum"
+
     detailUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/details_for/{glycopeptideId}"
     saveCSVURL: "/view_glycopeptide_lcmsms_analysis/{analysisId}/to-csv"
     searchByScanIdUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/search_by_scan/{scanId}"
@@ -209,6 +230,19 @@ class GlycopeptideLCMSMSSearchController
         rtModelOpener.click (event) =>
             @showRTModelFigures()
 
+        spectrumEvaluationOpener = @handle.find @spectrumEvaluationSelector
+        spectrumEvaluationOpener.click (event) =>
+            $.get(@spectrumEvaluationUrl.format({"analysisId": @analysisId})).success (formContent) =>
+                GlycReSoft.displayMessageModal(formContent)
+                materialRefresh()
+                $("#evaluate-spectrum-btn").click (event) =>
+                    formData = {}
+                    formData.scan_id = $("#scan_id_input").val()
+                    formData.glycopeptide = $("#glycopeptide_input").val()
+                    GlycReSoft.closeMessageModal()
+                    $.post(@spectrumEvaluationUrl.format({"analysisId": @analysisId}), formData).success (formContent) =>
+                        GlycReSoft.displayMessageModal(formContent)
+
         proteinRowHandle.click (event) ->
             self.proteinChoiceHandler @
         console.log("setup complete")
@@ -247,7 +281,7 @@ class GlycopeptideLCMSMSSearchController
         GlycReSoft.context['protein_id']
 
     selectLastProteinViewed: ->
-        proteinId = @getLastProteinViewed()
+        @proteinId = @getLastProteinViewed()
 
     updateView: ->
         @tabView.updateView()

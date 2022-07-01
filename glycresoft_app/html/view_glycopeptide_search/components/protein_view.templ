@@ -1,14 +1,19 @@
 <div id='protein-view'>
     <div class='row'>
-        <div class='col s10'>
+        <div class='col s9'>
             <h5 class='section-title'>>{{glycoprotein.name}}</h5>
             <div  style="max-height: 200px;overflow-y: auto;">
                 <code>
                     {{glycoprotein.protein_sequence |
                       highlight_sequence_site(glycoprotein.glycosylation_sites, "glycosylation-site") |
-                      n_per_row(80)}}        
+                      n_per_row(80)}}
                 </code>
             </div>
+        </div>
+        <div class="col s3" id="view-chromatogram-groups-container">
+            <button class='btn' id='view-chromatogram-groups-figures'>
+                View Chromatogram Groups
+            </button>
         </div>
     </div>
     <div class='row'>

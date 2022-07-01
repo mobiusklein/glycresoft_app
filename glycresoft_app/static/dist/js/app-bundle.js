@@ -2930,10 +2930,19 @@ GlycopeptideLCMSMSSearchTabView = (function(superClass) {
 
   GlycopeptideLCMSMSSearchTabView.prototype.containerSelector = '#glycopeptide-lcmsms-content-container';
 
+  GlycopeptideLCMSMSSearchTabView.prototype.chromatogramGroupViewSelector = "#view-chromatogram-groups-figures";
+
+  GlycopeptideLCMSMSSearchTabView.prototype.chromatogramGroupFigureUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/chromatogram_group";
+
   function GlycopeptideLCMSMSSearchTabView(analysisId, handle1, controller, updateHandlers) {
     this.analysisId = analysisId;
     this.handle = handle1;
     this.controller = controller;
+    updateHandlers.push((function(_this) {
+      return function() {
+        return _this.registerChromatogramGroupHandler();
+      };
+    })(this));
     GlycopeptideLCMSMSSearchTabView.__super__.constructor.call(this, updateHandlers);
   }
 
@@ -2942,6 +2951,32 @@ GlycopeptideLCMSMSSearchTabView = (function(superClass) {
       'analysisId': this.analysisId,
       'proteinId': this.controller.proteinId
     });
+  };
+
+  GlycopeptideLCMSMSSearchTabView.prototype.showChromatogramGroupsFigure = function() {
+    return $.get(this.chromatogramGroupFigureUrl.format({
+      "analysisId": this.analysisId,
+      "proteinId": this.controller.proteinId
+    })).success(function(response) {
+      var chunks, formContent;
+      chunks = [];
+      response.figures.forEach(function(figure) {
+        return chunks.push("<div class='simple-figure'>" + figure.figure + "</div>");
+      });
+      formContent = chunks.join('\n');
+      return GlycReSoft.displayMessageModal(formContent);
+    });
+  };
+
+  GlycopeptideLCMSMSSearchTabView.prototype.registerChromatogramGroupHandler = function() {
+    var chromFigureOpener, handle;
+    handle = $(this.containerSelector);
+    chromFigureOpener = handle.find(this.chromatogramGroupViewSelector);
+    return chromFigureOpener.click((function(_this) {
+      return function(event) {
+        return _this.showChromatogramGroupsFigure();
+      };
+    })(this));
   };
 
   return GlycopeptideLCMSMSSearchTabView;
@@ -3130,6 +3165,10 @@ GlycopeptideLCMSMSSearchController = (function() {
 
   GlycopeptideLCMSMSSearchController.prototype.rtModelFigureUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/plot_retention_time_model";
 
+  GlycopeptideLCMSMSSearchController.prototype.spectrumEvaluationSelector = "#open-spectrum-evaluation-container";
+
+  GlycopeptideLCMSMSSearchController.prototype.spectrumEvaluationUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/evaluate_spectrum";
+
   GlycopeptideLCMSMSSearchController.prototype.detailUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/{proteinId}/details_for/{glycopeptideId}";
 
   GlycopeptideLCMSMSSearchController.prototype.saveCSVURL = "/view_glycopeptide_lcmsms_analysis/{analysisId}/to-csv";
@@ -3170,7 +3209,7 @@ GlycopeptideLCMSMSSearchController = (function() {
   };
 
   GlycopeptideLCMSMSSearchController.prototype.setup = function() {
-    var fdrFigureOpener, filterContainer, proteinRowHandle, rtModelOpener, self;
+    var fdrFigureOpener, filterContainer, proteinRowHandle, rtModelOpener, self, spectrumEvaluationOpener;
     proteinRowHandle = $(this.proteinTableRowSelector);
     self = this;
     this.handle.find(".tooltipped").tooltip();
@@ -3199,6 +3238,29 @@ GlycopeptideLCMSMSSearchController = (function() {
     rtModelOpener.click((function(_this) {
       return function(event) {
         return _this.showRTModelFigures();
+      };
+    })(this));
+    spectrumEvaluationOpener = this.handle.find(this.spectrumEvaluationSelector);
+    spectrumEvaluationOpener.click((function(_this) {
+      return function(event) {
+        return $.get(_this.spectrumEvaluationUrl.format({
+          "analysisId": _this.analysisId
+        })).success(function(formContent) {
+          GlycReSoft.displayMessageModal(formContent);
+          materialRefresh();
+          return $("#evaluate-spectrum-btn").click(function(event) {
+            var formData;
+            formData = {};
+            formData.scan_id = $("#scan_id_input").val();
+            formData.glycopeptide = $("#glycopeptide_input").val();
+            GlycReSoft.closeMessageModal();
+            return $.post(_this.spectrumEvaluationUrl.format({
+              "analysisId": _this.analysisId
+            }), formData).success(function(formContent) {
+              return GlycReSoft.displayMessageModal(formContent);
+            });
+          });
+        });
       };
     })(this));
     proteinRowHandle.click(function(event) {
@@ -3260,8 +3322,7 @@ GlycopeptideLCMSMSSearchController = (function() {
   };
 
   GlycopeptideLCMSMSSearchController.prototype.selectLastProteinViewed = function() {
-    var proteinId;
-    return proteinId = this.getLastProteinViewed();
+    return this.proteinId = this.getLastProteinViewed();
   };
 
   GlycopeptideLCMSMSSearchController.prototype.updateView = function() {

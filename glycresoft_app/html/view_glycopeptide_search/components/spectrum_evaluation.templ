@@ -1,0 +1,46 @@
+<div class='glycopeptide-spectrum-match-details-container'>
+    <div class='row'>
+        <div class="col s6">
+            <div class="row">
+                <div class="input-field">
+                    <label for='scan_id_input'>Scan ID</label>
+                    <input type="text" id='scan_id_input' name='scan_id_input' />
+                </div>
+            </div>
+            <div class="row">
+                <div class="input-field">
+                    <label for='glycopeptide_input'>Glycopeptide</label>
+                    <input type="text"  id='glycopeptide_input' name='glycopeptide_input' />
+                </div>
+            </div>
+            <div class="row">
+                <div class="input-field">
+                    <button class='btn' id='evaluate-spectrum-btn'>
+                        Match Spectrum
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class='col s6'>
+            <div class="row">
+                {% if glycopeptide is not none %}
+                    <h6><b>Glycopeptide Sequence</b></h6>
+                    <div class='sequence-emphasis'>{{glycopeptide|glycopeptide_string(long=True)}}</div>
+                {% endif %}
+            </div>
+            <div class="row">
+                <span>
+                    MSn Score: {{score}}
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col s6">
+            {{sequence_logo_plot}}
+        </div>
+        <div id='best-spectrum-match-container' class="col s6">
+            {{spectrum_plot}}
+        </div>
+    </div>
+</div>
