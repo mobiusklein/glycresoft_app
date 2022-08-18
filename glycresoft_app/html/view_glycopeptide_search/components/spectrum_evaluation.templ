@@ -1,5 +1,6 @@
 <div class='glycopeptide-spectrum-match-details-container'>
     <div class='row'>
+        {% if glycopeptide is none %}
         <div class="col s6">
             <div class="row">
                 <div class="input-field">
@@ -21,6 +22,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         <div class='col s6'>
             <div class="row">
                 {% if glycopeptide is not none %}
@@ -29,9 +31,11 @@
                 {% endif %}
             </div>
             <div class="row">
+                {% if glycopeptide is not none %}
                 <span>
                     MSn Score: {{score}}
                 </span>
+                {% endif %}
             </div>
         </div>
     </div>

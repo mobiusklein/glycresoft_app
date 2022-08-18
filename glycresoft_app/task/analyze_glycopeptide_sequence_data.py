@@ -163,7 +163,8 @@ def analyze_glycopeptide_sequences(database_connection, sample_path, hypothesis_
                 mass_shifts=mass_shifts,
                 rare_signatures=include_rare_signature_ions,
                 model_retention_time=model_retention_time,
-                tandem_scoring_model=tandem_scoring_model
+                tandem_scoring_model=tandem_scoring_model,
+                oxonium_threshold=minimum_oxonium_threshold,
             )
         _ = analyzer.start()
 

@@ -14,7 +14,6 @@ class Application extends ActionLayerManager
         @sideNav = $('.side-nav')
         @colors = new ColorManager()
         self = this
-
         self.monosaccharideFilterState = new MonosaccharideFilterState(self, null)
 
         @messageHandlers = {}
@@ -248,9 +247,12 @@ class Application extends ActionLayerManager
             @analyses = d
             @emit "render-analyses"
         TaskAPI.all (d) =>
-            for key, data of d
-                d[key] = Task.create(data)
-            @tasks = d
+            if d?
+                for key, data of d
+                    d[key] = Task.create(data)
+                @tasks = d
+            else
+                @tasks = {}
             @updateTaskList()
         MassShiftAPI.all (d) =>
             @massShifts = d

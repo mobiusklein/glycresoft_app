@@ -16,7 +16,7 @@
         </tr>
     </thead>
     <tbody class='glycopeptide-match-table-body' style='height:450px;'>
-    {% for gpm in paginator.items %}    
+    {% for gpm in paginator.items %}
         <tr class='glycopeptide-match-row' data-target="{{gpm.id}}">
             {% if gpm.chromatogram %}
                 <td class='narrow'>{{"%0.4f"|format(gpm.chromatogram.weighted_neutral_mass)}}</td>
@@ -35,9 +35,9 @@
             </td>
             <td class='narrow'>{{gpm.spectrum_matches|length}}</td>
             {% if gpm.chromatogram %}
-                <td class='narrow'>{{gpm.chromatogram.start_time}}</td>
-                <td class='narrow'>{{gpm.chromatogram.apex_time}}</td>
-                <td class='narrow'>{{gpm.chromatogram.end_time}}</td>
+                <td class='narrow'>{{"%0.4f" % gpm.chromatogram.start_time}}</td>
+                <td class='narrow'>{{"%0.4f" % gpm.chromatogram.apex_time}}</td>
+                <td class='narrow'>{{"%0.4f" % gpm.chromatogram.end_time}}</td>
             {% else %}
                 <td class='narrow'>-</td>
                 <td class='narrow'>-</td>
@@ -46,7 +46,7 @@
         </tr>
     {% endfor %}
     </tbody>
-</table>    
+</table>
 </div>
 <!-- On narrow screens, the above table may appear to have two horizontal scroll bars -->
 <ul class='pagination'>

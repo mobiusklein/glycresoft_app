@@ -20,6 +20,7 @@ Application = (function(superClass) {
     this.sideNav = $('.side-nav');
     this.colors = new ColorManager();
     self = this;
+    debugger;
     self.monosaccharideFilterState = new MonosaccharideFilterState(self, null);
     this.messageHandlers = {};
     this.connectEventSource();
@@ -40,6 +41,7 @@ Application = (function(superClass) {
     })(this));
     this.handleMessage('task-queued', (function(_this) {
       return function(data) {
+        debugger;
         self.tasks[data.id] = Task.create({
           'id': data.id,
           'name': data.name,
@@ -374,11 +376,15 @@ Application = (function(superClass) {
     TaskAPI.all((function(_this) {
       return function(d) {
         var data, key;
-        for (key in d) {
-          data = d[key];
-          d[key] = Task.create(data);
+        if (d != null) {
+          for (key in d) {
+            data = d[key];
+            d[key] = Task.create(data);
+          }
+          _this.tasks = d;
+        } else {
+          _this.tasks = {};
         }
-        _this.tasks = d;
         return _this.updateTaskList();
       };
     })(this));

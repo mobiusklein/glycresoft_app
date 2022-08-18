@@ -6,7 +6,8 @@ from urllib.parse import quote
 
 from six import string_types as basestring
 
-from jinja2 import Environment, PackageLoader, FileSystemLoader, escape
+from jinja2 import Environment, PackageLoader, FileSystemLoader
+from markupsafe import escape
 
 from lxml import etree
 
