@@ -15954,6 +15954,17 @@ select:invalid {
     margin-left: 30%;
     margin-right: 25%;
 }
+
+.glycopeptide-facet {
+    padding: 3px;
+    font-size: 1em;
+}
+
+.glycopeptide-facet td,
+.glycopeptide-facet th {
+    padding: 3px;
+    text-align: center;
+}
 .table-container {
     overflow-x: scroll;
     width: 100%;

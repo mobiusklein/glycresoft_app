@@ -38,7 +38,6 @@ def ensure_text(s):
     elif isinstance(s, str):
         pass
     else:
-        breakpoint()
         s = str(s)
     return s
 

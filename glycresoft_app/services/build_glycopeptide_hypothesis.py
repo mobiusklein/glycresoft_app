@@ -61,8 +61,8 @@ def build_glycopeptide_search_space_post():
     generate_reverse_decoys = values.get("generate-reverse-decoys") == 'on'
     generate_full_crossproduct = values.get("generate-full-crossproduct") == 'on'
 
-    secure_name = secure_filename(hypothesis_name if hypothesis_name is not None else "glycopeptde_database")
-    storage_path = safepath(g.manager.get_hypothesis_path(re.sub(r"[\s\(\)]", "_", secure_name)) + '_glycopeptde_%s.database')
+    secure_name = secure_filename(hypothesis_name if hypothesis_name is not None else "glycopeptide_database")
+    storage_path = safepath(g.manager.get_hypothesis_path(re.sub(r"[\s\(\)]", "_", secure_name)) + '_glycopeptide_%s.database')
     storage_path = make_unique_name(storage_path)
     touch_file(storage_path)
 

@@ -20,7 +20,6 @@ Application = (function(superClass) {
     this.sideNav = $('.side-nav');
     this.colors = new ColorManager();
     self = this;
-    debugger;
     self.monosaccharideFilterState = new MonosaccharideFilterState(self, null);
     this.messageHandlers = {};
     this.connectEventSource();
@@ -41,7 +40,6 @@ Application = (function(superClass) {
     })(this));
     this.handleMessage('task-queued', (function(_this) {
       return function(data) {
-        debugger;
         self.tasks[data.id] = Task.create({
           'id': data.id,
           'name': data.name,
