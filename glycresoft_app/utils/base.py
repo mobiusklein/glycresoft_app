@@ -39,6 +39,9 @@ class SyncableStore(t.Mapping[str, RecordType]):
                 else:
                     raise e
 
+    def __len__(self):
+        return len(self.data)
+
     def put(self, record: RecordType):
         self.data[record.uuid] = record
         self.values.append(record)
