@@ -14,7 +14,7 @@ def exploding_callable(*args, **kwargs):
     raise NotImplementedError()
 
 
-class SyncableStore(t.Mapping[RecordType]):
+class SyncableStore(t.Mapping[str, RecordType]):
     record_type: t.Type[RecordType] = exploding_callable
 
     data: t.Dict[str, RecordType]
