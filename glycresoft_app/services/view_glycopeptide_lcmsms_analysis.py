@@ -58,6 +58,7 @@ from glycan_profiling.plotting.entity_bar_chart import (
 
 from glycan_profiling.task import log_handle
 
+from ms_deisotope.data_source.scan import ProcessedScan
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
 
 from .collection_view import CollectionViewBase, ViewCache, SnapshotBase
@@ -238,7 +239,7 @@ class GlycopeptideAnalysisView(CollectionViewBase):
     def _compare_sequence_to_spectrum(self, sequence, scan_id, **kwargs):
         scan = self.peak_loader.get_scan_by_id(scan_id)
         target = PeptideSequence(sequence)
-        match = CoverageWeightedBinomialScorer.evaluate(scan, target, **kwargs)
+        match = self.match_spectrum(scan, target)
         return match
 
     def search_by_scan(self, scan_id):
@@ -379,6 +380,15 @@ class GlycopeptideAnalysisView(CollectionViewBase):
     def paginate(self, protein_id, page, per_page=25):
         return self.get_items_for_display(
             protein_id).paginate(page, per_page)
+
+    def match_spectrum(self, scan: ProcessedScan, structure: PeptideSequence):
+        scoring_model = self.parameters['tandem_scoring_model']
+        error_tolerance = self.parameters['fragment_error_tolerance']
+        extra_msn_evaluation_kwargs = self.parameters.get(
+            'extra_msn_evaluation_kwargs', {}).copy()
+        extra_msn_evaluation_kwargs['error_tolerance'] = error_tolerance
+        match = scoring_model.evaluate(scan, structure, **extra_msn_evaluation_kwargs)
+        return match
 
 
 def get_view(analysis_uuid):
@@ -565,10 +575,6 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
         snapshot = view.get_items_for_display(protein_id)
         with snapshot.bind(view.session):
             session = view.session
-            # try:
-            #     gp = snapshot[glycopeptide_id]
-            # except KeyError:
-            #     gp = view.get_glycopeptide(glycopeptide_id)
             gp = view.get_glycopeptide(glycopeptide_id)
 
             matched_scans = []
@@ -603,9 +609,7 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
             except IOError:
                 pass
 
-            match = CoverageWeightedBinomialScorer.evaluate(
-                scan, gp.structure,
-                error_tolerance=view.analysis.parameters["fragment_error_tolerance"])
+            match = view.match_spectrum(scan, gp.structure)
 
             max_peak = max([p.intensity for p in match.spectrum])
             ax = figax()
@@ -699,12 +703,7 @@ def evalute_spectrum(analysis_uuid):
     with view:
         scan = view.peak_loader.get_scan_by_id(scan_id)
 
-        scoring_model = view.parameters['tandem_scoring_model']
-        error_tolerance = view.parameters['fragment_error_tolerance']
-        extra_msn_evaluation_kwargs = view.parameters.get('extra_msn_evaluation_kwargs', {}).copy()
-        extra_msn_evaluation_kwargs['error_tolerance'] = error_tolerance
-
-        match = scoring_model.evaluate(scan, gp, **extra_msn_evaluation_kwargs)
+        match = view.match_spectrum(scan, gp)
 
         specmatch_artist = TidySpectrumMatchAnnotator(match, ax=figax())
         specmatch_artist.draw(fontsize=10, pretty=True)

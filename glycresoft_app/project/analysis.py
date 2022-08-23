@@ -49,7 +49,7 @@ class AnalysisRecordSet(object):
         self.records = records
 
 
-class AnalysisManager(SyncableStore):
+class AnalysisManager(SyncableStore[AnalysisRecord]):
     record_type = AnalysisRecord
 
     @staticmethod

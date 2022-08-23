@@ -21,7 +21,7 @@ class SampleRunRecord(_SampleRunRecord):
         return True
 
 
-class SampleManager(SyncableStore):
+class SampleManager(SyncableStore[SampleRunRecord]):
     record_type = SampleRunRecord
 
     @staticmethod

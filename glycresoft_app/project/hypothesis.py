@@ -5,6 +5,8 @@ import warnings
 
 from glycan_profiling import serialize
 
+from glycresoft_app.utils.base import RecordType
+
 from .base import SyncableStore, structure
 
 _HypothesisRecord = structure("HypothesisRecord", [
@@ -97,7 +99,7 @@ class HypothesisRecordSet(object):
         self.records = records
 
 
-class HypothesisManager(SyncableStore):
+class HypothesisManager(SyncableStore[RecordType]):
     record_type = HypothesisRecord
 
     @staticmethod

@@ -2,6 +2,10 @@ import os
 import json
 import logging
 
+import typing as t
+
+RecordType = t.TypeVar("RecordType")
+
 
 logger = logging.getLogger("syncable_store")
 
@@ -10,10 +14,14 @@ def exploding_callable(*args, **kwargs):
     raise NotImplementedError()
 
 
-class SyncableStore(object):
-    record_type = exploding_callable
+class SyncableStore(t.Mapping[RecordType]):
+    record_type: t.Type[RecordType] = exploding_callable
 
-    def __init__(self, storefile, data=None):
+    data: t.Dict[str, RecordType]
+    values: t.List[RecordType]
+    storefile: str
+
+    def __init__(self, storefile: str, data: t.Optional[t.Dict[str, RecordType]]=None):
         if data is None:
             data = dict()
         self.data = data
@@ -31,7 +39,7 @@ class SyncableStore(object):
                 else:
                     raise e
 
-    def put(self, record):
+    def put(self, record: RecordType):
         self.data[record.uuid] = record
         self.values.append(record)
 
@@ -43,7 +51,7 @@ class SyncableStore(object):
             json.dump(store, handle, sort_keys=True, indent=4)
 
     @classmethod
-    def make_instance_record(cls, entry):
+    def make_instance_record(cls, entry: t.Any):
         if hasattr(cls, 'from_json'):
             return cls.from_json(entry)
         return cls.record_type(**entry)
@@ -79,10 +87,10 @@ class SyncableStore(object):
     def __getitem__(self, i):
         return self.values[i]
 
-    def get(self, key):
+    def get(self, key: str) -> RecordType:
         return self.data[key]
 
-    def path(self, uuid):
+    def path(self, uuid: str) -> str:
         record = self.data[uuid]
         return os.path.join(self.basepath, record.path)
 
@@ -90,23 +98,23 @@ class SyncableStore(object):
         return "%s(%r)" % (self.__class__.__name__, self.storefile)
 
     @staticmethod
-    def open_file(path):
+    def open_file(path: str):
         raise NotImplementedError()
 
     @classmethod
-    def make_record(cls, datum):
+    def make_record(cls, datum) -> t.Union[RecordType, t.Iterable[RecordType]]:
         raise NotImplementedError()
 
     @staticmethod
-    def list_files(path):
+    def list_files(path: str) -> t.List[str]:
         raise NotImplementedError()
 
     @staticmethod
-    def store_record(store, record):
+    def store_record(store: t.Dict[str, RecordType], record: t.Union[RecordType, t.Iterable[RecordType]]):
         store[record.uuid] = record
 
     @classmethod
-    def find_files(cls, base_path):
+    def find_files(cls, base_path: str):
         files = cls.list_files(base_path)
         store = dict()
         for index_file in files:
@@ -116,7 +124,7 @@ class SyncableStore(object):
         return store
 
     @classmethod
-    def build(cls, base_path, storefile):
+    def build(cls, base_path: str, storefile: str):
         store = cls.find_files(base_path)
         inst = cls(storefile, store)
         inst.dump()
@@ -127,7 +135,7 @@ class SyncableStore(object):
         self.build(base_path, self.storefile)
         self.load()
 
-    def find(self, **kwargs):
+    def find(self, **kwargs) -> t.List[RecordType]:
         matches = []
         for record in self:
             passed = False
@@ -139,3 +147,9 @@ class SyncableStore(object):
             if passed:
                 matches.append(record)
         return matches
+
+    def remove(self, **kwargs):
+        recs = self.find(**kwargs)
+        if recs:
+            for rec in recs:
+                pass

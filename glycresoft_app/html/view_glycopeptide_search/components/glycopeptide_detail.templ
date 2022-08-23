@@ -77,9 +77,9 @@
         <div class='col s4'>
             <b>Observed Mass (PPM Error)</b>:
             {% if glycopeptide.chromatogram %}
-                <span>{{glycopeptide.chromatogram.weighted_neutral_mass}}
+                <span>{{"%0.3f" % glycopeptide.chromatogram.weighted_neutral_mass}}
             {% else %}
-                <span>{{match.scan.precursor_information.neutral_mass}}
+                <span>{{"%0.3f" % match.scan.precursor_information.neutral_mass}}
             {% endif %}
                   ({{"%0.3e"|format(match.precursor_mass_accuracy())}})</span> <br>
             <b>Spectrum Matches</b>:
