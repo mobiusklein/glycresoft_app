@@ -12,8 +12,8 @@
         </th>
         </tr>
     </thead>
-    <tbody class='protein-match-table-body' style='max-height:150px;'>
-    {% for protein_row in protein_table %}    
+    <tbody class='protein-match-table-body' style='max-height:250px;'>
+    {% for protein_row in protein_table %}
         <tr class='protein-match-row' data-target="{{protein_row.protein.id}}">
             <td>
                 <small>{{protein_row.protein.name}}</small>
