@@ -1,4 +1,5 @@
 psutil
 flask
 markdown
+waitress
 pywin32; sys_platform == 'win32'
