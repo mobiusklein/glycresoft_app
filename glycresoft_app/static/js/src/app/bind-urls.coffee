@@ -36,6 +36,8 @@ convertMapping = (converter) ->
             [key, value] = key_value
             acccumulator[key] = converter(value)
             acccumulator
+        if not data?
+            data = {}
         return Object.entries(data).reduce(reducer, {})
     return fn
 

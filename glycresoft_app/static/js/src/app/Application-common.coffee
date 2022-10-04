@@ -7,7 +7,9 @@ class Application extends ActionLayerManager
             0
             1
         ]
-
+        @hypotheses = {}
+        @samples = {}
+        @analyses = {}
         @context = {}
         @settings = {}
         @tasks = {}

@@ -14,6 +14,9 @@ Application = (function(superClass) {
     this._upkeepIntervalCallback = bind(this._upkeepIntervalCallback, this);
     Application.__super__.constructor.call(this, options.actionContainer, options);
     this.version = [0, 0, 1];
+    this.hypotheses = {};
+    this.samples = {};
+    this.analyses = {};
     this.context = {};
     this.settings = {};
     this.tasks = {};
@@ -650,6 +653,9 @@ convertMapping = function(converter) {
       acccumulator[key] = converter(value);
       return acccumulator;
     };
+    if (data == null) {
+      data = {};
+    }
     return Object.entries(data).reduce(reducer, {});
   };
   return fn;

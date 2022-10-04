@@ -1,4 +1,7 @@
 import re
+import logging
+
+logger = logging.getLogger("glycresoft")
 
 from flask import request
 
@@ -24,6 +27,23 @@ class StreamConsumingMiddleware(object):
             if hasattr(app_iter, 'close'):
                 app_iter.close()
 
+
+class LoggingMiddleware(object):
+    def __init__(self, app, logger=logger):
+        self.app = app
+        self.logger = logger
+
+    def make_start_response(self, start_response, url):
+        def wrapper(status, response_headers):
+            self.logger.info(f": {url} -> {status}")
+            return start_response(status, response_headers)
+
+        return wrapper
+
+    def __call__(self, environ, start_response):
+        url = environ['PATH_INFO']
+        self.logger.debug(f": Starting {url}")
+        return self.app(environ, self.make_start_response(start_response, url))
 
 class AddressFilteringMiddleware(object):
     def __init__(self, app, blacklist=None, whitelist=None):
@@ -117,40 +137,21 @@ class WerkzeugApplicationServer(ApplicationServer):
 
 ApplicationServerManager.werkzeug_server = WerkzeugApplicationServer
 
+import waitress
 
-try:
-    from twisted.web.wsgi import WSGIResource
-    from twisted.python.threadpool import ThreadPool
-    from twisted.internet import reactor
-    from twisted.web.server import Site
 
-    class TwistedApplicationServer(ApplicationServer):
-        def __init__(self, app, port, host, debug):
-            super(TwistedApplicationServer, self).__init__(app, port, host, debug)
-            self.reactor = reactor
-            self.thread_pool = ThreadPool(5, 40)
-            self.resource = WSGIResource(
-                self.reactor,
-                self.thread_pool,
-                self.app)
-            self.reactor.addSystemEventTrigger(
-                'after', 'shutdown', self.thread_pool.stop)
+class WaitressApplicationServer(ApplicationServer):
+    def __init__(self, app, port, host, debug):
+        super().__init__(LoggingMiddleware(app), port, host, debug)
+        self.server = None
 
-        def run(self):
-            print("Begin Listening")
-            self.thread_pool.start()
-            self.reactor.listenTCP(self.port, Site(self.resource), interface=self.host)
-            self.reactor.run()
+    def shutdown(self):
+        if self.server is not None:
+            self.server.close()
 
-        def shutdown(self):
-            print("Received call to shutdown")
-            print("Reactor should have stopped")
-            self.reactor.callFromThread(self.reactor.stop)
-            print("Reactor stop listening")
-            self.reactor.callFromThread(self.reactor.stopListening)
-            print("Reactor Shutdown")
+    def run(self):
+        self.server = waitress.create_server(self.app, host=self.host, port=self.port, )
+        self.server.run()
 
-    ApplicationServerManager.twisted_server = TwistedApplicationServer
 
-except ImportError:
-    pass
+ApplicationServerManager.waitress_server = WaitressApplicationServer

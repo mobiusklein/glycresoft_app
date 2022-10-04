@@ -433,5 +433,6 @@ def server(context, database_connection, base_path, external=False, port=None, n
         _setup_win32_keyboard_interrupt_handler(SERVER, manager)
     except ImportError as ex:
         print(ex)
-    SERVER = ApplicationServerManager.werkzeug_server(app, port, host, DEBUG)
+    # SERVER = ApplicationServerManager.werkzeug_server(app, port, host, DEBUG)
+    SERVER = ApplicationServerManager.waitress_server(app, port, host, DEBUG)
     SERVER.run()
