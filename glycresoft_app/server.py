@@ -81,7 +81,7 @@ def shutdown():
             project_manager.cancel_all_tasks()
         except Exception:
             current_app.logger.error(
-                "An error occurred while shutting down project %r" % project_id, excinfo=True)
+                "An error occurred while shutting down project %r" % project_id, exc_info=True)
     SERVER.shutdown_server()
     return Response("Should be dead")
 
@@ -94,7 +94,7 @@ def close_project():
         g.manager.cancel_all_tasks()
     except Exception:
         current_app.logger.error(
-            "An error occurred while shutting down project", excinfo=True)
+            "An error occurred while shutting down project", exc_info=True)
     return Response(str(g.manager.project_id))
 # ----------------------------------------
 #

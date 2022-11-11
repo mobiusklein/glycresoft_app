@@ -44,7 +44,6 @@ def show_preferences():
 @app_config.route("/preferences", methods=["POST"])
 def update_preferences():
     new_preferences = request.values.to_dict()
-    print("new_preferences")
     try:
         preferences = g.manager.preferences(g.user.id)
     except KeyError:
@@ -55,5 +54,4 @@ def update_preferences():
     preferences.update(new_preferences)
     preferences = enforce_schema(preferences)
     g.manager.set_preferences(g.user.id, preferences)
-    print("\n%r\n" % g.manager.preferences(g.user.id))
     return jsonify(**dict(preferences.items()))

@@ -362,7 +362,7 @@ def details_for(analysis_uuid, chromatogram_id):
                     with_mass_shift, rest = rest.bisect_mass_shift(mass_shift)
                     labels[mass_shift] = with_mass_shift
                 mass_shift_plot = SmoothingChromatogramArtist(
-                    labels.values(),
+                    list(labels.values()),
                     colorizer=lambda *a, **k: 'green', ax=figax()).draw(
                     label_function=lambda *a, **k: tuple(a[0].mass_shifts)[0].name,
                     legend=False).ax
