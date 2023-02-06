@@ -67,6 +67,9 @@ null_user = message_queue.null_user
 service_module.load_all_services(app)
 
 
+logger = logging.getLogger("glycresoft")
+
+
 # ----------------------------------------
 # Server Shutdown
 # ----------------------------------------
@@ -399,7 +402,8 @@ def _setup_win32_keyboard_interrupt_handler(server, manager):
             manager.stoploop()
             manager.cancel_all_tasks()
             hook_sigint()
-            print("Keyboard Interrupt Received. Shutting Down Task Queue and Scheduling Interrupt.")
+            logger.info(
+                "Keyboard Interrupt Received. Shutting Down Task Queue and Scheduling Interrupt.")
             return 1
         return 0
 

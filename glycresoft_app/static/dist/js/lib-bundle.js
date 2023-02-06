@@ -577,7 +577,7 @@ GlycanComposition = (function() {
 var MzIdentMLProteinSelector, ProteomicsFileFormats, getProteinName, getProteinNamesFromMzIdentML, identifyProteomicsFormat;
 
 identifyProteomicsFormat = function(file, callback) {
-  var isMzML, isMzidentML, reader;
+  var isMzML, isMzidentML, isPEFF, reader;
   isMzidentML = function(lines) {
     var d, hasVersion, hit, i, j, len, line, match, tag, version;
     i = 0;
@@ -645,6 +645,29 @@ identifyProteomicsFormat = function(file, callback) {
     }
     return false;
   };
+  isPEFF = function(lines) {
+    var hit, i, j, len, line, tag;
+    i = 0;
+    hit = false;
+    tag = [];
+    for (j = 0, len = lines.length; j < len; j++) {
+      line = lines[j];
+      if (/# PEFF \d+\.\d+/.test(line)) {
+        hit = true;
+        break;
+      }
+      i += 1;
+      if (i > 3) {
+        break;
+      }
+    }
+    if (hit) {
+      return {
+        "format": ProteomicsFileFormats.peff
+      };
+    }
+    return false;
+  };
   reader = new FileReader();
   reader.onload = function() {
     var lines, proteomicsFileType, test;
@@ -655,10 +678,16 @@ identifyProteomicsFormat = function(file, callback) {
     test = isMzML(lines);
     if (test) {
       proteomicsFileType = test;
-    }
-    test = isMzidentML(lines);
-    if (test) {
-      proteomicsFileType = test;
+    } else {
+      test = isMzidentML(lines);
+      if (test) {
+        proteomicsFileType = test;
+      } else {
+        test = isPEFF(lines);
+        if (test) {
+          proteomicsFileType = test;
+        }
+      }
     }
     return callback(proteomicsFileType);
   };
@@ -668,6 +697,7 @@ identifyProteomicsFormat = function(file, callback) {
 ProteomicsFileFormats = {
   mzIdentML: "mzIdentML",
   fasta: "fasta",
+  peff: "peff",
   error: "error"
 };
 

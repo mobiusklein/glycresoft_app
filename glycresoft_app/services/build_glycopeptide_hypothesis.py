@@ -118,7 +118,7 @@ def build_glycopeptide_search_space_post():
         glycan_options["glycan_source_type"] = option_type
 
     n_workers = g.manager.configuration.get("database_build_worker_count", 4)
-    if protein_list_type == "fasta":
+    if protein_list_type == "fasta" or protein_list_type == "peff":
         task = BuildGlycopeptideHypothesisFasta(
             storage_path,
             fasta_file=secure_protein_list,

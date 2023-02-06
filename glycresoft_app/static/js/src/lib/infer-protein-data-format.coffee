@@ -38,6 +38,21 @@ identifyProteomicsFormat = (file, callback) ->
             return {"format": ProteomicsFileFormats.error}
         return false
 
+    isPEFF = (lines) ->
+        i = 0
+        hit = false
+        tag = []
+        for line in lines
+            if /# PEFF \d+\.\d+/.test(line)
+                hit = true
+                break
+            i += 1
+            if i > 3
+                break
+        if hit
+            return {"format": ProteomicsFileFormats.peff}
+        return false
+
     reader = new FileReader()
     reader.onload = ->
         lines = @result.split("\n")
@@ -45,9 +60,16 @@ identifyProteomicsFormat = (file, callback) ->
         test = isMzML(lines)
         if test
             proteomicsFileType = test
-        test = isMzidentML(lines)
-        if test
-            proteomicsFileType = test
+        else
+            test = isMzidentML(lines)
+            if test
+                proteomicsFileType = test
+            else
+                test = isPEFF(lines)
+                if test
+                    proteomicsFileType = test
+
+
         callback(proteomicsFileType)
     reader.readAsText(file.slice(0, 100))
 
@@ -55,7 +77,7 @@ identifyProteomicsFormat = (file, callback) ->
 ProteomicsFileFormats = {
     mzIdentML: "mzIdentML"
     fasta: "fasta"
-
+    peff: "peff"
     error: "error"
 }
 

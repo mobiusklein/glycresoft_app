@@ -1,13 +1,14 @@
 import re
 import logging
+from typing import Callable, Union
 
-logger = logging.getLogger("glycresoft")
+import waitress
 
-from flask import request
-
+from flask import request, Flask
 from werkzeug.serving import run_simple
 from werkzeug.wsgi import LimitedStream
 
+logger = logging.getLogger("glycresoft")
 
 class StreamConsumingMiddleware(object):
 
@@ -103,6 +104,13 @@ class AddressFilteringApplication(object):
 
 
 class ApplicationServer(object):
+    app: Flask
+    port: Union[int, str]
+    host: str
+    debug: bool
+
+    shutdown: Callable[[], None]
+
     def __init__(self, app, port, host, debug):
         self.app = app
         self.port = port
@@ -137,19 +145,20 @@ class WerkzeugApplicationServer(ApplicationServer):
 
 ApplicationServerManager.werkzeug_server = WerkzeugApplicationServer
 
-import waitress
-
-
 class WaitressApplicationServer(ApplicationServer):
     def __init__(self, app, port, host, debug):
         super().__init__(LoggingMiddleware(app), port, host, debug)
         self.server = None
 
     def shutdown(self):
+        logger.info(f"Stopping application server on  {self.host}:{self.port}")
         if self.server is not None:
             self.server.close()
+            logger.info(
+                "Stopped application server")
 
     def run(self):
+        logger.info(f"Starting application server on  {self.host}:{self.port}")
         self.server = waitress.create_server(self.app, host=self.host, port=self.port, )
         self.server.run()
 

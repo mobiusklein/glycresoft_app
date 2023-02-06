@@ -18,12 +18,12 @@ api = register_service("api", __name__)
 
 @api.route("/api/tasks")
 def api_tasks():
-    return jsonify(**{t.id: t.to_json() for t in g.manager.tasks().values()})
+    return jsonify({t.id: t.to_json() for t in g.manager.tasks().values()})
 
 
 @api.route("/api/colors")
 def api_colors():
-    return jsonify(**colors.color_dict())
+    return jsonify(colors.color_dict())
 
 
 @api.route("/api/samples")
@@ -35,7 +35,7 @@ def api_samples():
             d[str(h.name)] = h.to_json()
         except Exception:
             current_app.logger.exception("Error occurred in api_samples", exc_info=True)
-    return jsonify(**d)
+    return jsonify(d)
 
 
 @api.route("/api/hypotheses")
@@ -52,8 +52,9 @@ def api_hypotheses():
             dump = hypothesis.to_json()
             d[hypothesis.uuid] = dump
         except Exception:
-            current_app.logger.exception("Error occurred in api_hypotheses", exc_info=True)
-    return jsonify(**d)
+            current_app.logger.exception(
+                "Error occurred in api_hypotheses", exc_info=True)
+    return jsonify(d)
 
 
 @api.route("/api/hypotheses/<uuid>")
@@ -62,6 +63,8 @@ def get_hypothesis(uuid):
     d = {}
     if hypothesis is not None:
         d = hypothesis.to_json()
+    if not d:
+        return jsonify({})
     return jsonify(hypothesis=d)
 
 
@@ -73,8 +76,9 @@ def api_analyses():
             dump = analysis.to_json()
             d[analysis.uuid] = dump
         except Exception:
-            current_app.logger.exception("Error occurred in api_analyses for %r", analysis, exc_info=True)
-    return jsonify(**d)
+            current_app.logger.exception(
+                "Error occurred in api_analyses for %r", analysis, exc_info=True)
+    return jsonify(d)
 
 
 @api.route("/api/modifications")
@@ -82,7 +86,8 @@ def modifications():
     d = {}
     mt = ModificationTable()
     d['definitions'] = [
-        (rule.name, formula(rule.composition if rule.composition else {}), rule.mass) for rule in mt.rules()
+        (rule.name, formula(rule.composition if rule.composition else {}), rule.mass)
+        for rule in mt.rules()
     ]
     d['specificities'] = set()
     for rule in mt.rules():
@@ -94,7 +99,7 @@ def modifications():
             continue
         d['specificities'].update(rule.as_spec_strings())
     d['specificities'] = tuple(d['specificities'])
-    return jsonify(**d)
+    return jsonify(d)
 
 
 @api.route("/api/validate-iupac", methods=["POST"])
@@ -113,7 +118,7 @@ def api_validate_iupac():
 def mass_shifts():
     d = {}
     d.update(mass_shift.mass_shift_index)
-    return jsonify(**d)
+    return jsonify(d)
 
 
 @api.route("/api/parse-expression", methods=["POST"])

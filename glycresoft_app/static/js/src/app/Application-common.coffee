@@ -76,17 +76,17 @@ class Application extends ActionLayerManager
             self.updateTaskList()
             return
         @handleMessage 'new-sample-run', (data) =>
-            @samples[data.name] = data
-            @emit "render-samples"
+            self.samples[data.name] = data
+            self.emit "render-samples"
         @handleMessage 'new-hypothesis', (data) =>
-            @hypotheses[data.uuid] = Hypothesis.create(data)
-            @emit "render-hypotheses"
+            self.hypotheses[data.uuid] = Hypothesis.create(data)
+            self.emit "render-hypotheses"
         @handleMessage 'new-analysis', (data) =>
-            @analyses[data.uuid] = data
-            @emit "render-analyses"
+            self.analyses[data.uuid] = data
+            self.emit "render-analyses"
 
         @on "layer-change", (data) =>
-            @colors.update()
+            self.colors.update()
 
     setUser: (userId, callback) ->
         User.set(userId, (userId) =>
@@ -243,9 +243,13 @@ class Application extends ActionLayerManager
             @hypotheses = convertMapping(Hypothesis.create)(d)
             @emit "render-hypotheses"
         SampleAPI.all (d) =>
+            if not d?
+                d = {}
             @samples = d
             @emit "render-samples"
         AnalysisAPI.all (d) =>
+            if not d?
+                d = {}
             @analyses = d
             @emit "render-analyses"
         TaskAPI.all (d) =>

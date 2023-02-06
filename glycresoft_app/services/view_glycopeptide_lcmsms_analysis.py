@@ -6,7 +6,7 @@ from threading import RLock
 
 from sqlalchemy.orm import object_session
 
-from flask import Response, g, request, render_template, jsonify, abort
+from flask import Response, g, request, render_template, jsonify, abort, current_app
 
 from glycopeptidepy import PeptideSequence
 from glycopeptidepy.utils.collectiontools import groupby
@@ -607,7 +607,8 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
             try:
                 scan = view.peak_loader.get_scan_by_id(scan_id)
             except IOError:
-                pass
+                current_app.logger.error(
+                    "Failed to fetch reference scan (%r)", scan_id, exc_info=True)
 
             match = view.match_spectrum(scan, gp.structure)
 

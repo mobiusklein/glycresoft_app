@@ -106,25 +106,25 @@ Application = (function(superClass) {
     })(this));
     this.handleMessage('new-sample-run', (function(_this) {
       return function(data) {
-        _this.samples[data.name] = data;
-        return _this.emit("render-samples");
+        self.samples[data.name] = data;
+        return self.emit("render-samples");
       };
     })(this));
     this.handleMessage('new-hypothesis', (function(_this) {
       return function(data) {
-        _this.hypotheses[data.uuid] = Hypothesis.create(data);
-        return _this.emit("render-hypotheses");
+        self.hypotheses[data.uuid] = Hypothesis.create(data);
+        return self.emit("render-hypotheses");
       };
     })(this));
     this.handleMessage('new-analysis', (function(_this) {
       return function(data) {
-        _this.analyses[data.uuid] = data;
-        return _this.emit("render-analyses");
+        self.analyses[data.uuid] = data;
+        return self.emit("render-analyses");
       };
     })(this));
     this.on("layer-change", (function(_this) {
       return function(data) {
-        return _this.colors.update();
+        return self.colors.update();
       };
     })(this));
   }
