@@ -700,6 +700,9 @@ def evalute_spectrum(analysis_uuid):
     view = get_view(analysis_uuid)
     scan_id = request.values['scan_id'].strip()
     glycopeptide = request.values['glycopeptide'].strip()
+    if not glycopeptide or not scan_id:
+        return render_template(
+            "/view_glycopeptide_search/components/spectrum_evaluation.templ", glycopeptide=None)
     gp = PeptideSequence(glycopeptide)
     with view:
         scan = view.peak_loader.get_scan_by_id(scan_id)

@@ -240,8 +240,12 @@ class GlycopeptideLCMSMSSearchController
                     formData.scan_id = $("#scan_id_input").val()
                     formData.glycopeptide = $("#glycopeptide_input").val()
                     GlycReSoft.closeMessageModal()
-                    $.post(@spectrumEvaluationUrl.format({"analysisId": @analysisId}), formData).success (formContent) =>
-                        GlycReSoft.displayMessageModal(formContent)
+
+                    if formData.glycopeptide.length == 0 or formData.scan_id.length == 0
+                        GlycReSoft.notifyUser("You must specify both a scan ID and a glycopeptide")
+                    else
+                        $.post(@spectrumEvaluationUrl.format({"analysisId": @analysisId}), formData).success (formContent) =>
+                            GlycReSoft.displayMessageModal(formContent)
 
         proteinRowHandle.click (event) ->
             self.proteinChoiceHandler @

@@ -174,6 +174,7 @@ class TaskControlContext(object):
             message = Message(message, user=self.user)
         if message.user == null_user:
             message.user = self.user
+        self.log(message)
         self.pipe.send(message)
 
     def recv(self):
