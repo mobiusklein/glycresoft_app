@@ -1,4 +1,6 @@
 import re
+import json
+from typing import Union
 from flask import Response, g, request, render_template, current_app
 
 try:
@@ -14,6 +16,36 @@ from .service_module import register_service
 from ..task.analyze_glycopeptide_sequence_data import AnalyzeGlycopeptideSequenceTask, GlycopeptideSearchStrategyEnum
 
 app = search_glycopeptide_sequences = register_service("search_glycopeptide_sequences", __name__)
+
+def float_or(numval: Union[float, str], alt: float) -> float:
+    if isinstance(numval, float):
+        return numval
+    if not numval:
+        return alt
+    numval = json.loads(numval)
+    if numval is None:
+        return alt
+    if not isinstance(numval, (float, int)):
+        current_app.logger.warn(
+            "Numerical value expected, got %r, returning alternative %r",
+            numval,
+            alt
+        )
+        return alt
+    return numval
+
+
+def float_or_infinity(numcode):
+    return float_or(numcode, float('inf'))
+
+
+def try_int(value: str):
+    try:
+        return int(value)
+    except Exception:
+        current_app.logger.error(
+            "Failed to parse integer from %r, returning 1", value, exc_info=1)
+        return 1
 
 
 @app.route("/search_glycopeptide_sequences/run_search")
@@ -39,6 +71,11 @@ def run_search_post():
         ms2_matching_tolerance *= 1e-6
 
     psm_fdr_threshold = float(data.get("q-value-threshold", 0.05))
+
+    minimum_search_mass = float_or(
+        data.get("minimum-search-mass", 1000.0), 1000.0)
+    maximum_search_mass = float_or_infinity(
+        data.get("maximum-search-mass", float('inf')))
 
     use_peptide_mass_filter = data.get("peptide-mass-filter")
     if use_peptide_mass_filter == 'on':
@@ -94,7 +131,7 @@ def run_search_post():
     mass_shift_data = list(zip(data.getlist('mass_shift_name'),
                                data.getlist('mass_shift_max_count')))
     mass_shift_data = mass_shift_data[:-1]
-    mass_shift_data = [(a, int(b)) for a, b in mass_shift_data]
+    mass_shift_data = [(a, try_int(b)) for a, b in mass_shift_data if a and b]
 
     for sample_record in sample_records:
         sample_name = sample_record.name
@@ -123,7 +160,8 @@ def run_search_post():
             search_strategy=search_strategy,
             decoy_database_connection=decoy_hypothesis_path,
             decoy_hypothesis_id=decoy_hypothesis_id,
-            tandem_scoring_model=tandem_scoring_model
+            tandem_scoring_model=tandem_scoring_model,
+            search_mass_range=(minimum_search_mass, maximum_search_mass)
         )
         g.add_task(task)
     return Response("Tasks Scheduled")

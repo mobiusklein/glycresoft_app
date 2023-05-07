@@ -1,4 +1,4 @@
-var Application, Hypothesis, Task, createdAtParser, renderTask,
+var Application, Hypothesis, LogViewStream, Task, createdAtParser, renderTask,
   bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
@@ -201,45 +201,13 @@ Application = (function(superClass) {
     };
     self = this;
     viewLog = function(event) {
-      var completer, created_at, handle, id, modal, name, state, task_id, updateWrapper;
+      var created_at, handle, id, logView, name;
       handle = $(this);
       id = handle.attr('data-id');
       name = handle.attr("data-name");
       created_at = handle.attr("data-created-at");
-      state = {};
-      modal = $("#log-modal");
-      task_id = name + "-" + created_at;
-      updateWrapper = function() {
-        var updater;
-        updater = function() {
-          var status;
-          status = taskListContainer.find("li[data-id='" + id + "']").attr('data-status');
-          if (status === "running" || status === "queued") {
-            return $.get("/internal/log/" + task_id).success(function(message) {
-              var modalContent;
-              console.log("Updating Log Window...");
-              modalContent = modal.find(".modal-content");
-              return modalContent.html(message);
-            });
-          }
-        };
-        return state.intervalId = setInterval(updater, 5000);
-      };
-      completer = function() {
-        return clearInterval(state.intervalId);
-      };
-      return $.get("/internal/log/" + name + "-" + created_at).success((function(_this) {
-        return function(message) {
-          return self.displayLogModal(message, {
-            "ready": updateWrapper,
-            "complete": completer
-          }, task_id);
-        };
-      })(this)).error((function(_this) {
-        return function(err) {
-          return alert("An error occurred during retrieval. " + (err.toString()));
-        };
-      })(this));
+      logView = new LogViewStream(name + "-" + created_at);
+      return logView.view();
     };
     cancelTask = function(event) {
       var handle, id, userInput;
@@ -364,12 +332,18 @@ Application = (function(superClass) {
     })(this));
     SampleAPI.all((function(_this) {
       return function(d) {
+        if (d == null) {
+          d = {};
+        }
         _this.samples = d;
         return _this.emit("render-samples");
       };
     })(this));
     AnalysisAPI.all((function(_this) {
       return function(d) {
+        if (d == null) {
+          d = {};
+        }
         _this.analyses = d;
         return _this.emit("render-analyses");
       };
@@ -595,6 +569,62 @@ Hypothesis = (function() {
   };
 
   return Hypothesis;
+
+})();
+
+LogViewStream = (function() {
+  function LogViewStream(taskId) {
+    this.taskId = taskId;
+  }
+
+  LogViewStream.prototype.view = function() {
+    var completer, modal, self, state, updateWrapper;
+    state = {};
+    self = this;
+    modal = $("#log-modal");
+    updateWrapper = function() {
+      var updater;
+      updater = function() {
+        return $.get("/internal/log/" + self.taskId).success(function(message) {
+          var height, logDisplay, modalContent;
+          console.log("Updating Log Window...");
+          modalContent = modal.find(".modal-content");
+          logDisplay = modalContent.find("pre");
+          height = logDisplay[0].scrollTop;
+          modalContent.html(message);
+          logDisplay = modalContent.find("pre");
+          return logDisplay[0].scrollTo(0, height);
+        });
+      };
+      return state.intervalId = setInterval(updater, 5000);
+    };
+    completer = function() {
+      return clearInterval(state.intervalId);
+    };
+    return $.get("/internal/log/" + self.taskId).success((function(_this) {
+      return function(message) {
+        return self.displayLogModal(message, {
+          "ready": updateWrapper,
+          "complete": completer
+        }, self.taskId);
+      };
+    })(this)).error((function(_this) {
+      return function(err) {
+        return alert("An error occurred during retrieval. " + (err.toString()));
+      };
+    })(this));
+  };
+
+  LogViewStream.prototype.displayLogModal = function(message, modalArgs, taskId) {
+    var container;
+    container = $("#log-modal");
+    container.find('.modal-content').html(message);
+    container.find('.download-log').attr('href', "/internal/download_log/" + taskId);
+    $(".lean-overlay").remove();
+    return container.openModal(modalArgs);
+  };
+
+  return LogViewStream;
 
 })();
 
@@ -3185,6 +3215,8 @@ GlycopeptideLCMSMSSearchController = (function() {
 
   GlycopeptideLCMSMSSearchController.prototype.searchByScanIdUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/search_by_scan/{scanId}";
 
+  GlycopeptideLCMSMSSearchController.prototype.viewLogUrl = "/view_glycopeptide_lcmsms_analysis/{analysisId}/view_log";
+
   GlycopeptideLCMSMSSearchController.prototype.monosaccharideFilterContainerSelector = '#monosaccharide-filters';
 
   function GlycopeptideLCMSMSSearchController(analysisId, hypothesisUUID, proteinId1) {
@@ -3192,6 +3224,7 @@ GlycopeptideLCMSMSSearchController = (function() {
     this.analysisId = analysisId;
     this.hypothesisUUID = hypothesisUUID;
     this.proteinId = proteinId1;
+    this.viewLogFile = bind(this.viewLogFile, this);
     this.proteinChoiceHandler = bind(this.proteinChoiceHandler, this);
     this.searchByScanId = bind(this.searchByScanId, this);
     this.showExportMenu = bind(this.showExportMenu, this);
@@ -3225,6 +3258,9 @@ GlycopeptideLCMSMSSearchController = (function() {
     this.handle.find(".tooltipped").tooltip();
     this.handle.find("#save-result-btn").click(function(event) {
       return self.showExportMenu();
+    });
+    this.handle.find("#save-log-btn").click(function(event) {
+      return self.viewLogFile();
     });
     this.handle.find("#search-by-scan-id").blur(function(event) {
       self.searchByScanId(this.value.replace(/\s+$/g, ""));
@@ -3264,11 +3300,15 @@ GlycopeptideLCMSMSSearchController = (function() {
             formData.scan_id = $("#scan_id_input").val();
             formData.glycopeptide = $("#glycopeptide_input").val();
             GlycReSoft.closeMessageModal();
-            return $.post(_this.spectrumEvaluationUrl.format({
-              "analysisId": _this.analysisId
-            }), formData).success(function(formContent) {
-              return GlycReSoft.displayMessageModal(formContent);
-            });
+            if (formData.glycopeptide.length === 0 || formData.scan_id.length === 0) {
+              return GlycReSoft.notifyUser("You must specify both a scan ID and a glycopeptide");
+            } else {
+              return $.post(_this.spectrumEvaluationUrl.format({
+                "analysisId": _this.analysisId
+              }), formData).success(function(formContent) {
+                return GlycReSoft.displayMessageModal(formContent);
+              });
+            }
           });
         });
       };
@@ -3406,6 +3446,20 @@ GlycopeptideLCMSMSSearchController = (function() {
         modalHandle.find('.modal-content').html(doc);
         $(".lean-overlay").remove();
         return modalHandle.openModal();
+      };
+    })(this));
+  };
+
+  GlycopeptideLCMSMSSearchController.prototype.viewLogFile = function() {
+    var url;
+    url = this.viewLogUrl.format({
+      "analysisId": this.analysisId
+    });
+    return $.get(url).success((function(_this) {
+      return function(msg) {
+        var stream;
+        stream = new LogViewStream(msg.task_name);
+        return stream.view();
       };
     })(this));
   };

@@ -73,7 +73,7 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel, kwargs):
     current_process = multiprocessing.current_process()
 
     logger.info("Task Running on PID %r", current_process.pid)
-
+    kwargs['log_file_path'] = log_file_path
     try:
         out = task_callable(*args, **kwargs)
         return out
@@ -284,7 +284,13 @@ class Task(object):
 
     def start(self):
         self.process = Process(target=configure_log_wrapper, args=(
-            self.log_file_path, self.task_fn, dill.dumps(self.args), self.control_context, dill.dumps(self.kwargs)))
+                self.log_file_path,
+                self.task_fn,
+                dill.dumps(self.args),
+                self.control_context,
+                dill.dumps(self.kwargs)
+            )
+        )
         self.state = RUNNING
         self.process.start()
 

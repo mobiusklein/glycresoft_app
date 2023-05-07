@@ -135,31 +135,8 @@ class Application extends ActionLayerManager
             id = handle.attr('data-id')
             name = handle.attr("data-name")
             created_at = handle.attr("data-created-at")
-            state = {}
-            modal = $("#log-modal")
-            task_id = "#{name}-#{created_at}"
-            updateWrapper = () ->
-                updater = ->
-                    status = taskListContainer.find("li[data-id='#{id}']").attr('data-status')
-                    if status == "running" or status == "queued"
-                        $.get("/internal/log/#{task_id}").success(
-                            (message) ->
-                                console.log "Updating Log Window..."
-                                modalContent = modal.find(".modal-content")
-                                modalContent.html message
-                            )
-                state.intervalId = setInterval(updater, 5000)
-            completer = ->
-                clearInterval(state.intervalId)
-
-            $.get("/internal/log/#{name}-#{created_at}").success(
-                (message) => self.displayLogModal(
-                    message,
-                    {"ready": updateWrapper, "complete": completer},
-                    task_id
-                )
-            ).error(
-                (err) => alert("An error occurred during retrieval. #{err.toString()}"))
+            logView = new LogViewStream("#{name}-#{created_at}")
+            logView.view()
 
         cancelTask = (event) ->
             userInput = window.confirm("Are you sure you want to cancel this task?")
@@ -399,3 +376,44 @@ class Hypothesis
     @create: (source) ->
         return new Hypothesis source.name, source.id, source.uuid, source.path, source.hypothesis_type,
                               source.monosaccharide_bounds, source.decoy_hypothesis, source.options
+
+
+class LogViewStream
+    constructor: (taskId) ->
+        @taskId = taskId
+
+    view: () ->
+        state = {}
+        self = this
+        modal = $("#log-modal")
+        updateWrapper = () ->
+            updater = ->
+                $.get("/internal/log/#{self.taskId}").success(
+                    (message) ->
+                        console.log "Updating Log Window..."
+                        modalContent = modal.find(".modal-content")
+                        logDisplay = modalContent.find("pre")
+                        height = logDisplay[0].scrollTop
+                        modalContent.html message
+                        logDisplay = modalContent.find("pre")
+                        logDisplay[0].scrollTo(0, height)
+                )
+            state.intervalId = setInterval(updater, 5000)
+        completer = ->
+            clearInterval(state.intervalId)
+
+        $.get("/internal/log/#{self.taskId}").success(
+            (message) => self.displayLogModal(
+                message,
+                {"ready": updateWrapper, "complete": completer},
+                self.taskId
+            )
+        ).error(
+            (err) => alert("An error occurred during retrieval. #{err.toString()}"))
+
+    displayLogModal: (message, modalArgs, taskId) ->
+        container = $("#log-modal")
+        container.find('.modal-content').html message
+        container.find('.download-log').attr('href', "/internal/download_log/#{taskId}")
+        $(".lean-overlay").remove()
+        container.openModal(modalArgs)

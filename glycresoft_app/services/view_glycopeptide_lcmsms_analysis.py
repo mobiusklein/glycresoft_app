@@ -10,6 +10,8 @@ from flask import Response, g, request, render_template, jsonify, abort, current
 
 from glycopeptidepy import PeptideSequence
 from glycopeptidepy.utils.collectiontools import groupby
+from glycresoft_app.application_manager import ApplicationManager
+from glycresoft_app.project.project import Project
 
 from glycresoft_app.utils.state_transfer import request_arguments_and_context, FilterSpecificationSet
 from glycresoft_app.utils.pagination import SequencePagination
@@ -23,7 +25,6 @@ from glycan_profiling.serialize import (
     IdentifiedGlycopeptide, func, AnalysisDeserializer,
     MSScan, GlycopeptideSpectrumSolutionSet)
 
-from glycan_profiling.tandem.glycopeptide.scoring import CoverageWeightedBinomialScorer
 from glycan_profiling.tandem.glycopeptide.identified_structure import IdentifiedGlycoprotein
 from glycan_profiling.tandem.target_decoy import TargetDecoyAnalyzer, GroupwiseTargetDecoyAnalyzer
 from glycan_profiling.tandem.glycopeptide.dynamic_generation.multipart_fdr import GlycopeptideFDREstimator
@@ -38,7 +39,6 @@ from glycan_profiling.plotting.summaries import (
     SmoothingChromatogramArtist,
     figax)
 
-from glycan_profiling.tandem.glycopeptide import chromatogram_graph
 
 from glycan_profiling.output import (
     GlycopeptideLCMSMSAnalysisCSVSerializer,
@@ -59,11 +59,13 @@ from glycan_profiling.plotting.entity_bar_chart import (
 from glycan_profiling.task import log_handle
 
 from ms_deisotope.data_source.scan import ProcessedScan
+from ms_deisotope.output import ProcessedMSFileLoader
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
 
 from .collection_view import CollectionViewBase, ViewCache, SnapshotBase
 from .service_module import register_service
 from .file_exports import safepath
+
 
 
 app = view_glycopeptide_lcmsms_analysis = register_service("view_glycopeptide_lcmsms_analysis", __name__)
@@ -204,21 +206,23 @@ class GlycopeptideAnalysisView(CollectionViewBase):
     def peak_loader(self):
         if self._peak_loader is None:
             try:
-                by_name = g.manager.sample_manager.find(name=self.analysis.parameters['sample_name'])
+                manager: ApplicationManager = g.manager
+                manager.add_message(Message(f"Loading MS data for {self.analysis.name!r}"), user=g.user)
+                by_name = manager.sample_manager.find(name=self.analysis.parameters['sample_name'])
                 if os.path.exists(self.analysis.parameters['sample_path']):
                     log_handle.log("Reading spectra from %r" % self.analysis.parameters['sample_path'])
-                    self._peak_loader = ProcessedMzMLDeserializer(self.analysis.parameters['sample_path'])
+                    self._peak_loader = ProcessedMSFileLoader(self.analysis.parameters['sample_path'])
                 elif os.path.exists(
                         os.path.join(
                             g.manager.base_path, self.analysis.parameters['sample_path'])):
                     log_handle.log("Reading spectra from %r" % os.path.join(
                         g.manager.base_path, self.analysis.parameters['sample_path']))
-                    self._peak_loader = ProcessedMzMLDeserializer(
+                    self._peak_loader = ProcessedMSFileLoader(
                         os.path.join(
                             g.manager.base_path, self.analysis.parameters['sample_path']))
                 elif by_name:
                     log_handle.log("Reading spectra from %r" % by_name[0].path)
-                    self._peak_loader = ProcessedMzMLDeserializer(by_name[0].path)
+                    self._peak_loader = ProcessedMSFileLoader(by_name[0].path)
                 else:
                     raise IOError("Could not locate file")
             except KeyError:
@@ -385,8 +389,14 @@ class GlycopeptideAnalysisView(CollectionViewBase):
         scoring_model = self.parameters['tandem_scoring_model']
         error_tolerance = self.parameters['fragment_error_tolerance']
         extra_msn_evaluation_kwargs = self.parameters.get(
-            'extra_msn_evaluation_kwargs', {}).copy()
+            'extra_evaluation_kwargs', {}).copy()
         extra_msn_evaluation_kwargs['error_tolerance'] = error_tolerance
+        extra_msn_evaluation_kwargs['extended_glycan_search'] = self.parameters.get(
+            'extended_glycan_search', False)
+        extra_msn_evaluation_kwargs['rare_signatures'] = self.parameters.get(
+            'rare_signatures', False)
+        extra_msn_evaluation_kwargs['fragile_fucose'] = self.parameters.get(
+            'fragile_fucose', False)
         match = scoring_model.evaluate(scan, structure, **extra_msn_evaluation_kwargs)
         return match
 
@@ -643,7 +653,9 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
             annotated_match_ax.set_ylabel(annotated_match_ax.get_ylabel(), fontsize=16)
             annotated_match_ax.set_xlabel(annotated_match_ax.get_xlabel(), fontsize=16)
 
-            sequence_logo_plot = glycopeptide_match_logo(match, ax=figax())
+            sequence_logo_plot = glycopeptide_match_logo(
+                match, ax=figax(), return_artist=False
+            )
             xlim = list(sequence_logo_plot.get_xlim())
             xlim[0] += 1
 
@@ -717,7 +729,9 @@ def evalute_spectrum(analysis_uuid):
         annotated_match_ax.set_ylabel(annotated_match_ax.get_ylabel(), fontsize=16)
         annotated_match_ax.set_xlabel(annotated_match_ax.get_xlabel(), fontsize=16)
 
-        sequence_logo_plot = glycopeptide_match_logo(match, ax=figax())
+        sequence_logo_plot = glycopeptide_match_logo(
+            match, ax=figax(), return_artist=False
+        )
         xlim = list(sequence_logo_plot.get_xlim())
         xlim[0] += 1
 
@@ -939,3 +953,12 @@ def export_data(analysis_uuid):
             file_names.extend(
                 work_task(analysis_uuid))
     return jsonify(status='success', filenames=file_names)
+
+
+@app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/view_log")
+def view_log(analysis_uuid):
+    # find_log_file
+    view = get_view(analysis_uuid)
+    with view:
+        task_name = view.analysis.name
+        return jsonify(task_name=task_name)

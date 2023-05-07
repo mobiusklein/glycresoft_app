@@ -1,8 +1,10 @@
 import os
 import platform
+import glob
 
 from os import path
 from threading import RLock
+from typing import List, Optional
 
 from glycan_profiling.serialize import (
     DatabaseBoundOperation, SampleRun, GlycanHypothesis,
@@ -16,14 +18,14 @@ from glycresoft_app.utils.message_queue import null_user, has_access
 from . import sample, hypothesis, analysis
 
 
-def _winapi_path(path):
+def _winapi_path(path: str) -> str:
     if path.startswith('\\\\?\\'):
         return path
     path = os.path.abspath(path)
     return '\\\\?\\' + path
 
 
-def safepath(path):
+def safepath(path: str) -> str:
     if platform.system().lower() == 'windows' and len(path) > 259:
         # Use UNC path notation to circumvent the ever-painful Win32 path length
         # constraint
@@ -32,7 +34,7 @@ def safepath(path):
         return path
 
 
-def ensure_text(s):
+def ensure_text(s) -> str:
     if isinstance(s, (bytes, bytearray)):
         s = s.decode('utf8')
     elif isinstance(s, str):
@@ -50,6 +52,13 @@ class Project(object):
         "task_dir": None,
         "temp_dir": None
     }
+
+    base_path: str
+    sample_manager: sample.SampleManager
+    hypothesis_manager: hypothesis.HypothesisManager
+    analysis_manager: analysis.AnalysisManager
+    _data_lock: RLock
+    app_data: sqlitedict.SqliteDict
 
     app_data_name = "app_data.db"
 
@@ -108,11 +117,11 @@ class Project(object):
         name = ensure_text(name)
         return safepath(path.join(self.sample_dir, name))
 
-    def get_temp_path(self, name):
+    def get_temp_path(self, name: str):
         name = ensure_text(name)
         return safepath(path.join(self.temp_dir, name))
 
-    def get_task_path(self, name):
+    def get_task_path(self, name: str):
         name = ensure_text(name)
         return safepath(path.join(self.task_dir, name))
 
@@ -176,19 +185,22 @@ class Project(object):
     def __setitem__(self, key, value):
         self.app_data[key] = value
 
-    def samples(self, user_id=None):
+    def samples(self, user_id=None) -> List[sample.SampleRunRecord]:
+        """Obtain all of the preprocessed MS runs available to the specified user"""
         q = [sample for sample in self.sample_manager
              if has_access(sample, user_id)]
         return q
 
-    def hypotheses(self, user=None):
+    def hypotheses(self, user=None) -> List[hypothesis.HypothesisRecord]:
+        """Obtain all of the search databases available to the specified user"""
         return [
             hypothesis
             for hypothesis in self.hypothesis_manager
             if has_access(hypothesis, user)
         ]
 
-    def glycan_hypotheses(self, user=None):
+    def glycan_hypotheses(self, user=None) -> List[hypothesis.HypothesisRecord]:
+        """Obtain all of the glycomics databases available to the specified user"""
         return [
             hypothesis
             for hypothesis in self.hypothesis_manager
@@ -196,7 +208,8 @@ class Project(object):
             has_access(hypothesis, user)
         ]
 
-    def glycopeptide_hypotheses(self, user=None):
+    def glycopeptide_hypotheses(self, user=None) -> List[hypothesis.HypothesisRecord]:
+        """Obtain all of the glycopeptide databases to the specified user"""
         return [
             hypothesis
             for hypothesis in self.hypothesis_manager
@@ -205,21 +218,25 @@ class Project(object):
         ]
 
     def analyses(self, user=None):
+        """Obtain all of the analyses available to the specified user"""
         return [analysis for analysis in self.analysis_manager
                 if has_access(analysis, user)]
 
-    def glycan_analyses(self, user=None):
+    def glycan_analyses(self, user=None) -> List[analysis.AnalysisRecord]:
+        """Obtain all of the glycomics analyses available to the specified user"""
         return [analysis for analysis in (self.analysis_manager)
                 if AnalysisTypeEnum.glycan_lc_ms == analysis.analysis_type and
                 has_access(analysis, user)]
 
-    def analyses_for_sample(self, sample_name):
+    def analyses_for_sample(self, sample_name: str) -> List[analysis.AnalysisRecord]:
+        """Obtain all analyses of the given sample by name"""
         return [
             analysis for analysis in self.analysis_manager
             if analysis.sample_name == sample_name
         ]
 
-    def get_next_job_number(self):
+    def get_next_job_number(self) -> int:
+        """Get the next sequential job number and increment the counter"""
         with self._data_lock:
             try:
                 job_count = self.app_data['_job_count']
@@ -229,6 +246,7 @@ class Project(object):
         return job_count
 
     def is_project_resolved(self, ratio=0.5):
+        """Verifies that each hypothesis, sample, and analysis in the project can be loaded"""
         n = 0
         k = 0
         for record in self.hypotheses():
@@ -251,7 +269,17 @@ class Project(object):
         return k / float(n) > ratio
 
     def validate_indices(self, ratio=0.5):
+        """Regenerate the index JSON files for hypotheses, samples, and analyses"""
         with self._data_lock:
             if not self.is_project_resolved(ratio):
                 log_handle.log("Rebuilding Project Indices")
                 self.force_build_indices()
+
+    def find_log_file(self, task_name: str) -> Optional[str]:
+        """Find a log file path for the given task name"""
+        base = self.get_task_path("*" + task_name)
+        paths = glob.glob(base + '*.log')
+        if paths:
+            paths.sort(key=len, reverse=True)
+            return paths[0]
+        return None

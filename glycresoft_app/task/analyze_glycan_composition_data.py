@@ -1,8 +1,10 @@
 import os
 from click import Abort
 
+from sqlalchemy.orm import object_session
+
 from glycresoft_app.project import analysis as project_analysis
-from .task_process import Task, Message
+from .task_process import Task, Message, TaskControlContext
 
 from glycan_profiling.serialize import (
     DatabaseBoundOperation, GlycanHypothesis)
@@ -38,8 +40,11 @@ def analyze_glycan_composition(database_connection, sample_path, hypothesis_iden
                                output_path, analysis_name, mass_shifts, grouping_error_tolerance=1.5e-5,
                                mass_error_tolerance=1e-5, scoring_model=None,
                                minimum_mass=500., smoothing_factor=None,
-                               regularization_model=None, combinatorial_mass_shift_limit=8,
-                               channel=None, **kwargs):
+                               regularization_model=None,
+                               combinatorial_mass_shift_limit=8,
+                               channel: TaskControlContext = None,
+                               log_file_path=None,
+                               **kwargs):
     if scoring_model is None:
         scoring_model = GeneralScorer
 
@@ -97,6 +102,12 @@ def analyze_glycan_composition(database_connection, sample_path, hypothesis_iden
             hypothesis_name=analysis.hypothesis.name,
             sample_name=analysis.parameters['sample_name'],
             user_id=channel.user.id)
+
+        session = object_session(analysis)
+        analysis.parameters['log_file_path'] = log_file_path
+        session.add(analysis)
+        session.commit()
+
         channel.send(Message(record.to_json(), 'new-analysis'))
     except Exception:
         channel.send(Message.traceback())

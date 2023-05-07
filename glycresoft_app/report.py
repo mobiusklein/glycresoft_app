@@ -193,6 +193,17 @@ def n_per_row(sequence, n=60):
     return '<br>'.join(row_buffer)
 
 
+def modification_specs(modification_rule):
+    if isinstance(modification_rule, str):
+        yield modification_rule
+    else:
+        yield from modification_rule.as_spec_strings()
+
+
+def is_type(x):
+    return isinstance(x, type)
+
+
 def prepare_environment(env=None):
     try:
         raise Exception()
@@ -216,4 +227,7 @@ def prepare_environment(env=None):
     env.filters["sort_peak_match_pairs"] = sort_peak_match_pairs
     env.filters["mass_charge_ratio"] = mass_charge_ratio
     env.filters["logit"] = logit
+    env.filters["modification_specs"] = modification_specs
+    env.filters['basename'] = os.path.basename
+    env.tests['is_type'] = is_type
     return env

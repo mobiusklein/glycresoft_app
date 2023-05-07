@@ -93,6 +93,12 @@ Form Elements
     cursor: hand;
 }
 
+.icon-label-text {
+    display: inline-block;
+    position: relative;
+    top: -0.5em;
+}
+
 /*
 
 Sequence Highlights
@@ -171,6 +177,15 @@ Mass Shift Input
     color: #9e9e9e;
 }
 
+ul.mass-shift-list {
+    list-style: decimal;
+}
+
+ul.mass-shift-list li {
+    list-style: auto;
+    margin-left: 2em;
+}
+
 /*
 
 Monosaccharide Filters
@@ -197,6 +212,16 @@ Simple Numeric Entry
     font-size: 1.3em;
     width: 150px;
     text-align: center;
+}
+
+.numeric-entry-inf {
+    font-size: 1.3em;
+    width: 150px;
+    text-align: center;
+}
+
+.numeric-entry-inf:invalid {
+    border: red solid 3px;
 }
 
 /*
@@ -238,4 +263,10 @@ select:invalid {
 .glycopeptide-facet th {
     padding: 3px;
     text-align: center;
+}
+
+.log-display {
+    white-space: break-spaces;
+    overflow-y: scroll;
+    height: 45vh;
 }

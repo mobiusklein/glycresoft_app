@@ -34,6 +34,16 @@
                     <input class='numeric-entry' type='number' value='250' id='batch-size'
                         name='batch-size' min="1" />
                 </div>
+                <div class='input-field'>
+                    <label for='minimum-search-mass'>Minimum Search Mass</label>
+                    <input class='numeric-entry-inf' type='text' value='1000' id='minimum-search-mass' name='minimum-search-mass'
+                           pattern="\d+|\d+\.\d+|infinity|inf|Inf|INF|Infinity" title="A number or the key word 'Infinity'"/>
+                </div>
+                <div class='input-field'>
+                    <label for='maximum-search-mass'>Maximum Search Mass</label>
+                    <input class='numeric-entry-inf' type='text' value='Infinity' id='maximum-search-mass' name='maximum-search-mass'
+                        pattern="\d+|\d+\.\d+|infinity|inf|Inf|INF|Infinity" title="A number or the key word 'Infinity'" />
+                </div>
             </div>
             <div class='col s2'>
                 <div class='input-field'>

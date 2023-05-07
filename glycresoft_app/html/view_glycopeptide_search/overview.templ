@@ -1,27 +1,100 @@
-<div class='row'>
-    <div class='col s8'>
-        <h5 class='section-title'>{{analysis.name}}</h5>
-    </div>
+<div>
+    <h5 class='section-title'>{{analysis.name}}</h5>
 </div>
 <div id='glycopeptide-lcmsms-container'>
     <div class='row'>
         <div class='col s4'>
-            <b>MS<sup>1</sup> Mass Accuracy:</b> {{(analysis.parameters.mass_error_tolerance * (10 ** 6))|round(2)}} PPM<br>
-            <b>Grouping Tolerance:</b> {{(analysis.parameters.grouping_error_tolerance * (10 ** 6))|round(2)}} PPM<br>
-            <b>MS<sup>n</sup> Mass Accuracy:</b> {{(analysis.parameters.fragment_error_tolerance * (10 ** 6))|round(2)}} PPM<br>
-            <b>Minimum <code>q</code>-Value For Clustering:</b> {{analysis.parameters.psm_fdr_threshold}}<br>
+            <ul>
+                <li>
+                    <b>MS<sup>1</sup> Mass Accuracy:</b> {{"%0.3g" % (analysis.parameters.mass_error_tolerance * (10 ** 6))}} PPM
+                </li>
+                <li>
+                    <b>Grouping Tolerance:</b> {{"%0.3g" % (analysis.parameters.grouping_error_tolerance * (10 ** 6))}} PPM
+                </li>
+                <li>
+                    <b>MS<sup>n</sup> Mass Accuracy:</b> {{"%0.3g" % (analysis.parameters.fragment_error_tolerance * (10 ** 6))}} PPM
+                </li>
+                <li>
+                    <b>Minimum <code>q</code>-Value For Clustering:</b> {{"%0.3g" % analysis.parameters.psm_fdr_threshold}}
+                </li>
+                <li>
+                    <b>MS<sup>n</sup> Scoring Model:</b>
+                    {%- if analysis.parameters.tandem_scoring_model is is_type %}
+                    {{analysis.parameters.tandem_scoring_model.__name__}}
+                    {%- else %}
+                    {{analysis.parameters.tandem_scoring_model.__class__.__name__}}
+                    {%- endif %}
+                </li>
+                <li>
+                    {% if 'fdr_estimation_strategy' in analysis.parameters %}
+                    <b>FDR Strategy:</b> {{analysis.parameters.fdr_estimation_strategy.name}}
+                    {% endif %}
+                </li>
+                <li><b>Mass Shifts:</b></li>
+                <li>
+                    <ul class="mass-shift-list">
+                        {% for mass_shift in analysis.parameters.get('mass_shifts', []) %}
+                        <li>{{mass_shift.name}} ({{"%0.3f"|format(mass_shift.mass)}})</li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            </ul>
         </div>
         <div class='col s4'>
-            <b>Target Database:</b>
-            <a class='user-provided-name'>{{analysis.hypothesis.name}}</a><br>
-            <b>Sample Searched:</b>
-            <a class='user-provided-name'>{{analysis.sample_run.name}}</a>
+            {% set hypothesis = analysis.hypothesis %}
+            <ul>
+                <li>
+                    <b>Glycopeptide Hypothesis:</b>
+                    <a class="user-provided-name">{{hypothesis.name}}</a>
+                </li>
+                {% if "fasta_file" in hypothesis.parameters %}
+                <li><b>FASTA File:</b> <span class="user-provided-name">{{hypothesis.parameters['fasta_file']|basename}}</span></li>
+                {% elif "mzid_file" in hypothesis.parameters %}
+                <li><b>mzIdentML File:</b> <span class="user-provided-name">{{hypothesis.parameters['mzid_file']|basename}}</span></li>
+                {% endif %}
+                {% if "enzymes" in hypothesis.parameters %}
+                <li><b>Enzymes:</b> {{hypothesis.parameters['enzymes'] | unique | join(", ")}}</li>
+                {% endif %}
+                {% if 'constant_modifications' in hypothesis.parameters%}
+                <li><b>Constant Modifications</b></li>
+                <ul>
+                    {% for modrule in hypothesis.parameters['constant_modifications'] %}
+                    {% for rule_text in modrule | modification_specs %}
+                    <li>{{rule_text}}</li>
+                    {% endfor %}
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% if 'variable_modifications' in hypothesis.parameters%}
+                <li><b>Variable Modifications</b></li>
+                <ul>
+                    {% for modrule in hypothesis.parameters['variable_modifications'] %}
+                    {% for rule_text in modrule | modification_specs %}
+                    <li>{{rule_text}}</li>
+                    {% endfor %}
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </ul>
         </div>
         <div class='col s4'>
             <b>ID:</b> {{analysis.uuid}}<br>
-            <a class='mdi mdi-content-save mdi-36px tooltipped' id='save-result-btn' style='cursor: pointer;'
-               data-tooltip='Export Identifications' data-position='bottom'>
-            </a>
+            <b>Sample Searched:</b>
+            <a class="user-provided-name">{{analysis.sample_run.name}}</a>
+            <div class="row">
+                <div class="col s6">
+                    <a class='mdi mdi-content-save mdi-36px tooltipped' id='save-result-btn' style='cursor: pointer;'
+                        data-tooltip='Export results to external formats' data-position='bottom'>
+                        <span class="icon-label-text">Export Results</span>
+                    </a>
+                </div>
+                <div class="col s6">
+                    <a class='mdi mdi-note-text mdi-36px tooltipped' id='save-log-btn' style='cursor: pointer;'
+                        data-tooltip='Export log file for sharing and diagnostics' data-position='bottom'>
+                        <span class="icon-label-text">View Log</span>
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
     <div class='row'>

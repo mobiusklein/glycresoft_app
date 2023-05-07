@@ -181,6 +181,8 @@ class GlycopeptideLCMSMSSearchController
     saveCSVURL: "/view_glycopeptide_lcmsms_analysis/{analysisId}/to-csv"
     searchByScanIdUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/search_by_scan/{scanId}"
 
+    viewLogUrl: "/view_glycopeptide_lcmsms_analysis/{analysisId}/view_log"
+
     monosaccharideFilterContainerSelector: '#monosaccharide-filters'
 
     constructor: (@analysisId, @hypothesisUUID, @proteinId) ->
@@ -209,6 +211,9 @@ class GlycopeptideLCMSMSSearchController
 
         @handle.find("#save-result-btn").click (event) ->
             self.showExportMenu()
+
+        @handle.find("#save-log-btn").click (event) ->
+            self.viewLogFile()
 
         @handle.find("#search-by-scan-id").blur (event) ->
             self.searchByScanId @value.replace(/\s+$/g, "")
@@ -353,3 +358,12 @@ class GlycopeptideLCMSMSSearchController
             # Remove any straggler overlays from rapid re-opening of modal
             $(".lean-overlay").remove()
             modalHandle.openModal()
+
+    viewLogFile: =>
+        url = @viewLogUrl.format({
+            "analysisId": @analysisId
+        })
+        $.get(url).success (msg) =>
+            stream = new LogViewStream(msg.task_name)
+            stream.view()
+
