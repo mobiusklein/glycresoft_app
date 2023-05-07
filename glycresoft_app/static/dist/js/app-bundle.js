@@ -33,7 +33,7 @@ Application = (function(superClass) {
     })(this));
     this.handleMessage('update', (function(_this) {
       return function(data) {
-        Materialize.toast(data.replace(/"/g, ''), 4000);
+        Materialize.toast(data.replace(/"|'/g, ''), 4000);
       };
     })(this));
     this.handleMessage('refresh-index', (function(_this) {

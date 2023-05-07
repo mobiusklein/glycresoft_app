@@ -11,6 +11,12 @@ _SampleRunRecord = structure("SampleRunRecord", ["name", "uuid", "path", "comple
 
 
 class SampleRunRecord(_SampleRunRecord):
+    name: str
+    uuid: str
+    path: str
+    completed: bool
+    sample_type: str
+
     def is_resolvable(self):
         if not os.path.exists(self.path):
             return False

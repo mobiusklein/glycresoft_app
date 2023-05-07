@@ -1,5 +1,7 @@
 import numpy as np
 from flask import Response, g, request, render_template, redirect, abort, current_app, jsonify
+from glycresoft_app.application_manager import ApplicationManager
+from glycresoft_app.project.sample import SampleRunRecord
 
 from glycresoft_app.task.task_process import Message
 
@@ -29,6 +31,8 @@ VIEW_CACHE = ViewCache()
 
 
 class SampleView(SimpleViewBase):
+    record: SampleRunRecord
+
     def __init__(self, record, minimum_mass=None, abundance_threshold=None):
         SimpleViewBase.__init__(self)
         self.record = record
@@ -155,6 +159,8 @@ class SampleView(SimpleViewBase):
     def build_chromatograms(self):
         if self.abundance_threshold is None:
             self._estimate_threshold()
+        manager: ApplicationManager = g.manager
+        manager.add_message(Message(f"Extracting chromatograms for {self.record.name}", "update"))
         ex = ChromatogramExtractor(
             self.reader, minimum_intensity=self.abundance_threshold,
             minimum_mass=self.minimum_mass)

@@ -92,7 +92,8 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel, kwargs):
 
 
 class CallInterval(object):
-    """Call a function every `interval` seconds from
+    """
+    Call a function every `interval` seconds from
     a separate thread.
 
     Attributes
@@ -221,6 +222,7 @@ class Task(object):
     task_fn : callable
         The function to call in the "task" process
     """
+
     id: str
     name: str
     user: UserIdentity
@@ -378,9 +380,8 @@ class Task(object):
 
 
 class NullPipe(object):
-    """
-    A class to stub out multiprocessing.Pipe
-    """
+    """A class to stub out multiprocessing.Pipe"""
+
     def send(self, *args, **kwargs):
         logger.info(*args, **kwargs)
 
@@ -406,6 +407,7 @@ class Message(object):
         ("info", "error", "update")
     user : UserIdentity
     """
+
     def __init__(self, message, type="info", source=None, user=null_user):
         self.message = message
         self.source = source
@@ -421,7 +423,8 @@ class Message(object):
 
 
 class TaskManager(object):
-    """Track and schedule `Task` objects and associated processes.
+    """
+    Track and schedule `Task` objects and associated processes.
 
     Attributes
     ----------
@@ -442,6 +445,7 @@ class TaskManager(object):
     messages: Queue
         A `Queue` for holding task messages to be read by clients
     """
+
     interval = 5
 
     task_dir: os.PathLike
@@ -480,7 +484,8 @@ class TaskManager(object):
         self.event_handlers[event_type].add(handler)
 
     def add_task(self, task: Task):
-        """Add a `Task` object to the set of all tasks being managed
+        """
+        Add a `Task` object to the set of all tasks being managed
         by this instance.
 
         Once a task is added, it will be checked during each `tick`
@@ -515,7 +520,8 @@ class TaskManager(object):
         self.cancel_all_tasks()
 
     def tick(self):
-        """Check each managed task for status updates, schedule new tasks
+        """
+        Check each managed task for status updates, schedule new tasks
         when space becomes available, remove finished tasks and handle errors.
 
         This method is called every :attr:`TaskManager.interval` seconds.
@@ -531,8 +537,7 @@ class TaskManager(object):
             task.cancel()
 
     def check_state(self):
-        """Iterate over all tasks in :attr:`TaskManager.tasks` and check their status.
-        """
+        """Iterate over all tasks in :attr:`TaskManager.tasks` and check their status."""
         logger.debug(
             "Checking task manager state:\n %d tasks running\nRunning: %r\n%r",
             self.n_running, self.currently_running, self.tasks)
@@ -592,11 +597,13 @@ class TaskManager(object):
                 break
 
     def run_task(self, task):
-        """Start running a task if space is available
+        """
+        Start running a task if space is available
 
         Parameters
         ----------
         task : Task
+            The task that will be started
         """
         if self.running_lock.acquire(0):
             self.currently_running[task.id] = task
@@ -605,7 +612,8 @@ class TaskManager(object):
             self.n_running += 1
             task.start()
             self.add_message(
-                Message({"id": task.id, "name": task.name, "created_at": task.created_at}, 'task-start',
+                Message({"id": task.id, "name": task.name, "created_at": task.created_at},
+                        'task-start',
                         user=task.user))
 
     def add_message(self, message):

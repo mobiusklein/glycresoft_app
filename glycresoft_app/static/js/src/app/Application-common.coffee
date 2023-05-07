@@ -28,7 +28,7 @@ class Application extends ActionLayerManager
             return
 
         @handleMessage 'update', (data) =>
-            Materialize.toast data.replace(/"/g, ''), 4000
+            Materialize.toast data.replace(/"|'/g, ''), 4000
             return
 
         @handleMessage 'refresh-index', (data) =>

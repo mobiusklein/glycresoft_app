@@ -1,4 +1,6 @@
+import json
 import os
+from typing import Union
 from uuid import uuid4
 from threading import RLock
 import operator
@@ -6,12 +8,14 @@ import random
 import string
 from hashlib import sha512
 
+from flask import current_app
+
 
 SIMPLE_CHARS = string.ascii_letters + string.digits
 
 
 def get_random_string(length=24):
-    return ''.join(random.choice(SIMPLE_CHARS) for i in xrange(length))
+    return ''.join(random.choice(SIMPLE_CHARS) for i in range(length))
 
 
 random_string = get_random_string
@@ -73,3 +77,34 @@ def make_unique_name(template):
             result = template % (i,)
         touch_file(result)
         return result
+
+
+def float_or(numval: Union[float, str], alt: float) -> float:
+    if isinstance(numval, float):
+        return numval
+    if not numval:
+        return alt
+    numval = json.loads(numval)
+    if numval is None:
+        return alt
+    if not isinstance(numval, (float, int)):
+        current_app.logger.warn(
+            "Numerical value expected, got %r, returning alternative %r",
+            numval,
+            alt
+        )
+        return alt
+    return numval
+
+
+def float_or_infinity(numcode):
+    return float_or(numcode, float('inf'))
+
+
+def try_int(value: str):
+    try:
+        return int(value)
+    except Exception:
+        current_app.logger.error(
+            "Failed to parse integer from %r, returning 1", value, exc_info=1)
+        return 1

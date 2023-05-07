@@ -11,7 +11,7 @@ except ImportError:
 
 from flask import Response, g, request, render_template, redirect, abort, current_app
 from .service_module import register_service
-from .form_cleaners import make_unique_name, touch_file
+from .form_cleaners import make_unique_name, touch_file, float_or, try_int, float_or_infinity
 
 from glycresoft_app.task.preprocess_mzml import PreprocessMSTask
 
@@ -21,7 +21,8 @@ app = sample_management = register_service("sample_management", __name__)
 
 @sample_management.route("/add_sample", methods=["POST"])
 def post_add_sample():
-    """Handle an uploaded sample file
+    """
+    Handle an uploaded sample file
 
     Returns
     -------
@@ -75,7 +76,7 @@ def post_add_sample():
     # to the set of project samples
 
     start_time = float(request.values['start-time'])
-    end_time = float(request.values['end-time'])
+    end_time = float_or_infinity(request.values['end-time'])
 
     extract_only_tandem_envelopes = bool(request.values.get("msms-features-only", False))
 

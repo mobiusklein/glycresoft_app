@@ -10,6 +10,15 @@ _AnalysisRecord = structure("AnalysisRecord", ["name", 'id', 'uuid', 'path', 'an
 
 
 class AnalysisRecord(_AnalysisRecord):
+    name: str
+    id: int
+    uuid: str
+    path: str
+    analysis_type: str
+    hypothesis_uuid: str
+    hypothesis_name: str
+    sample_name: str
+
     def is_resolvable(self):
         if not os.path.exists(self.path):
             return False

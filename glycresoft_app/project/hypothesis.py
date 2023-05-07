@@ -25,6 +25,14 @@ class HypothesisRecord(_HypothesisRecord):
     GLYCAN_COMPOSITION = 'glycan_composition'
     GLYCOPEPTIDE = 'glycopeptide'
 
+    name: str
+    id: int
+    uuid: str
+    hypothesis_type: str
+    monosaccharide_bounds: list
+    decoy_hypothesis: str
+    options: dict
+
     def is_resolvable(self):
         if not os.path.exists(self.path):
             return False

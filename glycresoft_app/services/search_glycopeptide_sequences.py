@@ -10,42 +10,12 @@ except ImportError:
 
 from glycan_profiling.cli.validators import validate_glycopeptide_tandem_scoring_function
 
-from .form_cleaners import remove_empty_rows, intify, make_unique_name
+from .form_cleaners import remove_empty_rows, make_unique_name, float_or, try_int, float_or_infinity
 from .service_module import register_service
 
 from ..task.analyze_glycopeptide_sequence_data import AnalyzeGlycopeptideSequenceTask, GlycopeptideSearchStrategyEnum
 
 app = search_glycopeptide_sequences = register_service("search_glycopeptide_sequences", __name__)
-
-def float_or(numval: Union[float, str], alt: float) -> float:
-    if isinstance(numval, float):
-        return numval
-    if not numval:
-        return alt
-    numval = json.loads(numval)
-    if numval is None:
-        return alt
-    if not isinstance(numval, (float, int)):
-        current_app.logger.warn(
-            "Numerical value expected, got %r, returning alternative %r",
-            numval,
-            alt
-        )
-        return alt
-    return numval
-
-
-def float_or_infinity(numcode):
-    return float_or(numcode, float('inf'))
-
-
-def try_int(value: str):
-    try:
-        return int(value)
-    except Exception:
-        current_app.logger.error(
-            "Failed to parse integer from %r, returning 1", value, exc_info=1)
-        return 1
 
 
 @app.route("/search_glycopeptide_sequences/run_search")

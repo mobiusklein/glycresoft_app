@@ -207,7 +207,7 @@ class GlycopeptideAnalysisView(CollectionViewBase):
         if self._peak_loader is None:
             try:
                 manager: ApplicationManager = g.manager
-                manager.add_message(Message(f"Loading MS data for {self.analysis.name!r}"), user=g.user)
+                manager.add_message(Message(f"Loading MS data for {self.analysis.name!r}", type="update", user=g.user))
                 by_name = manager.sample_manager.find(name=self.analysis.parameters['sample_name'])
                 if os.path.exists(self.analysis.parameters['sample_path']):
                     log_handle.log("Reading spectra from %r" % self.analysis.parameters['sample_path'])
