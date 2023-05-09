@@ -9,7 +9,7 @@ from glycresoft_app.project import hypothesis as project_hypothesis
 from .task_process import Task, Message
 
 
-def build_combinatorial_hypothesis(rule_file, database_connection, reduction, derivatization, name, channel):
+def build_combinatorial_hypothesis(rule_file, database_connection, reduction, derivatization, name, channel, **kwargs):
     if name is not None:
         name = validate_glycan_hypothesis_name(None, database_connection, name)
         channel.send(Message("Building Glycan Hypothesis %s" % name, 'info'))

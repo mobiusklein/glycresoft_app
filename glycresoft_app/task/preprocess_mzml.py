@@ -28,7 +28,8 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
                maximum_charge=None, name=None, msn_averagine=None, score_threshold=35.,
                msn_score_threshold=5., missed_peaks=1, msn_missed_peaks=1, n_processes=5, storage_path=None,
                extract_only_tandem_envelopes=False, ms1_background_reduction=5.,
-               msn_background_reduction=0, ms1_averaging=0, channel=None):
+               msn_background_reduction=0, ms1_averaging=0,
+               channel=None, **kwargs):
 
     minimum_charge = 1 if maximum_charge > 0 else -1
     charge_range = (minimum_charge, maximum_charge)

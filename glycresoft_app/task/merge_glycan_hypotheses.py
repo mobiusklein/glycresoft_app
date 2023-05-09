@@ -9,7 +9,7 @@ from glycresoft_app.project import hypothesis as project_hypothesis
 from .task_process import Task, Message
 
 
-def merge_glycan_hypothesis(database_connection, hypothesis_ids, name, channel):
+def merge_glycan_hypothesis(database_connection, hypothesis_ids, name, channel, **kwargs):
         if name is not None:
             name = validate_glycan_hypothesis_name(None, database_connection, name)
             channel.send(Message("Merging Glycan Hypothesis %s" % name, 'info'))

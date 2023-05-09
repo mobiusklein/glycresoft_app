@@ -16,7 +16,7 @@ from .task_process import Task, Message
 def mzid_glycopeptide(database_connection, mzid_file, name, occupied_glycosites, target_protein,
                       processes, glycan_source, glycan_source_type, glycan_source_identifier,
                       peptide_length_range, generate_full_crossproduct,
-                      generate_reverse_decoys, channel):
+                      generate_reverse_decoys, channel, **kwargs):
     context = None
     proteins = validate_mzid_proteins(
         context, mzid_file, target_protein, [])

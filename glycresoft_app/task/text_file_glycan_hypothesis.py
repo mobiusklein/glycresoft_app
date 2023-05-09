@@ -11,7 +11,7 @@ from .task_process import Task, Message
 
 
 def build_text_file_hypothesis(text_file, database_connection, reduction, derivatization, name,
-                               channel):
+                               channel, **kwargs):
 
     if not validate_database_unlocked(database_connection):
         channel.send(Message("Database is locked.", "error"))

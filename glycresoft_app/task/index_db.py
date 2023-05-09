@@ -20,7 +20,7 @@ target_queries = [
 ]
 
 
-def index_database(database_connection, channel):
+def index_database(database_connection, channel, **kwargs):
     try:
         channel.send(Message("Analyzing Database", 'update'))
         handle = DatabaseBoundOperation(database_connection)

@@ -20,7 +20,7 @@ from .task_process import Task, Message
 def fasta_glycopeptide(database_connection, fasta_file, enzyme, missed_cleavages, occupied_glycosites, name,
                        constant_modification, variable_modification, processes, glycan_source, glycan_source_type,
                        glycan_source_identifier, peptide_length_range, semispecific_digest, generate_full_crossproduct,
-                       generate_reverse_decoys, channel):
+                       generate_reverse_decoys, channel, **kwargs):
     context = None
     try:
         validate_modifications(
