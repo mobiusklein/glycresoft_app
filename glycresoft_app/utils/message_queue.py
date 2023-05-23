@@ -15,6 +15,9 @@ _UserIdentity = namedtuple("UserIdentity", ["id", "info"])
 
 
 class UserIdentity(_UserIdentity):
+    id: str
+    info: 'UserMetadataBundle'
+
     def has_access(self, record):
         user_id = str(record.user_id)
         permission = (
@@ -26,7 +29,7 @@ class UserIdentity(_UserIdentity):
         return permission
 
     @property
-    def name(self):
+    def name(self) -> str:
         display_name = self.info.get("display_name")
         if display_name:
             return display_name
@@ -102,7 +105,7 @@ def structure(*args, **kwargs):
     else:
         to_json = kwargs.pop("to_json")
 
-    new_type = namedtuple(*args, **kwargs)
+    new_type = namedtuple(args[0], *args[1:], **kwargs)
 
     derived_type = type(args[0], (new_type,), {"to_json": to_json})
     derived_type.__new__.__defaults__ = ((None,) * (len(fields)))
@@ -140,7 +143,8 @@ class UserManager(SyncableStore):
 
 
 class IdentityProvider(object):
-    """Centralizes the minting of new UserIdentity and SessionIdentity
+    """
+    Centralizes the minting of new UserIdentity and SessionIdentity
     objects, and tracks the relationship between user ids and session ids,
     though this behavior is also available through the SessionManager.
 
@@ -149,6 +153,7 @@ class IdentityProvider(object):
     store : defaultdict(set)
         Mapping from UserIdentity to SessionIdentities
     """
+
     def __init__(self, syncfile=None):
         self.store = defaultdict(set)
         self.syncfile = syncfile
@@ -182,7 +187,8 @@ super_user = identity_provider.new_user(-1)
 
 
 class SessionManager(object):
-    """Handles the tracking of UserIdentity to MessageQueueSessions,
+    """
+    Handles the tracking of UserIdentity to MessageQueueSessions,
     and as a wrapper around the underlying MessageQueueManager.
 
     Attributes
@@ -192,6 +198,7 @@ class SessionManager(object):
     session_map : defaultdict(dict)
         Mapping from UserIdentity to SessionIdentity -> MessageQueueSession
     """
+
     def __init__(self, message_queue_manager):
         self.message_queue_manager = message_queue_manager
         self.session_map = defaultdict(dict)
@@ -223,7 +230,8 @@ class SessionManager(object):
             return new_session
 
     def user_sessions(self, user_id):
-        """Return an iteratable over all message
+        """
+        Return an iteratable over all message
         queue sessions owned by the user designated by
         `user_id`
 
@@ -295,13 +303,15 @@ class MessageQueueManagerBase(object):
 
 
 class MemoryMessageQueueManager(MessageQueueManagerBase):
-    """A simple MessageQueueManager that holds all message queues in memory.
+    """
+    A simple MessageQueueManager that holds all message queues in memory.
 
     Attributes
     ----------
     storage : defaultdict(Queue)
         Mapping from SessionIdentity to thread-safe Queue
     """
+
     def __init__(self, **kwargs):
         super(MemoryMessageQueueManager, self).__init__(**kwargs)
         self.storage = defaultdict(Queue)
@@ -322,7 +332,8 @@ class MemoryMessageQueueManager(MessageQueueManagerBase):
 
 
 class MessageQueueSession(object):
-    """A read-only endpoint for a MessageQueue which can deliver messages to
+    """
+    A read-only endpoint for a MessageQueue which can deliver messages to
     a single location. Associated with a SessionIdentity, and should only be
     created through a SessionManager's :meth:`create_new_session` method.
 
@@ -339,6 +350,7 @@ class MessageQueueSession(object):
         The manager which governs the connection between this session and the
         underlying MessageQueueManager
     """
+
     def __init__(self, session_manager, identifier):
         self.session_manager = session_manager
         self.identifier = identifier

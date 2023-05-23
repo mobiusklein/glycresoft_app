@@ -178,7 +178,7 @@ def import_hypothesis_from_file():
 
 @app.route("/import_sample", methods=['POST'])
 def import_sample_from_file():
-    manager = g.manager
+    manager: ApplicationManager = g.manager
 
     if g.has_native_client:
         app.logger.info("Importing sample via native client")

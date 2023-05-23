@@ -39,8 +39,10 @@ def get_by_name_or_id(session, model_type, name_or_id):
 def analyze_glycan_composition(database_connection, sample_path, hypothesis_identifier,
                                output_path, analysis_name, mass_shifts, grouping_error_tolerance=1.5e-5,
                                mass_error_tolerance=1e-5, scoring_model=None,
-                               minimum_mass=500., smoothing_factor=None,
+                               minimum_mass=500.,
+                               smoothing_factor=None,
                                regularization_model=None,
+                               network=None,
                                combinatorial_mass_shift_limit=8,
                                channel: TaskControlContext = None,
                                log_file_path=None,
@@ -92,6 +94,9 @@ def analyze_glycan_composition(database_connection, sample_path, hypothesis_iden
             grouping_error_tolerance=grouping_error_tolerance,
             scoring_model=scoring_model,
             analysis_name=analysis_name,
+            regularize=smoothing_factor,
+            regularization_model=regularization_model,
+            network=network,
             minimum_mass=minimum_mass)
         analyzer.start()
         analysis = analyzer.analysis
@@ -120,13 +125,20 @@ class AnalyzeGlycanCompositionTask(Task):
     def __init__(self, database_connection, sample_path, hypothesis_identifier,
                  output_path, analysis_name, mass_shifts, grouping_error_tolerance=1.5e-5,
                  mass_error_tolerance=1e-5, scoring_model=None,
-                 minimum_mass=500., smoothing_factor=None, regularization_model=None,
+                 minimum_mass=500.,
+                 smoothing_factor=None,
+                 regularization_model=None,
+                 network=None,
                  combinatorial_mass_shift_limit=8,
                  callback=lambda: 0, **kwargs):
         args = (database_connection, sample_path, hypothesis_identifier,
                 output_path, analysis_name, mass_shifts, grouping_error_tolerance,
-                mass_error_tolerance, scoring_model, minimum_mass,
-                smoothing_factor, regularization_model, combinatorial_mass_shift_limit)
+                mass_error_tolerance,
+                scoring_model, minimum_mass,
+                smoothing_factor,
+                regularization_model,
+                network,
+                combinatorial_mass_shift_limit)
         if analysis_name is None:
             name_part = kwargs.pop("job_name_part", self.count)
             self.count += 1
