@@ -16,7 +16,8 @@ logger = logging.getLogger("glycresoft.message_queue")
 
 
 def message_queue_stream(manager, user):
-    """Implement a simple Server Side Event (SSE) stream based on the
+    """
+    Implement a simple Server Side Event (SSE) stream based on the
     stream of events emit from the :attr:`TaskManager.messages` queue of `manager`.
 
     These messages are handled on the client side.
@@ -80,3 +81,26 @@ def echo_message():
         user = identity_provider.new_user(request.values.get('recipient'))
     g.manager.add_message(Message(message, type='update', user=user))
     return Response("Done")
+
+
+class MessageQueueLogger:
+    def __init__(self, recipient):
+        self.recipient = recipient
+        self.user = identity_provider.new_user(self.recipient)
+
+    def log(self, message, *args, **kwargs):
+        if args:
+            message = message % args
+        g.manager.add_message(Message(message, type='update', user=self.user))
+
+    def info(self, message, *args, **kwargs):
+        self.log(message, *args, **kwargs)
+
+    def error(self, message, *args, **kwargs):
+        self.log(message, *args, **kwargs)
+
+    def warning(self, message, *args, **kwargs):
+        self.log(message, *args, **kwargs)
+
+    def debug(self, message, *args, **kwargs):
+        self.log(message, *args, **kwargs)

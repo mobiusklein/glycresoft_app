@@ -25,6 +25,8 @@ from glycan_profiling.serialize import (
     IdentifiedGlycopeptide, func, AnalysisDeserializer,
     MSScan, GlycopeptideSpectrumSolutionSet)
 
+from glycan_profiling.profiler import GlycopeptideSearchStrategy
+
 from glycan_profiling.tandem.glycopeptide.identified_structure import IdentifiedGlycoprotein
 from glycan_profiling.tandem.target_decoy import TargetDecoyAnalyzer, GroupwiseTargetDecoyAnalyzer
 from glycan_profiling.tandem.glycopeptide.dynamic_generation.multipart_fdr import GlycopeptideFDREstimator
@@ -43,10 +45,13 @@ from glycan_profiling.plotting.summaries import (
 from glycan_profiling.output import (
     GlycopeptideLCMSMSAnalysisCSVSerializer,
     GlycopeptideSpectrumMatchAnalysisCSVSerializer,
+    MultiScoreGlycopeptideLCMSMSAnalysisCSVSerializer,
+    MultiScoreGlycopeptideSpectrumMatchAnalysisCSVSerializer,
     MzIdentMLSerializer,
     ImportableGlycanHypothesisCSVSerializer,
     SpectrumAnnotatorExport,
-    GlycopeptideDatabaseSearchReportCreator)
+    GlycopeptideDatabaseSearchReportCreator
+)
 
 
 from glycan_profiling.plotting.spectral_annotation import TidySpectrumMatchAnnotator
@@ -153,6 +158,7 @@ class GlycopeptideSnapShot(SnapshotBase):
 class GlycopeptideAnalysisView(CollectionViewBase):
     _retention_time_model = None
     _fdr_estimator = None
+    _is_multiscore = None
 
     def __init__(self, storage_record, analysis_id):
         CollectionViewBase.__init__(self, storage_record)
@@ -180,6 +186,12 @@ class GlycopeptideAnalysisView(CollectionViewBase):
             self._resolve_sources()
             self._build_protein_index()
             self._build_glycan_filter()
+
+    @property
+    def is_multiscore(self):
+        if self._is_multiscore is None and self.parameters:
+            self._is_multiscore = self.parameters.get('search_strategy') == GlycopeptideSearchStrategy.multipart_target_decoy_competition
+        return self._is_multiscore
 
     @property
     def retention_time_model(self):
@@ -363,7 +375,7 @@ class GlycopeptideAnalysisView(CollectionViewBase):
             if glycan_combination_id in valid_glycan_combinations:
                 keepers.append(gp)
 
-        log_handle.log("Converting Kept Glycopeptides")
+        # log_handle.log("Converting Kept Glycopeptides")
         # keepers = [self.convert_glycopeptide(gp) for gp in keepers]
 
         log_handle.log("Snapshot Complete")
@@ -759,6 +771,20 @@ def evalute_spectrum(analysis_uuid):
         "/view_glycopeptide_search/components/spectrum_evaluation.templ", **payload)
 
 
+# TODO: All of these export methods run in the web server's process, which means they
+# trade off between the thread handling this request and all other requests. These export
+# tasks still use the GIL substantial amount of time and and could be foisted off onto
+# a separate process in the job scheduler, but care must be taken to make sure the results
+# conform to the same filters that the `view` applies automatically.
+#
+# This could be accomplished by enumerating all the primary keys to be visited first
+# within a function with access to the view and then send that across to a worker process.
+# This has the added benefit that it would allow the user to see the process log updates
+# which hard to expose to the browser client right now. One limitation we'll need to work
+# around is that the job scheduler only runs one task at a time, but an actual analysis
+# job would block an export job, and vice versa. A better design choice might create separate
+# pools that the job scheduler can run concurrently.
+
 def _export_csv(analysis_uuid):
     view = get_view(analysis_uuid)
     with view:
@@ -774,13 +800,16 @@ def _export_csv(analysis_uuid):
                 with snapshot.bind(view.session):
                     for gp in snapshot.members:
                         yield gp
-        # gen = (
-        #     gp for protein_id in protein_name_resolver for gp in
-        #     view.get_items_for_display(protein_id).members)
 
-        GlycopeptideLCMSMSAnalysisCSVSerializer(
+        if view.is_multiscore:
+            job_cls = MultiScoreGlycopeptideLCMSMSAnalysisCSVSerializer
+        else:
+            job_cls = GlycopeptideLCMSMSAnalysisCSVSerializer
+
+        job = job_cls(
             open(path, 'wb'), generate_entities(),
-            protein_name_resolver, view.analysis).start()
+            protein_name_resolver, view.analysis)
+        job.start()
     return [file_name]
 
 
@@ -802,10 +831,15 @@ def _export_spectrum_match_csv(analysis_uuid):
                             for sm in ss:
                                 if sm.target.protein_relation.protein_id in protein_name_resolver:
                                     yield sm
+        if view.is_multiscore:
+            job_cls = MultiScoreGlycopeptideSpectrumMatchAnalysisCSVSerializer
+        else:
+            job_cls = GlycopeptideSpectrumMatchAnalysisCSVSerializer
 
-        GlycopeptideSpectrumMatchAnalysisCSVSerializer(
+        job = job_cls(
             open(path, 'wb'), generate_entities(), protein_name_resolver,
-            view.analysis).start()
+            view.analysis)
+        job.start()
     return [file_name]
 
 
@@ -849,7 +883,6 @@ def _export_annotated_spectra(analysis_uuid):
         g.add_message(Message("Annotating Spectra"))
         dir_name = "%s-annotated-spectra" % (view.analysis.name)
         path = g.manager.get_temp_path(dir_name)
-
         annotator = SpectrumAnnotatorExport(
             view.storage_record.path, view.analysis_id,
             path, view.peak_loader.source_file)

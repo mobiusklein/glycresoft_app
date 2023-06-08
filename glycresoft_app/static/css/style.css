@@ -268,5 +268,5 @@ select:invalid {
 .log-display {
     white-space: break-spaces;
     overflow-y: scroll;
-    height: 45vh;
+    height: 55vh;
 }
