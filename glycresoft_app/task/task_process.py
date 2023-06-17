@@ -66,14 +66,26 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel, kwargs):
     warner = logging.getLogger('py.warnings')
     warner.setLevel("CRITICAL")
 
-    logger.handlers = []
+    for h in list(logger.handlers):
+        logger.removeHandler(h)
     logger.addHandler(handler)
+
     logger.setLevel("INFO")
-    logger.propagate = False
     current_process = multiprocessing.current_process()
 
     LoggingMixin.log_with_logger(logging.getLogger("glycresoft"))
     TaskBase.log_with_logger(logging.getLogger("glycresoft"))
+
+    # Under PyInstaller, for some reason, this logger gets reset to an unset stream handler
+    # which points to STDERR, but not when run from regular Python. This extra handler isn't
+    # added to the regular logger, might be because the status logger doesn't propagate?
+    status_logger = logging.getLogger("glycresoft.status")
+    if status_logger.handlers and status_logger.handlers[0].level == logging.NOTSET:
+        for h in list(status_logger.handlers):
+            status_logger.removeHandler(h)
+        status_logger.addHandler(handler)
+    if not status_logger.handlers and not status_logger.propagate:
+        status_logger.addHandler(handler)
 
     logger.info("Task Running on PID %r", current_process.pid)
     kwargs['log_file_path'] = log_file_path
