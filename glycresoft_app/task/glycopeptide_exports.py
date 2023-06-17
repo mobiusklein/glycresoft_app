@@ -77,9 +77,9 @@ class GlycopeptideCSVExport(ExportOperationBase):
     def get_job_cls(self):
         """Determine which job type to instantiate to do the job"""
         if self.is_multiscore:
-            job_cls = GlycopeptideLCMSMSAnalysisCSVSerializer
-        else:
             job_cls = MultiScoreGlycopeptideLCMSMSAnalysisCSVSerializer
+        else:
+            job_cls = GlycopeptideLCMSMSAnalysisCSVSerializer
         return job_cls
 
     def make_job(self, fh: io.FileIO, analysis: Analysis, db: DatabaseBoundOperation):
