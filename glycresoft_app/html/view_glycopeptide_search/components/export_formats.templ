@@ -27,22 +27,7 @@ ajaxForm("#export-form", function (payload) {
         var name = payload.filenames[i]
         console.log(name)
     }
-    if(GlycReSoft.isNativeClient()){
-        nativeClientMultiFileDownloadDirectory(function(directory){
-            $.post("/internal/move_files", {
-                filenames: payload.filenames,
-                destination: directory
-            }).success(function(){
-                GlycReSoft.closeMessageModal()
-                openDirectoryExternal(directory)
-            })
-        })
-    } else {
-        $.post("/internal/multiple_file_download/", payload).success(function(response){
-            GlycReSoft.downloadFile(response.filename)
-            GlycReSoft.closeMessageModal()
-        })
-    }
+    GlycReSoft.closeMessageModal()
 })
     </script>
 </div>

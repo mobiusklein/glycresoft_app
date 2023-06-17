@@ -65,7 +65,16 @@ from glycan_profiling.task import log_handle
 
 from ms_deisotope.data_source.scan import ProcessedScan
 from ms_deisotope.output import ProcessedMSFileLoader
-from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
+
+from glycresoft_app.task.glycopeptide_exports import (
+    AnnotatedSpectraExport,
+    ExportJob,
+    ExportState,
+    GlycopeptideCSVExport,
+    GlycopeptideGlycansCSVExport,
+    GlycopeptideSpectrumMatchCSVExport,
+    HTMLReportExport,
+)
 
 from .collection_view import CollectionViewBase, ViewCache, SnapshotBase
 from .service_module import register_service
@@ -799,18 +808,21 @@ def _export_csv(analysis_uuid):
                 snapshot = view.get_items_for_display(protein_id)
                 with snapshot.bind(view.session):
                     for gp in snapshot.members:
-                        yield gp
+                        yield gp.id
 
-        if view.is_multiscore:
-            job_cls = MultiScoreGlycopeptideLCMSMSAnalysisCSVSerializer
-        else:
-            job_cls = GlycopeptideLCMSMSAnalysisCSVSerializer
-
-        job = job_cls(
-            open(path, 'wb'), generate_entities(),
-            protein_name_resolver, view.analysis)
-        job.start()
-    return [file_name]
+        entity_id_list = list(generate_entities())
+        job = ExportJob(
+            GlycopeptideCSVExport(
+                analysis_path=view.connection._original_connection,
+                analysis_id=view.analysis_id,
+                output_path=path,
+                is_multiscore=view.is_multiscore,
+                ms_file_path=view.peak_loader.source_file,
+                entity_id_list=entity_id_list,
+                protein_name_resolver=protein_name_resolver,
+            )
+        )
+    return job
 
 
 def _export_spectrum_match_csv(analysis_uuid):
@@ -830,17 +842,19 @@ def _export_spectrum_match_csv(analysis_uuid):
                         for ss in gp.spectrum_matches:
                             for sm in ss:
                                 if sm.target.protein_relation.protein_id in protein_name_resolver:
-                                    yield sm
-        if view.is_multiscore:
-            job_cls = MultiScoreGlycopeptideSpectrumMatchAnalysisCSVSerializer
-        else:
-            job_cls = GlycopeptideSpectrumMatchAnalysisCSVSerializer
-
-        job = job_cls(
-            open(path, 'wb'), generate_entities(), protein_name_resolver,
-            view.analysis)
-        job.start()
-    return [file_name]
+                                    yield sm.id
+        entity_id_list = list(generate_entities())
+        spec = GlycopeptideSpectrumMatchCSVExport(
+            analysis_path=view.connection._original_connection,
+            analysis_id=view.analysis_id,
+            output_path=path,
+            is_multiscore=view.is_multiscore,
+            ms_file_path=view.peak_loader.source_file,
+            entity_id_list=entity_id_list,
+            protein_name_resolver=protein_name_resolver,
+        )
+        job = ExportJob(spec)
+    return job
 
 
 def _export_mzid(analysis_uuid):
@@ -872,9 +886,16 @@ def _export_associated_glycan_compositions(analysis_uuid):
         compositions = reader.load_glycans_from_identified_glycopeptides()
         file_name = "%s-associated-glycans.txt" % (view.analysis.name,)
         path = safepath(g.manager.get_temp_path(file_name))
-        ImportableGlycanHypothesisCSVSerializer(
-            open(path, 'wb'), compositions).start()
-    return [file_name]
+        spec = GlycopeptideGlycansCSVExport(
+            view.connection._original_connection,
+            view.analysis_id,
+            path,
+            is_multiscore=view.is_multiscore,
+            entity_id_list=[gc.id for gc in compositions],
+            protein_name_resolver={},
+        )
+        job = ExportJob(spec)
+    return job
 
 
 def _export_annotated_spectra(analysis_uuid):
@@ -883,11 +904,15 @@ def _export_annotated_spectra(analysis_uuid):
         g.add_message(Message("Annotating Spectra"))
         dir_name = "%s-annotated-spectra" % (view.analysis.name)
         path = g.manager.get_temp_path(dir_name)
-        annotator = SpectrumAnnotatorExport(
-            view.storage_record.path, view.analysis_id,
-            path, view.peak_loader.source_file)
-        annotator.run()
-    return [dir_name]
+        spec = AnnotatedSpectraExport(
+            view.connection._original_connection,
+            view.analysis_id,
+            path,
+            view.is_multiscore,
+            view.peak_loader.source_file
+        )
+        job = ExportJob(spec)
+    return job
 
 
 def _export_html(analysis_uuid):
@@ -896,13 +921,16 @@ def _export_html(analysis_uuid):
         g.add_message(Message("Building Glycopeptide HTML Report Export", "update"))
         file_name = "%s-report.html" % (view.analysis.name)
         path = safepath(g.manager.get_temp_path(file_name))
-        with open(path, 'wb') as fh:
-            writer = GlycopeptideDatabaseSearchReportCreator(
-                view.connection._original_connection, view.analysis_id, fh, 0,
-                view.peak_loader.source_file)
-            writer.start()
-    return [file_name]
-
+        job = ExportJob(
+            HTMLReportExport(
+                view.connection._original_connection,
+                view.analysis_id,
+                path,
+                view.is_multiscore,
+                view.peak_loader.source_file
+            )
+        )
+    return job
 
 @app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/to-csv")
 def to_csv(analysis_uuid):
@@ -980,11 +1008,26 @@ def export_menu(analysis_uuid):
 @app.route("/view_glycopeptide_lcmsms_analysis/<analysis_uuid>/export", methods=["POST"])
 def export_data(analysis_uuid):
     file_names = []
+    view = get_view(analysis_uuid)
+    with view:
+        state = ExportState(
+            view.analysis.name,
+            g.user,
+            g.manager.add_message
+        )
+
+    jobs = []
     for format_key in request.values:
         if format_key in serialization_formats:
             work_task = serialization_formats[format_key]
-            file_names.extend(
-                work_task(analysis_uuid))
+            job = work_task(analysis_uuid)
+            state.add_job(job)
+            jobs.append(job)
+
+    manager: ApplicationManager = g.manager
+    for job in jobs:
+        manager.add_task(job, background=True)
+
     return jsonify(status='success', filenames=file_names)
 
 

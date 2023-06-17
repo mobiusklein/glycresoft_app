@@ -196,6 +196,10 @@ class Application extends ActionLayerManager
             @handleMessage "files-to-download", (data) =>
                 for file in data.files
                     @downloadFile(file)
+
+            @handleMessage "directory-to-download", (data) =>
+                @downloadDirectory(data)
+
         ->
             @on "update_settings", =>
                 layer = @getShowingLayer()
@@ -243,6 +247,22 @@ class Application extends ActionLayerManager
 
     downloadFile: (filePath) ->
         window.location = "/internal/file_download/" + btoa(filePath)
+
+    downloadDirectory: (payload) ->
+        self = @
+        if @isNativeClient()
+            nativeClientMultiFileDownloadDirectory((directory) =>
+                $.post("/internal/move_files", {
+                    filenames: payload.filenames,
+                    destination: directory
+                }).success(() =>
+                    openDirectoryExternal(directory)
+                )
+            )
+        else
+            $.post("/internal/multiple_file_download/", payload).success((response) =>
+                self.downloadFile(response.filename)
+            )
 
     displayMessageModal: (message, modalArgs) ->
         container = $("#message-modal")

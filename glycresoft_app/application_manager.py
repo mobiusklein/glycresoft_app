@@ -128,11 +128,11 @@ class ApplicationManager(Project):
             "temp_dir": self.get_temp_path(name),
         }
 
-    def add_task(self, task):
+    def add_task(self, task, background: bool=False):
         log_handle.log("Received Task %r (%s, %r)" % (task, task.name, task.id))
         context = self.make_task_context(task.name)
         task.update_control_context(context)
-        self.task_manager.add_task(task)
+        self.task_manager.add_task(task, background)
         path = self.get_task_path(task.name)
         dill.dump(task.args[:-1], open(path, 'wb'))
 

@@ -281,7 +281,7 @@ Application = (function(superClass) {
     }, function() {
       return this.loadData();
     }, function() {
-      return this.handleMessage("files-to-download", (function(_this) {
+      this.handleMessage("files-to-download", (function(_this) {
         return function(data) {
           var file, j, len, ref, results;
           ref = data.files;
@@ -291,6 +291,11 @@ Application = (function(superClass) {
             results.push(_this.downloadFile(file));
           }
           return results;
+        };
+      })(this));
+      return this.handleMessage("directory-to-download", (function(_this) {
+        return function(data) {
+          return _this.downloadDirectory(data);
         };
       })(this));
     }, function() {
@@ -373,6 +378,29 @@ Application = (function(superClass) {
 
   Application.prototype.downloadFile = function(filePath) {
     return window.location = "/internal/file_download/" + btoa(filePath);
+  };
+
+  Application.prototype.downloadDirectory = function(payload) {
+    var self;
+    self = this;
+    if (this.isNativeClient()) {
+      return nativeClientMultiFileDownloadDirectory((function(_this) {
+        return function(directory) {
+          return $.post("/internal/move_files", {
+            filenames: payload.filenames,
+            destination: directory
+          }).success(function() {
+            return openDirectoryExternal(directory);
+          });
+        };
+      })(this));
+    } else {
+      return $.post("/internal/multiple_file_download/", payload).success((function(_this) {
+        return function(response) {
+          return self.downloadFile(response.filename);
+        };
+      })(this));
+    }
   };
 
   Application.prototype.displayMessageModal = function(message, modalArgs) {

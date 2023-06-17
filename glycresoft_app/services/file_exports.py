@@ -27,6 +27,8 @@ def copy_file_to_server_post():
 
 
 def resolve_file_name(name):
+    # make sure the requested path CANNOT be relative
+    name = os.path.join(*list(filter(lambda x: x != '..', os.path.split(os.path.normpath(name)))))
     return g.manager.get_temp_path(name)
 
 

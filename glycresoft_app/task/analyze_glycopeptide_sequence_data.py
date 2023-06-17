@@ -25,7 +25,7 @@ from glycan_profiling.cli.validators import (
     validate_analysis_name,
     validate_mass_shift)
 
-from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
+from ms_deisotope.output import ProcessedMSFileLoader
 
 from .task_process import Task, Message, TaskControlContext
 
@@ -89,7 +89,7 @@ def analyze_glycopeptide_sequences(database_connection,
         channel.send(Message("Could not locate sample %r" % sample_path, "error"))
         return
 
-    reader = ProcessedMzMLDeserializer(sample_path, use_index=False)
+    reader = ProcessedMSFileLoader(sample_path, use_index=False)
     sample_run = reader.sample_run
 
     try:

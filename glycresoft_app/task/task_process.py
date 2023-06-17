@@ -20,7 +20,7 @@ from queue import Queue, Empty as QueueEmptyException
 import psutil
 from six import string_types as basestring
 
-from glycan_profiling.task import TaskBase, log_handle
+from glycan_profiling.task import TaskBase, log_handle, LoggingMixin
 
 from glycresoft_app.utils.message_queue import UserIdentity, make_message_queue, null_user
 
@@ -71,6 +71,9 @@ def configure_log_wrapper(log_file_path, task_callable, args, channel, kwargs):
     logger.setLevel("INFO")
     logger.propagate = False
     current_process = multiprocessing.current_process()
+
+    LoggingMixin.log_with_logger(logging.getLogger("glycresoft"))
+    TaskBase.log_with_logger(logging.getLogger("glycresoft"))
 
     logger.info("Task Running on PID %r", current_process.pid)
     kwargs['log_file_path'] = log_file_path
@@ -451,11 +454,13 @@ class TaskManager(object):
     task_dir: os.PathLike
 
     n_running: int
+    n_background_running: int
     max_running: int
     halting: bool
 
     running_lock: RLock
     task_queue: Queue
+    background_queue: Queue
 
     tasks: Dict[str, Task]
     currently_running: Dict[str, Task]
@@ -469,8 +474,10 @@ class TaskManager(object):
         self.task_dir = task_dir
         self.tasks = {}
         self.n_running = 0
+        self.n_background_running = 0
         self.max_running = max_running
         self.task_queue = Queue()
+        self.background_queue = Queue()
         self.currently_running = {}
         self.completed_tasks = set()
         self.timer = CallInterval(self.interval, self.tick)
@@ -483,7 +490,7 @@ class TaskManager(object):
     def register_event_handler(self, event_type: str, handler: Callable):
         self.event_handlers[event_type].add(handler)
 
-    def add_task(self, task: Task):
+    def add_task(self, task: Task, background: bool=False):
         """
         Add a `Task` object to the set of all tasks being managed
         by this instance.
@@ -494,10 +501,15 @@ class TaskManager(object):
         ----------
         task : Task
             The task to be scheduled
+        background : bool
+            Whether to use the background queue or the main queue
         """
         logger.info("Scheduling Task %r (%s, %r)" % (task, task.name, task.id))
         self.tasks[task.id] = task
-        self.task_queue.put(task)
+        if background:
+            self.background_queue.put(task)
+        else:
+            self.task_queue.put(task)
         self.add_message(Message({
             "id": task.id, "name": task.name, "created_at": task.created_at}, "task-queued"))
 
@@ -554,7 +566,6 @@ class TaskManager(object):
                     self.currently_running.pop(task.id)
                     self.tasks.pop(task.id)
                     self.n_running -= 1
-                    task.on_complete()
                     self.add_message(Message(
                         {"id": task.id, "name": task.name, "created_at": str(task.created_at)}, "task-complete",
                         user=task.user))
@@ -595,6 +606,15 @@ class TaskManager(object):
                 self.run_task(task)
             except QueueEmptyException:
                 break
+        while((self.n_background_running < self.max_running) and (self.background_queue.qsize() > 0)):
+            try:
+                task = self.background_queue.get(False)
+                if task.state != QUEUED or task.id in self.completed_tasks:
+                    continue
+                self.run_task(task)
+            except QueueEmptyException:
+                break
+
 
     def run_task(self, task):
         """
