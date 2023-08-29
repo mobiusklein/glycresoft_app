@@ -14,11 +14,11 @@ import ms_peak_picker
 
 from ms_deisotope import MSFileLoader
 from ms_deisotope.data_source import RandomAccessScanSource, Scan
-from ms_deisotope.output.mzml import ProcessedMzMLDeserializer
+from ms_deisotope.output import ProcessedMSFileLoader
 
 from glycan_profiling.profiler import SampleConsumer
 from glycan_profiling.serialize import SampleRun
-from glycan_profiling.scan_cache import ThreadedMzMLScanCacheHandler
+from glycan_profiling.scan_cache import ThreadedMzMLScanStorageHandler
 
 import logging
 logger = logging.getLogger(__name__)
@@ -150,12 +150,12 @@ def preprocess(mzml_file, database_connection, averagine=None, start_time=None, 
         n_processes=n_processes,
         extract_only_tandem_envelopes=extract_only_tandem_envelopes,
         ms1_averaging=ms1_averaging,
-        cache_handler_type=ThreadedMzMLScanCacheHandler)
+        storage_type=ThreadedMzMLScanStorageHandler)
 
     try:
         consumer.start()
         logger.info("Updating New Sample Run")
-        reader = ProcessedMzMLDeserializer(storage_path, use_index=False)
+        reader = ProcessedMSFileLoader(storage_path, use_index=False)
         reader.read_index_file()
         sample_run_data = reader.sample_run
         if reader.extended_index.msn_ids:
