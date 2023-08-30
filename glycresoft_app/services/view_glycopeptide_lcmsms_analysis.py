@@ -677,10 +677,6 @@ def glycopeptide_detail(analysis_uuid, protein_id, glycopeptide_id, scan_id=None
             sequence_logo_plot = glycopeptide_match_logo(
                 match, ax=figax(), return_artist=False
             )
-            xlim = list(sequence_logo_plot.get_xlim())
-            xlim[0] += 1
-
-            sequence_logo_plot.set_xlim(xlim[0], xlim[1])
 
             def xml_transform(root):
                 view_box_str = root.attrib["viewBox"]
