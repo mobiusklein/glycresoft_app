@@ -6,8 +6,9 @@ from .task_process import Task, Message
 
 
 from glycan_profiling.cli.validators import (
-    validate_averagine, validate_sample_run_name,
+    validate_sample_run_name,
     validate_database_unlocked)
+from ms_deisotope.tools.utils import validate_averagine
 
 import ms_deisotope
 import ms_peak_picker
