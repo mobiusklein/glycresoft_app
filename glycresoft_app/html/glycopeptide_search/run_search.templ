@@ -102,7 +102,8 @@ function updateScoringModelOptionsFromHypothesisType() {
     const hypothesisId = hypothesisChoiceInput.value
     const hypothesis = GlycReSoft.hypotheses[hypothesisId]
     let scoringOptions = []
-    if (!hypothesis.isFullCrossproduct()) {
+    if (hypothesis === undefined) {}
+    else if (!hypothesis.isFullCrossproduct()) {
         scoringOptions = [
             new Option("Intensity", "log_intensity"),
             new Option("Reweighted Intensity", "log_intensity_v3", true, true)
@@ -127,7 +128,11 @@ function updatePeptideMassFilterForFullCrossproduct() {
     const hypothesisId = hypothesisChoiceInput.value
     const hypothesis = GlycReSoft.hypotheses[hypothesisId]
     const searchStrategyDisplay = document.querySelector("#search-strategy-display")
-    if (!hypothesis.isFullCrossproduct()) {
+    if (hypothesis === undefined) {
+        peptideMassFilterInput.checked = false
+        searchStrategyDisplay.innerHTML = "..."
+    }
+    else if (!hypothesis.isFullCrossproduct()) {
         peptideMassFilterInput.checked = true
         searchStrategyDisplay.innerHTML = `<span class='red-text' style='font-size: small;'>
             The hypothesis selected uses the fast indexed joint search algorithm. It <em>requires</em>

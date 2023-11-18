@@ -5,14 +5,14 @@
             {% include "components/sample_selection.templ" %}
         </div>
         <div class='row'>
-            <div class='input-field col s6'>    
+            <div class='input-field col s6'>
                     <label for="hypothesis_choice">Choose a Hypothesis</label>
                     <br>
                     <select id="hypothesis_choice" name="hypothesis_choice" required class='browser-default'>
                         {% for hypothesis in manager.glycan_hypotheses(user) %}
                             <option value="{{hypothesis.uuid}}">{{hypothesis.name}}</option>
                         {% endfor %}
-                    </select>                    
+                    </select>
             </div>
         </div>
         <div class='row'>
@@ -30,7 +30,7 @@
                     {# <div class='input-field col s3'>
                         <label for='network-sharing-coefficient'>Network Sharing Coefficient</label>
                         <input class='numeric-entry' type='text'
-                               id='network-sharing-coefficient' value="None" 
+                               id='network-sharing-coefficient' value="None"
                                name='network-sharing-coefficient'>
                     </div> #}
                 </div>
@@ -60,7 +60,7 @@
                     <div class='mass-shift-input-table col s12'>
                         <div class='section-title' style='margin-left: 25%;'>Variable Adducts</div>
                         <br>
-                    </div>                    
+                    </div>
                 </div>
                 <div class='row'>
                     <div class='col s12'>
@@ -73,7 +73,7 @@
                                     ({{feature_obj.get_feature_type() | replace("_", " ") | title}})
                                 </option>
                             {% endfor %}
-                        </select>                    
+                        </select>
                     </div>
                 </div>
             </div>
