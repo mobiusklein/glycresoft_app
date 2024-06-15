@@ -5,15 +5,15 @@ from glycresoft_app.project.sample import SampleRunRecord
 
 from glycresoft_app.task.task_process import Message
 
-from glycan_profiling.plotting import (
+from glycresoft.plotting import (
     AbundantLabeler, SmoothingChromatogramArtist, figax)
-from glycan_profiling.plotting.lcms_map import LCMSMapArtist
+from glycresoft.plotting.lcms_map import LCMSMapArtist
 
-from glycan_profiling.trace import ChromatogramExtractor
-from glycan_profiling.chromatogram_tree import SimpleChromatogram
-from glycan_profiling.tandem.oxonium_ions import standard_oxonium_ions
+from glycresoft.trace import ChromatogramExtractor
+from glycresoft.chromatogram_tree import SimpleChromatogram
+from glycresoft.tandem.oxonium_ions import standard_oxonium_ions
 
-from glycan_profiling.output import SimpleChromatogramCSVSerializer
+from glycresoft.output import SimpleChromatogramCSVSerializer
 
 import ms_deisotope
 from ms_deisotope.output.mzml import ProcessedMzMLDeserializer

@@ -20,9 +20,9 @@ from glycresoft_app.task.combinatorial_glycan_hypothesis import BuildCombinatori
 from glycresoft_app.task.text_file_glycan_hypothesis import BuildTextFileGlycanHypothesis
 from glycresoft_app.task.prebuilt_hypothesis import BuildPreBuiltGlycanHypothesis
 from glycresoft_app.task.merge_glycan_hypotheses import MergeGlycanHypotheses
-from glycan_profiling.cli.validators import (
+from glycresoft.cli.validators import (
     validate_reduction, validate_derivatization)
-from glycan_profiling.database.prebuilt import hypothesis_register as _prebuilt_hypothesis_register
+from glycresoft.database.prebuilt import hypothesis_register as _prebuilt_hypothesis_register
 
 
 app = make_glycan_hypothesis = register_service("make_glycan_hypothesis", __name__)

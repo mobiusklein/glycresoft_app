@@ -10,18 +10,18 @@ from glypy.utils import Enum
 from glycresoft_app.project import analysis as project_analysis
 
 
-from glycan_profiling.serialize import (
+from glycresoft.serialize import (
     DatabaseBoundOperation, GlycopeptideHypothesis, Analysis)
 
-from glycan_profiling.profiler import (
+from glycresoft.profiler import (
     MzMLGlycopeptideLCMSMSAnalyzer,
     MzMLGlycanChromatogramAnalyzer,
     MzMLComparisonGlycopeptideLCMSMSAnalyzer,
     MultipartGlycopeptideLCMSMSAnalyzer)
 
-from glycan_profiling.models import GeneralScorer, get_feature
+from glycresoft.models import GeneralScorer, get_feature
 
-from glycan_profiling.cli.validators import (
+from glycresoft.cli.validators import (
     validate_analysis_name,
     validate_mass_shift)
 

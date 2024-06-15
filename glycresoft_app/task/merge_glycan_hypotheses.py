@@ -1,6 +1,6 @@
 from click import Abort
 
-from glycan_profiling.cli.build_db import (
+from glycresoft.cli.build_db import (
     GlycanCompositionHypothesisMerger, validate_reduction,
     validate_derivatization, validate_glycan_hypothesis_name,
     DatabaseBoundOperation)

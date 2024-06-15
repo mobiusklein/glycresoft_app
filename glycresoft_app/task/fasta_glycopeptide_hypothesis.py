@@ -1,12 +1,12 @@
 from click import Abort
 
-from glycan_profiling.cli.validators import (
+from glycresoft.cli.validators import (
     validate_modifications, validate_glycan_source,
     validate_glycopeptide_hypothesis_name)
 
-from glycan_profiling.cli.build_db import _glycan_hypothesis_builders
+from glycresoft.cli.build_db import _glycan_hypothesis_builders
 
-from glycan_profiling.database.builder.glycopeptide.naive_glycopeptide import (
+from glycresoft.database.builder.glycopeptide.naive_glycopeptide import (
     MultipleProcessFastaGlycopeptideHypothesisSerializer,
     ReversingMultipleProcessFastaGlycopeptideHypothesisSerializer)
 

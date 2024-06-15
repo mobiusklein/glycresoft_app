@@ -6,11 +6,11 @@ from os import path
 from threading import RLock
 from typing import List, Optional
 
-from glycan_profiling.serialize import (
+from glycresoft.serialize import (
     DatabaseBoundOperation, SampleRun, GlycanHypothesis,
     GlycopeptideHypothesis, Analysis, AnalysisTypeEnum)
 
-from glycan_profiling.task import log_handle
+from glycresoft.task import log_handle
 
 from glycresoft_app.vendor import sqlitedict
 from glycresoft_app.utils.message_queue import null_user, has_access

@@ -19,30 +19,30 @@ from glycresoft_app.task.task_process import Message
 from glycresoft_app import report
 
 
-from glycan_profiling.tandem.ref import SpectrumReference
-from glycan_profiling.serialize import (
+from glycresoft.tandem.ref import SpectrumReference
+from glycresoft.serialize import (
     Analysis, Protein, Glycopeptide, GlycanCombination,
     IdentifiedGlycopeptide, func, AnalysisDeserializer,
     MSScan, GlycopeptideSpectrumSolutionSet)
 
-from glycan_profiling.profiler import GlycopeptideSearchStrategy
+from glycresoft.profiler import GlycopeptideSearchStrategy
 
-from glycan_profiling.tandem.glycopeptide.identified_structure import IdentifiedGlycoprotein
-from glycan_profiling.tandem.target_decoy import TargetDecoyAnalyzer, GroupwiseTargetDecoyAnalyzer
-from glycan_profiling.tandem.glycopeptide.dynamic_generation.multipart_fdr import GlycopeptideFDREstimator
+from glycresoft.tandem.glycopeptide.identified_structure import IdentifiedGlycoprotein
+from glycresoft.tandem.target_decoy import TargetDecoyAnalyzer, GroupwiseTargetDecoyAnalyzer
+from glycresoft.tandem.glycopeptide.dynamic_generation.multipart_fdr import GlycopeptideFDREstimator
 
-from glycan_profiling.serialize.hypothesis.glycan import GlycanCombinationGlycanComposition
+from glycresoft.serialize.hypothesis.glycan import GlycanCombinationGlycanComposition
 
 
-from glycan_profiling.database.glycan_composition_filter import (
+from glycresoft.database.glycan_composition_filter import (
     GlycanCompositionFilter, InclusionFilter)
 
-from glycan_profiling.plotting.summaries import (
+from glycresoft.plotting.summaries import (
     SmoothingChromatogramArtist,
     figax)
 
 
-from glycan_profiling.output import (
+from glycresoft.output import (
     GlycopeptideLCMSMSAnalysisCSVSerializer,
     GlycopeptideSpectrumMatchAnalysisCSVSerializer,
     MultiScoreGlycopeptideLCMSMSAnalysisCSVSerializer,
@@ -54,14 +54,14 @@ from glycan_profiling.output import (
 )
 
 
-from glycan_profiling.plotting.spectral_annotation import TidySpectrumMatchAnnotator
-from glycan_profiling.plotting.plot_glycoforms import GlycoformLayout
-from glycan_profiling.plotting.sequence_fragment_logo import glycopeptide_match_logo
+from glycresoft.plotting.spectral_annotation import TidySpectrumMatchAnnotator
+from glycresoft.plotting.plot_glycoforms import GlycoformLayout
+from glycresoft.plotting.sequence_fragment_logo import glycopeptide_match_logo
 
-from glycan_profiling.plotting.entity_bar_chart import (
+from glycresoft.plotting.entity_bar_chart import (
     AggregatedAbundanceArtist, BundledGlycanComposition)
 
-from glycan_profiling.task import log_handle
+from glycresoft.task import log_handle
 
 from ms_deisotope.data_source.scan import ProcessedScan
 from ms_deisotope.output import ProcessedMSFileLoader

@@ -7,12 +7,12 @@ from threading import RLock
 
 import dill
 
-from glycan_profiling.serialize import (
+from glycresoft.serialize import (
     DatabaseBoundOperation, SampleRun, GlycanHypothesis,
     GlycopeptideHypothesis, Analysis, AnalysisTypeEnum)
 
 
-from glycan_profiling.task import log_handle
+from glycresoft.task import log_handle
 
 from glycresoft_app.task.task_process import TaskManager
 from glycresoft_app.config import get as config_from_path

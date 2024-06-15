@@ -20,7 +20,7 @@ from queue import Queue, Empty as QueueEmptyException
 import psutil
 from six import string_types as basestring
 
-from glycan_profiling.task import TaskBase, log_handle, LoggingMixin
+from glycresoft.task import TaskBase, log_handle, LoggingMixin
 
 from glycresoft_app.utils.message_queue import UserIdentity, make_message_queue, null_user
 

@@ -1,10 +1,10 @@
 from click import Abort
 
-from glycan_profiling.cli.build_db import (
+from glycresoft.cli.build_db import (
     DatabaseBoundOperation, GlycanCompositionHypothesisMerger,
     validate_reduction, validate_derivatization, validate_glycan_hypothesis_name)
 
-from glycan_profiling.cli.validators import validate_database_unlocked
+from glycresoft.cli.validators import validate_database_unlocked
 
 from glycresoft_app.project import hypothesis as project_hypothesis
 from .task_process import Task, Message

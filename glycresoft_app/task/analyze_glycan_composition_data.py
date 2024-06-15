@@ -6,15 +6,15 @@ from sqlalchemy.orm import object_session
 from glycresoft_app.project import analysis as project_analysis
 from .task_process import Task, Message, TaskControlContext
 
-from glycan_profiling.serialize import (
+from glycresoft.serialize import (
     DatabaseBoundOperation, GlycanHypothesis)
 
-from glycan_profiling.profiler import (
+from glycresoft.profiler import (
     MzMLGlycanChromatogramAnalyzer)
 
-from glycan_profiling.models import GeneralScorer
+from glycresoft.models import GeneralScorer
 
-from glycan_profiling.cli.validators import (
+from glycresoft.cli.validators import (
     validate_analysis_name,
     validate_mass_shift)
 

@@ -3,7 +3,7 @@ from .service_module import register_service
 from . import view_glycan_lcms_analysis, view_glycopeptide_lcmsms_analysis
 
 
-from glycan_profiling.serialize import AnalysisTypeEnum
+from glycresoft.serialize import AnalysisTypeEnum
 
 
 app = view_analysis = register_service("view_analysis", __name__)

@@ -1,7 +1,7 @@
 import os
 import glob
 
-from glycan_profiling import serialize
+from glycresoft import serialize
 
 from .base import SyncableStore, structure
 

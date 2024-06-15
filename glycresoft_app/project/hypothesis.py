@@ -3,7 +3,7 @@ import os
 import glob
 import warnings
 
-from glycan_profiling import serialize
+from glycresoft import serialize
 
 from glycresoft_app.utils.base import RecordType
 

@@ -20,11 +20,11 @@ from glycopeptidepy.utils.collectiontools import groupby
 from glypy.structure.glycan_composition import GlycanComposition
 from ms_deisotope import mass_charge_ratio
 
-from glycan_profiling.symbolic_expression import GlycanSymbolContext
-from glycan_profiling.scoring import logit
+from glycresoft.symbolic_expression import GlycanSymbolContext
+from glycresoft.scoring import logit
 
 
-from glycan_profiling.plotting import colors
+from glycresoft.plotting import colors
 
 
 mpl_params.update({

@@ -12,34 +12,34 @@ from glycresoft_app import report
 from glycresoft_app.utils.pagination import SequencePagination
 from glycresoft_app.task import Message
 
-from glycan_profiling.serialize import (
+from glycresoft.serialize import (
     Analysis,
     GlycanComposition,
     GlycanCompositionChromatogram,
     UnidentifiedChromatogram)
 
-from glycan_profiling.chromatogram_tree import ChromatogramFilter
-from glycan_profiling.scoring.chromatogram_solution import logitsum
+from glycresoft.chromatogram_tree import ChromatogramFilter
+from glycresoft.scoring.chromatogram_solution import logitsum
 
-from glycan_profiling.database.composition_network import (
+from glycresoft.database.composition_network import (
     make_n_glycan_neighborhoods,
     normalize_composition)
 
-from glycan_profiling.database.glycan_composition_filter import (
+from glycresoft.database.glycan_composition_filter import (
     GlycanCompositionFilter,
     InclusionFilter)
 
-from glycan_profiling.plotting.summaries import (
+from glycresoft.plotting.summaries import (
     GlycanChromatographySummaryGraphBuilder,
     SmoothingChromatogramArtist,
     figax)
 
-from glycan_profiling.plotting import ArtistBase
+from glycresoft.plotting import ArtistBase
 
-from glycan_profiling.plotting.chromatogram_artist import ChargeSeparatingSmoothingChromatogramArtist
+from glycresoft.plotting.chromatogram_artist import ChargeSeparatingSmoothingChromatogramArtist
 
 
-from glycan_profiling.output import (
+from glycresoft.output import (
     GlycanLCMSAnalysisCSVSerializer,
     ImportableGlycanHypothesisCSVSerializer)
 

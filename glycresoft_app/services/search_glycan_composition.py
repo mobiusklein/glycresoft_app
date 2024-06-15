@@ -6,7 +6,7 @@ try:
 except ImportError:
     from werkzeug.utils import secure_filename
 
-from glycan_profiling.models import GeneralScorer, ms1_model_features
+from glycresoft.models import GeneralScorer, ms1_model_features
 
 
 from .form_cleaners import remove_empty_rows, intify, make_unique_name, touch_file

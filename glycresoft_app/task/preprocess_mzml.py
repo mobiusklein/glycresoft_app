@@ -5,7 +5,7 @@ from glycresoft_app.project import sample
 from .task_process import Task, Message
 
 
-from glycan_profiling.cli.validators import (
+from glycresoft.cli.validators import (
     validate_sample_run_name,
     validate_database_unlocked)
 from ms_deisotope.tools.utils import validate_averagine
@@ -17,9 +17,9 @@ from ms_deisotope import MSFileLoader
 from ms_deisotope.data_source import RandomAccessScanSource, Scan
 from ms_deisotope.output import ProcessedMSFileLoader
 
-from glycan_profiling.profiler import SampleConsumer
-from glycan_profiling.serialize import SampleRun
-from glycan_profiling.scan_cache import ThreadedMzMLScanStorageHandler
+from glycresoft.profiler import SampleConsumer
+from glycresoft.serialize import SampleRun
+from glycresoft.scan_cache import ThreadedMzMLScanStorageHandler
 
 import logging
 logger = logging.getLogger(__name__)

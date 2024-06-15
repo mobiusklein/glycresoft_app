@@ -1,5 +1,5 @@
-from glycan_profiling.serialize import DatabaseBoundOperation
-from glycan_profiling.serialize.hypothesis import Glycopeptide
+from glycresoft.serialize import DatabaseBoundOperation
+from glycresoft.serialize.hypothesis import Glycopeptide
 from .task_process import Task, Message
 
 

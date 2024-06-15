@@ -2,9 +2,9 @@ from flask import g, jsonify, current_app, request
 
 
 # from glycresoft_app.utils import json_serializer
-from glycan_profiling.plotting import colors
-from glycan_profiling.chromatogram_tree import mass_shift
-from glycan_profiling import symbolic_expression
+from glycresoft.plotting import colors
+from glycresoft.chromatogram_tree import mass_shift
+from glycresoft import symbolic_expression
 from glypy.composition import formula
 from glypy.structure.glycan_composition import from_iupac_lite, IUPACError
 from glycopeptidepy.structure.modification import ModificationTable, ModificationCategory

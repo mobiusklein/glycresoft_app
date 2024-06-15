@@ -1,5 +1,5 @@
 from flask import request, g
-from glycan_profiling.database import glycan_composition_filter
+from glycresoft.database import glycan_composition_filter
 
 
 class FilterSpecificationSet(object):

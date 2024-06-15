@@ -8,7 +8,7 @@ try:
 except ImportError:
     from werkzeug.utils import secure_filename
 
-from glycan_profiling.cli.validators import validate_glycopeptide_tandem_scoring_function
+from glycresoft.cli.validators import validate_glycopeptide_tandem_scoring_function
 
 from .form_cleaners import remove_empty_rows, make_unique_name, float_or, try_int, float_or_infinity
 from .service_module import register_service

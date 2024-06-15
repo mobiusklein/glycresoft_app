@@ -1,12 +1,12 @@
 import logging
 from flask import request, g, render_template, Response, jsonify
 
-from glycan_profiling.serialize import (
+from glycresoft.serialize import (
     GlycanHypothesis, GlycopeptideHypothesis, Protein,
     GlycanComposition, Glycopeptide, func, DatabaseBoundOperation,
     object_session)
 
-from glycan_profiling.output.csv_format import ImportableGlycanHypothesisCSVSerializer
+from glycresoft.output.csv_format import ImportableGlycanHypothesisCSVSerializer
 
 from glycresoft_app.utils.pagination import paginate
 from glycresoft_app.utils.state_transfer import request_arguments_and_context

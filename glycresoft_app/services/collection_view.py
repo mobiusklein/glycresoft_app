@@ -6,10 +6,10 @@ from threading import RLock
 
 from sqlalchemy.orm import object_session
 
-from glycan_profiling.serialize import (
+from glycresoft.serialize import (
     DatabaseBoundOperation)
 
-from glycan_profiling.structure import lru
+from glycresoft.structure import lru
 
 logger = logging.getLogger("glycresoft_app.view_services")
 

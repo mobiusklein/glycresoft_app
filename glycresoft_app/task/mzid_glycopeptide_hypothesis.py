@@ -1,12 +1,12 @@
 from click import Abort
 
-from glycan_profiling.cli.validators import (
+from glycresoft.cli.validators import (
     validate_glycan_source,
     validate_glycopeptide_hypothesis_name, validate_mzid_proteins)
 
-from glycan_profiling.cli.build_db import _glycan_hypothesis_builders
+from glycresoft.cli.build_db import _glycan_hypothesis_builders
 
-from glycan_profiling.database.builder.glycopeptide.informed_glycopeptide import (
+from glycresoft.database.builder.glycopeptide.informed_glycopeptide import (
     MultipleProcessMzIdentMLGlycopeptideHypothesisSerializer)
 
 from glycresoft_app.project import hypothesis as project_hypothesis

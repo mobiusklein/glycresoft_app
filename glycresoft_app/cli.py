@@ -2,8 +2,8 @@ import os
 from os.path import abspath
 import click
 
-from glycan_profiling.cli.tools import tools
-from glycan_profiling.cli.base import cli, HiddenOption
+from glycresoft.cli.tools import tools
+from glycresoft.cli.base import cli, HiddenOption
 
 from glycresoft_app.project.project import Project
 

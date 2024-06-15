@@ -7,7 +7,7 @@ from typing import Any, Callable, List, Mapping, Optional, ClassVar, Set
 
 from sqlalchemy.orm import object_session
 
-from glycan_profiling.serialize import (
+from glycresoft.serialize import (
     DatabaseBoundOperation,
     Analysis,
     IdentifiedGlycopeptide,
@@ -16,7 +16,7 @@ from glycan_profiling.serialize import (
     AnalysisDeserializer,
 )
 
-from glycan_profiling.output import (
+from glycresoft.output import (
     GlycopeptideLCMSMSAnalysisCSVSerializer,
     GlycopeptideSpectrumMatchAnalysisCSVSerializer,
     MultiScoreGlycopeptideLCMSMSAnalysisCSVSerializer,

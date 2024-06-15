@@ -18,7 +18,7 @@ from glycopeptidepy.structure.modification import (
 from glycresoft_app.task.fasta_glycopeptide_hypothesis import BuildGlycopeptideHypothesisFasta
 from glycresoft_app.task.mzid_glycopeptide_hypothesis import BuildGlycopeptideHypothesisMzId
 
-from glycan_profiling.config.config_file import (
+from glycresoft.config.config_file import (
     add_user_modification_rule as add_user_peptide_modification_rule)
 
 from .file_exports import safepath
