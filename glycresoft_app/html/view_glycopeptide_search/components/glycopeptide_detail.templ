@@ -156,7 +156,11 @@
                         <td class='glycopeptide-detail-matched-scan-score center-align'>{{"%0.2f" % scan.score}}</td>
                         <td class='glycopeptide-detail-matched-scan-charge center-align'>{{scan.precursor_information.charge}}</td>
                         {% set precursor_id = scan.precursor_information.precursor_scan_id %}
-                        {% if precursor_id|length > 30 %}
+                        {% if precursor_id is none %}
+                            <td class='glycopeptide-detail-matched-precursor'>
+                                <span style="color: red;">unknown</span>
+                            </td>
+                        {% elif precursor_id|length > 30 %}
                             <td class='glycopeptide-detail-matched-precursor'>
                                 <small>{{precursor_id}}</small>
                             </td>
